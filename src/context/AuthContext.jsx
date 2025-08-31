@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
   // Verificar autenticação ao carregar a aplicação
   useEffect(() => {
     checkAuth();
-  }, [checkAuth]);
+  }, []);
 
   // Função para verificar se o usuário está autenticado
   const checkAuth = async () => {
