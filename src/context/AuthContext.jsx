@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import Cookies from 'js-cookie';
 import { authService, apiUtils } from '../services/api';
 
 // Criar contexto
@@ -67,9 +68,24 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Função de login
-  const login = async (email, senha) => {
+  const login = async (email, senha, token = null) => {
     try {
-      const response = await authService.login(email, senha);
+      let response;
+      
+      // Se token foi fornecido (login via QR Code), usar diretamente
+      if (token) {
+        // Simular resposta para login via QR Code
+        response = {
+          success: true,
+          data: {
+            token: token,
+            user: await getUserFromToken(token)
+          }
+        };
+      } else {
+        // Login normal com email e senha
+        response = await authService.login(email, senha);
+      }
       
       if (response.success) {
         setUser(response.data.user);
@@ -84,6 +100,29 @@ export const AuthProvider = ({ children }) => {
         success: false, 
         message: apiUtils.formatError(error) 
       };
+    }
+  };
+
+  // Função auxiliar para obter dados do usuário a partir do token
+  const getUserFromToken = async (token) => {
+    // Salvar token temporariamente para fazer a verificação
+    const originalToken = apiUtils.getToken();
+    Cookies.set('scc_token', token, { expires: 1 });
+    
+    const response = await authService.verifyToken();
+    
+    if (response.success) {
+      // Salvar dados do usuário nos cookies
+      Cookies.set('scc_user', JSON.stringify(response.data.user), { expires: 1 });
+      return response.data.user;
+    } else {
+      // Restaurar token original se falhou
+      if (originalToken) {
+        Cookies.set('scc_token', originalToken, { expires: 1 });
+      } else {
+        Cookies.remove('scc_token');
+      }
+      throw new Error('Token inválido');
     }
   };
 
