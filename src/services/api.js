@@ -60,10 +60,10 @@ export const authService = {
   async login(email, senha) {
     const response = await api.post('/api/auth/login', { email, senha });
     
-    if (response.success && response.data.token) {
+    if (response.success && response.token) {
       // Salvar token e dados do usuário nos cookies
-      Cookies.set('scc_token', response.data.token, { expires: 1 }); // 1 dia
-      Cookies.set('scc_user', JSON.stringify(response.data.user), { expires: 1 });
+      Cookies.set('scc_token', response.token, { expires: 1 }); // 1 dia
+      Cookies.set('scc_user', JSON.stringify(response.user), { expires: 1 });
     }
     
     return response;
