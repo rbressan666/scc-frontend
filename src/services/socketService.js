@@ -124,7 +124,7 @@ export class QRCodeSocketService extends SocketService {
 
       // Timeout para a operação
       const timeout = setTimeout(() => {
-        reject(new Error('Timeout ao gerar QR Code'));
+        reject(new Error('Timeout ao gerar QR Code - trace'));
       }, 10000);
 
       // Listener para QR Code gerado
