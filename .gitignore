@@ -1,0 +1,32 @@
+# Dependências
+node_modules/
+
+# Build
+dist/
+build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Configs de editores/IDE
+.vscode/
+.idea/
+*.swp
+
+# Cache
+*.cache
+.cache/
+.tmp/
+.temp/
+vite.config.js.timestamp-*
+
+# Ambiente
+.env
+.env.*.local
+
+# Mac/Linux/Windows
+.DS_Store
+Thumbs.db
