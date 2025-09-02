@@ -71,7 +71,7 @@ class QRCodeSocketService {
 
       // Timeout de 15 segundos (aumentado de 30 para 15)
       const timeout = setTimeout(() => {
-        reject(new Error('Timeout ao gerar QR Code'));
+        reject(new Error('trace - Timeout ao gerar QR Code'));
       }, 15000);
 
       this.socket.emit('generate-qr', (response) => {
