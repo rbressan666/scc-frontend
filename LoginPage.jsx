@@ -199,7 +199,7 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <Card className="w-full max-md-4 w-16 bg-black rounded-full flex items-center justify-center">
+      <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 w-16 h-16 bg-black rounded-full flex items-center justify-center">
             <span className="text-white font-bold text-xl">SCC</span>
