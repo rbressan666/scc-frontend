@@ -66,7 +66,14 @@ export const authService = {
       Cookies.set('scc_user', JSON.stringify(response.user), { expires: 1 });
     }
     
-    return response;
+    return {
+      success: response.success,
+      message: response.message,
+      data: {
+        token: response.token,
+        user: response.user
+      }
+    };
   },
 
   // Logout
