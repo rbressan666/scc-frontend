@@ -26,7 +26,7 @@ const DashboardPage = () => {
       color: 'bg-blue-500'
     },
     {
-      id: 'produtos',
+      id: 'products',
       title: 'Produtos',
       description: 'Gerenciar produtos e variações do estoque',
       icon: Package,
@@ -239,11 +239,11 @@ const DashboardPage = () => {
               <CardContent className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Versão:</span>
-                  <span className="text-sm font-medium">MVP 1.0</span>
+                  <span className="text-sm font-medium">MVP 2.0</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Módulo:</span>
-                  <span className="text-sm font-medium">Gestão de Usuários</span>
+                  <span className="text-sm font-medium">Gestão Completa</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Último Login:</span>

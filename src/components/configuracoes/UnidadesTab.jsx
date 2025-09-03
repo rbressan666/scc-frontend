@@ -132,16 +132,19 @@ const UnidadesTab = () => {
     {
       key: 'nome',
       label: 'Nome',
+      filterable: true,
       render: (value) => <span className="font-medium">{value}</span>
     },
     {
       key: 'sigla',
       label: 'Sigla',
+      filterable: true,
       render: (value) => <Badge variant="outline">{value}</Badge>
     },
     {
       key: 'ativo',
       label: 'Status',
+      filterable: true,
       render: (value) => (
         <Badge variant={value ? "default" : "secondary"}>
           {value ? 'Ativo' : 'Inativo'}
@@ -152,6 +155,7 @@ const UnidadesTab = () => {
       key: 'actions',
       label: 'Ações',
       sortable: false,
+      filterable: false,
       className: 'text-right',
       render: (_, unidade) => (
         <div className="flex justify-end space-x-2">
@@ -202,20 +206,18 @@ const UnidadesTab = () => {
               Nova Unidade
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] cursor-move">
-            <div className="cursor-grab active:cursor-grabbing" onMouseDown={(e) => e.stopPropagation()}>
-              <DialogHeader>
-                <DialogTitle>
-                  {editingUnidade ? 'Editar Unidade de Medida' : 'Nova Unidade de Medida'}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingUnidade 
-                    ? 'Edite as informações da unidade de medida' 
-                    : 'Adicione uma nova unidade de medida ao sistema'
-                  }
-                </DialogDescription>
-              </DialogHeader>
-            </div>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>
+                {editingUnidade ? 'Editar Unidade de Medida' : 'Nova Unidade de Medida'}
+              </DialogTitle>
+              <DialogDescription>
+                {editingUnidade 
+                  ? 'Edite as informações da unidade de medida' 
+                  : 'Adicione uma nova unidade de medida ao sistema'
+                }
+              </DialogDescription>
+            </DialogHeader>
             
             <form onSubmit={handleSubmit}>
               <div className="space-y-4">
