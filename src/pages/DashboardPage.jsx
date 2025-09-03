@@ -36,11 +36,12 @@ const DashboardPage = () => {
     {
       id: 'reports',
       title: 'Relatórios',
-      description: 'Visualizar relatórios e estatísticas do sistema',
+      description: 'Visualizar relatórios e estatísticas do sistema (em breve)',
       icon: BarChart3,
-      path: '/relatorios',
+      path: null, // Desabilitado
       adminOnly: true,
-      color: 'bg-purple-500'
+      color: 'bg-purple-500',
+      disabled: true
     }
   ];
 
@@ -122,8 +123,10 @@ const DashboardPage = () => {
               return (
                 <Card 
                   key={item.id}
-                  className="cursor-pointer hover:shadow-lg transition-shadow duration-200 border-0 shadow-md"
-                  onClick={() => navigate(item.path)}
+                  className={`cursor-pointer hover:shadow-lg transition-shadow duration-200 border-0 shadow-md ${
+                    item.disabled ? 'opacity-60 cursor-not-allowed' : ''
+                  }`}
+                  onClick={() => !item.disabled && navigate(item.path)}
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-center space-x-3">

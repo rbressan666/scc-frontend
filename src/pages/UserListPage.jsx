@@ -271,7 +271,7 @@ const UserListPage = () => {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleViewUser(user)}
-                                title="Visualizar"
+                                title="Visualizar cadastro completo do usuário"
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>

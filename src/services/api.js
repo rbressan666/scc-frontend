@@ -139,6 +139,11 @@ export const userService = {
   // Obter perfil do usuário logado
   async getProfile() {
     return await api.get('/api/usuarios/profile');
+  },
+
+  // Atualizar perfil do usuário logado
+  async updateProfile(userData) {
+    return await api.put('/api/usuarios/profile', userData);
   }
 };
 
