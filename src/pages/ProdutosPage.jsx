@@ -44,6 +44,7 @@ const ProdutosPage = () => {
       
       await loadVariacoes();
     } catch (error) {
+      console.error('Erro ao carregar dados:', error);
       toast({
         title: "Erro",
         description: "Erro ao carregar dados",
@@ -58,6 +59,7 @@ const ProdutosPage = () => {
       const response = await variacaoService.getAll(filters);
       setVariacoes(response.data || []);
     } catch (error) {
+      console.error('Erro ao carregar variações:', error);
       toast({
         title: "Erro",
         description: "Erro ao carregar variações de produtos",
@@ -82,6 +84,7 @@ const ProdutosPage = () => {
   };
 
   const formatCurrency = (value) => {
+    if (!value && value !== 0) return 'R$ 0,00';
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
@@ -208,84 +211,98 @@ const ProdutosPage = () => {
 
               {/* Tabela */}
               {loading ? (
-                <div className="text-center py-8">Carregando produtos...</div>
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+                  <p className="mt-2 text-gray-600">Carregando produtos...</p>
+                </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Produto / Variação</TableHead>
-                      <TableHead>Categoria</TableHead>
-                      <TableHead>Setor</TableHead>
-                      <TableHead>Estoque</TableHead>
-                      <TableHead>Preço Custo</TableHead>
-                      <TableHead>Unidade</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {variacoes.length === 0 ? (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                          Nenhuma variação de produto encontrada
-                        </TableCell>
+                        <TableHead>Produto / Variação</TableHead>
+                        <TableHead>Categoria</TableHead>
+                        <TableHead>Setor</TableHead>
+                        <TableHead>Estoque</TableHead>
+                        <TableHead>Preço Custo</TableHead>
+                        <TableHead>Unidade</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
-                    ) : (
-                      variacoes.map((variacao) => {
-                        const estoqueStatus = getEstoqueStatus(variacao.estoque_atual, variacao.estoque_minimo);
-                        
-                        return (
-                          <TableRow key={variacao.id}>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">{variacao.produto_nome}</div>
-                                <div className="text-sm text-gray-500">{variacao.nome}</div>
-                              </div>
-                            </TableCell>
-                            <TableCell>{variacao.categoria_nome}</TableCell>
-                            <TableCell>{variacao.setor_nome}</TableCell>
-                            <TableCell>
-                              <div className="space-y-1">
-                                <div className="flex items-center space-x-2">
-                                  <span className="font-medium">{variacao.estoque_atual}</span>
-                                  <Badge variant={estoqueStatus.variant} className="text-xs">
-                                    {estoqueStatus.text}
-                                  </Badge>
+                    </TableHeader>
+                    <TableBody>
+                      {variacoes.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                            Nenhuma variação de produto encontrada
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        variacoes.map((variacao) => {
+                          const estoqueStatus = getEstoqueStatus(
+                            parseFloat(variacao.estoque_atual) || 0, 
+                            parseFloat(variacao.estoque_minimo) || 0
+                          );
+                          
+                          return (
+                            <TableRow key={variacao.id}>
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium">{variacao.produto_nome || 'N/A'}</div>
+                                  <div className="text-sm text-gray-500">{variacao.nome || 'N/A'}</div>
                                 </div>
-                                <div className="text-xs text-gray-500">
-                                  Mín: {variacao.estoque_minimo}
+                              </TableCell>
+                              <TableCell>{variacao.categoria_nome || 'N/A'}</TableCell>
+                              <TableCell>{variacao.setor_nome || 'N/A'}</TableCell>
+                              <TableCell>
+                                <div className="space-y-1">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="font-medium">
+                                      {parseFloat(variacao.estoque_atual) || 0}
+                                    </span>
+                                    <Badge variant={estoqueStatus.variant} className="text-xs">
+                                      {estoqueStatus.text}
+                                    </Badge>
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    Mín: {parseFloat(variacao.estoque_minimo) || 0}
+                                  </div>
                                 </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>{formatCurrency(variacao.preco_custo)}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline">{variacao.unidade_sigla}</Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end space-x-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled
-                                  title="Edição em breve"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled
-                                  title="Exclusão em breve"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
+                              </TableCell>
+                              <TableCell>
+                                {formatCurrency(parseFloat(variacao.preco_custo) || 0)}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline">
+                                  {variacao.unidade_sigla || 'N/A'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end space-x-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled
+                                    title="Edição em breve"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled
+                                    title="Exclusão em breve"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
