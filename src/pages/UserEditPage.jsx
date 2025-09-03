@@ -35,7 +35,7 @@ const UserEditPage = () => {
   const [formData, setFormData] = useState({
     nome_completo: '',
     email: '',
-    perfil: 'usuario',
+    perfil: 'Operador',
     senha: '',
     ativo: true
   });
