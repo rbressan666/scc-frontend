@@ -29,11 +29,9 @@ const ConfiguracoesPage = () => {
             </Button>
             
             <div className="flex items-center">
-              <img 
-                src="/cadoz-logo.png" 
-                alt="Cadoz Logo" 
-                className="w-8 h-8 mr-3"
-              />
+              <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center mr-3">
+                <span className="text-white font-bold text-sm">SCC</span>
+              </div>
               <h1 className="text-xl font-semibold text-gray-900">
                 Configurações do Sistema
               </h1>

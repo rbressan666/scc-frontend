@@ -114,11 +114,9 @@ const ProdutosPage = () => {
             </Button>
             
             <div className="flex items-center">
-              <img 
-                src="/cadoz-logo.png" 
-                alt="Cadoz Logo" 
-                className="w-8 h-8 mr-3"
-              />
+              <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center mr-3">
+                <span className="text-white font-bold text-sm">SCC</span>
+              </div>
               <h1 className="text-xl font-semibold text-gray-900">
                 Gestão de Produtos
               </h1>
@@ -139,9 +137,9 @@ const ProdutosPage = () => {
                     Gerencie todas as variações de produtos do estoque
                   </CardDescription>
                 </div>
-                <Button onClick={() => navigate('/produtos/novo')}>
+                <Button disabled>
                   <Plus className="h-4 w-4 mr-2" />
-                  Novo Produto
+                  Novo Produto (Em breve)
                 </Button>
               </div>
             </CardHeader>
@@ -267,16 +265,16 @@ const ProdutosPage = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => navigate(`/produtos/editar/${variacao.id}`)}
+                                  disabled
+                                  title="Edição em breve"
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => {
-                                    // TODO: Implementar desativação
-                                  }}
+                                  disabled
+                                  title="Exclusão em breve"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>

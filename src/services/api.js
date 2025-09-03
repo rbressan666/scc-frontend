@@ -44,8 +44,18 @@ api.interceptors.response.use(
       }
     }
     
-    // Retornar erro estruturado
-    const errorMessage = error.response?.data?.message || 'Erro de conexão com o servidor';
+    // Retornar erro estruturado com mensagem específica
+    let errorMessage = 'Erro de conexão com o servidor';
+    
+    if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.response?.data?.errors) {
+      // Tratar erros de validação
+      errorMessage = error.response.data.errors.map(err => err.msg).join(', ');
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
     return Promise.reject({
       message: errorMessage,
       status: error.response?.status,
