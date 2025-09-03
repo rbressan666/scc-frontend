@@ -242,3 +242,4 @@ export const qrCodeSocket = new QRCodeSocketService();
 
 export default SocketService;
 
+

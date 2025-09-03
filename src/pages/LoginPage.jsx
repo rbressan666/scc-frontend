@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Mail, Lock, Smartphone, QrCode, Eye, EyeOff } from 'lucide-react';
 import { qrCodeSocket } from '../services/socketService';
-import QRCode from 'qrcode';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -140,20 +139,10 @@ const LoginPage = () => {
       setQrStatus('generating');
       setError('');
       
-      const qrData = await qrCodeSocket.generateQRCode();
+      const qrResult = await qrCodeSocket.generateQRCode();
       
-      // Gerar URL do QR Code
-      const qrUrl = await QRCode.toDataURL(qrData.qrCodeData, {
-        width: 256,
-        margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF'
-        }
-      });
-      
-      setQrCodeData(qrData.qrCodeData);
-      setQrCodeUrl(qrUrl);
+      setQrCodeData(qrResult.qrCodeData);
+      setQrCodeUrl(qrResult.qrCodeImage); // Usar a imagem base64 diretamente
       setQrStatus('waiting');
       setShowQRCode(true);
       
@@ -362,4 +351,5 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
+
 
