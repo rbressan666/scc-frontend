@@ -172,15 +172,15 @@ const CategoriasTab = () => {
       className: 'text-right',
       render: (_, categoria) => (
         <div className="flex justify-end space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleEdit(categoria)}
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          
-          {categoria.ativo ? (
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleEdit(categoria)}
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
             <Button
               variant="outline"
               size="sm"
@@ -213,8 +213,8 @@ const CategoriasTab = () => {
         </div>
         
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openCreateDialog}>
+          <DialogTrigger asChild onClick={openCreateDialog}>
+            <Button>
               <Plus className="h-4 w-4 mr-2" />
               Nova Categoria
             </Button>
