@@ -9,6 +9,8 @@ import UserViewPage from './pages/UserViewPage';
 import UserEditPage from './pages/UserEditPage';
 import UserCreatePage from './pages/UserCreatePage';
 import ProfilePage from './pages/ProfilePage';
+import ConfiguracoesPage from './pages/ConfiguracoesPage';
+import ProdutosPage from './pages/ProdutosPage';
 import './App.css';
 
 // Componente 404 separado para usar useNavigate
@@ -100,6 +102,26 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <UserEditPage />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Rotas de configurações - apenas para admin */}
+            <Route 
+              path="/configuracoes" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <ConfiguracoesPage />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Rotas de produtos - apenas para admin */}
+            <Route 
+              path="/produtos" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <ProdutosPage />
                 </ProtectedRoute>
               } 
             />

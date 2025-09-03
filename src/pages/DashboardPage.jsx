@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Smartphone, LogOut, Settings, BarChart3 } from 'lucide-react';
+import { Users, Smartphone, LogOut, Settings, BarChart3, Package, Cog } from 'lucide-react';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
@@ -23,6 +23,24 @@ const DashboardPage = () => {
       path: '/usuarios',
       adminOnly: true,
       color: 'bg-blue-500'
+    },
+    {
+      id: 'produtos',
+      title: 'Produtos',
+      description: 'Gerenciar produtos e variações do estoque',
+      icon: Package,
+      path: '/produtos',
+      adminOnly: true,
+      color: 'bg-orange-500'
+    },
+    {
+      id: 'configuracoes',
+      title: 'Configurações',
+      description: 'Gerenciar setores, categorias e unidades de medida',
+      icon: Cog,
+      path: '/configuracoes',
+      adminOnly: true,
+      color: 'bg-gray-500'
     },
     {
       id: 'profile',
@@ -58,9 +76,11 @@ const DashboardPage = () => {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <div className="flex items-center">
-              <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center mr-3">
-                <span className="text-white font-bold text-sm">SCC</span>
-              </div>
+              <img 
+                src="/cadoz-logo.png" 
+                alt="Cadoz Logo" 
+                className="w-8 h-8 mr-3"
+              />
               <h1 className="text-xl font-semibold text-gray-900">
                 Sistema Contagem Cadoz
               </h1>

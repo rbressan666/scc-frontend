@@ -191,3 +191,199 @@ export const apiUtils = {
 
 export default api;
 
+
+// Serviços de Setores
+export const setorService = {
+  async getAll(includeInactive = false) {
+    return await api.get(`/api/setores?includeInactive=${includeInactive}`);
+  },
+
+  async getById(id) {
+    return await api.get(`/api/setores/${id}`);
+  },
+
+  async create(setorData) {
+    return await api.post('/api/setores', setorData);
+  },
+
+  async update(id, setorData) {
+    return await api.put(`/api/setores/${id}`, setorData);
+  },
+
+  async deactivate(id) {
+    return await api.delete(`/api/setores/${id}`);
+  },
+
+  async reactivate(id) {
+    return await api.put(`/api/setores/${id}/reactivate`);
+  }
+};
+
+// Serviços de Categorias
+export const categoriaService = {
+  async getAll(includeInactive = false, tree = false) {
+    return await api.get(`/api/categorias?includeInactive=${includeInactive}&tree=${tree}`);
+  },
+
+  async getById(id) {
+    return await api.get(`/api/categorias/${id}`);
+  },
+
+  async create(categoriaData) {
+    return await api.post('/api/categorias', categoriaData);
+  },
+
+  async update(id, categoriaData) {
+    return await api.put(`/api/categorias/${id}`, categoriaData);
+  },
+
+  async deactivate(id) {
+    return await api.delete(`/api/categorias/${id}`);
+  },
+
+  async reactivate(id) {
+    return await api.put(`/api/categorias/${id}/reactivate`);
+  }
+};
+
+// Serviços de Unidades de Medida
+export const unidadeMedidaService = {
+  async getAll(includeInactive = false) {
+    return await api.get(`/api/unidades-medida?includeInactive=${includeInactive}`);
+  },
+
+  async getById(id) {
+    return await api.get(`/api/unidades-medida/${id}`);
+  },
+
+  async create(unidadeData) {
+    return await api.post('/api/unidades-medida', unidadeData);
+  },
+
+  async update(id, unidadeData) {
+    return await api.put(`/api/unidades-medida/${id}`, unidadeData);
+  },
+
+  async deactivate(id) {
+    return await api.delete(`/api/unidades-medida/${id}`);
+  },
+
+  async reactivate(id) {
+    return await api.put(`/api/unidades-medida/${id}/reactivate`);
+  }
+};
+
+// Serviços de Produtos
+export const produtoService = {
+  async getAll(filters = {}) {
+    const params = new URLSearchParams();
+    if (filters.includeInactive) params.append('includeInactive', 'true');
+    if (filters.setor) params.append('setor', filters.setor);
+    if (filters.categoria) params.append('categoria', filters.categoria);
+    if (filters.nome) params.append('nome', filters.nome);
+    
+    return await api.get(`/api/produtos?${params.toString()}`);
+  },
+
+  async getById(id) {
+    return await api.get(`/api/produtos/${id}`);
+  },
+
+  async create(produtoData) {
+    return await api.post('/api/produtos', produtoData);
+  },
+
+  async update(id, produtoData) {
+    return await api.put(`/api/produtos/${id}`, produtoData);
+  },
+
+  async deactivate(id) {
+    return await api.delete(`/api/produtos/${id}`);
+  },
+
+  async reactivate(id) {
+    return await api.put(`/api/produtos/${id}/reactivate`);
+  }
+};
+
+// Serviços de Variações de Produto
+export const variacaoService = {
+  async getAll(filters = {}) {
+    const params = new URLSearchParams();
+    if (filters.includeInactive) params.append('includeInactive', 'true');
+    if (filters.setor) params.append('setor', filters.setor);
+    if (filters.categoria) params.append('categoria', filters.categoria);
+    if (filters.nome) params.append('nome', filters.nome);
+    if (filters.estoque_baixo) params.append('estoque_baixo', 'true');
+    
+    return await api.get(`/api/variacoes?${params.toString()}`);
+  },
+
+  async getById(id) {
+    return await api.get(`/api/variacoes/${id}`);
+  },
+
+  async getByProduct(idProduto) {
+    return await api.get(`/api/variacoes/produto/${idProduto}`);
+  },
+
+  async getLowStock() {
+    return await api.get('/api/variacoes/estoque-baixo');
+  },
+
+  async create(variacaoData) {
+    return await api.post('/api/variacoes', variacaoData);
+  },
+
+  async update(id, variacaoData) {
+    return await api.put(`/api/variacoes/${id}`, variacaoData);
+  },
+
+  async updateStock(id, estoqueAtual) {
+    return await api.put(`/api/variacoes/${id}/estoque`, { estoque_atual: estoqueAtual });
+  },
+
+  async deactivate(id) {
+    return await api.delete(`/api/variacoes/${id}`);
+  },
+
+  async reactivate(id) {
+    return await api.put(`/api/variacoes/${id}/reactivate`);
+  }
+};
+
+// Serviços de Fatores de Conversão
+export const conversaoService = {
+  async getByVariacao(idVariacao) {
+    return await api.get(`/api/conversoes/por-variacao/${idVariacao}`);
+  },
+
+  async getById(id) {
+    return await api.get(`/api/conversoes/${id}`);
+  },
+
+  async create(conversaoData) {
+    return await api.post('/api/conversoes', conversaoData);
+  },
+
+  async createMultiple(fatores) {
+    return await api.post('/api/conversoes/multiplos', { fatores });
+  },
+
+  async update(id, conversaoData) {
+    return await api.put(`/api/conversoes/${id}`, conversaoData);
+  },
+
+  async delete(id) {
+    return await api.delete(`/api/conversoes/${id}`);
+  },
+
+  async convertQuantity(idVariacao, quantidade, idUnidadeOrigem, idUnidadeDestino) {
+    return await api.post(`/api/conversoes/converter/${idVariacao}`, {
+      quantidade,
+      id_unidade_origem: idUnidadeOrigem,
+      id_unidade_destino: idUnidadeDestino
+    });
+  }
+};
+
