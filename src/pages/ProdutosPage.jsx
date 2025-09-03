@@ -30,7 +30,7 @@ const ProdutosPage = () => {
 
   useEffect(() => {
     loadVariacoes();
-  }, [filters, setores, categorias, toast]);
+  }, [filters]);
 
   const loadData = async () => {
     try {
