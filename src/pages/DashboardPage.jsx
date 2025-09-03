@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Smartphone, LogOut, Settings, BarChart3, Package, Cog } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Users, Smartphone, LogOut, Settings, BarChart3, Package, Cog, Database } from 'lucide-react';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
@@ -60,6 +61,16 @@ const DashboardPage = () => {
       adminOnly: true,
       color: 'bg-purple-500',
       disabled: true
+    },
+    {
+      id: 'database',
+      title: 'Uso do Banco',
+      description: 'Monitorar uso do armazenamento Supabase',
+      icon: Database,
+      path: null, // Não navega, apenas mostra informações
+      adminOnly: true,
+      color: 'bg-indigo-500',
+      showProgress: true
     }
   ];
 
@@ -76,11 +87,9 @@ const DashboardPage = () => {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <div className="flex items-center">
-              <img 
-                src="/cadoz-logo.png" 
-                alt="Cadoz Logo" 
-                className="w-8 h-8 mr-3"
-              />
+              <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center mr-3">
+                <span className="text-white font-bold text-sm">SCC</span>
+              </div>
               <h1 className="text-xl font-semibold text-gray-900">
                 Sistema Contagem Cadoz
               </h1>
@@ -139,38 +148,61 @@ const DashboardPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {availableItems.map((item) => {
               const IconComponent = item.icon;
+              const isClickable = item.path && !item.disabled;
               
               return (
                 <Card 
-                  key={item.id}
-                  className={`cursor-pointer hover:shadow-lg transition-shadow duration-200 border-0 shadow-md ${
-                    item.disabled ? 'opacity-60 cursor-not-allowed' : ''
+                  key={item.id} 
+                  className={`transition-all duration-200 ${
+                    isClickable 
+                      ? 'hover:shadow-lg cursor-pointer transform hover:-translate-y-1' 
+                      : item.disabled 
+                        ? 'opacity-50 cursor-not-allowed' 
+                        : 'cursor-default'
                   }`}
-                  onClick={() => !item.disabled && navigate(item.path)}
+                  onClick={() => isClickable && navigate(item.path)}
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-center space-x-3">
-                      <div className={`w-12 h-12 ${item.color} rounded-lg flex items-center justify-center`}>
-                        <IconComponent className="h-6 w-6 text-white" />
+                      <div className={`w-10 h-10 ${item.color} rounded-lg flex items-center justify-center`}>
+                        <IconComponent className="h-5 w-5 text-white" />
                       </div>
-                      <div>
-                        <CardTitle className="text-lg font-semibold">
-                          {item.title}
-                        </CardTitle>
+                      <div className="flex-1">
+                        <CardTitle className="text-lg">{item.title}</CardTitle>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <CardDescription className="text-sm text-gray-600">
+                    <CardDescription className="text-sm text-gray-600 mb-3">
                       {item.description}
                     </CardDescription>
+                    
+                    {/* Barra de progresso para uso do banco */}
+                    {item.showProgress && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Usado:</span>
+                          <span className="font-medium">~2.1 GB / 8 GB</span>
+                        </div>
+                        <Progress value={26} className="h-2" />
+                        <p className="text-xs text-gray-500">
+                          Plano gratuito Supabase - 26% utilizado
+                        </p>
+                      </div>
+                    )}
+                    
+                    {item.disabled && (
+                      <div className="text-xs text-gray-400 italic">
+                        Funcionalidade em desenvolvimento
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
             })}
           </div>
 
-          {/* Info Cards */}
+          {/* User Info Section */}
           <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* User Info Card */}
             <Card>

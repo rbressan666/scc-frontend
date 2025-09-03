@@ -3,16 +3,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, Trash2, RotateCcw } from 'lucide-react';
+import SortableTable from '../ui/sortable-table';
 import { unidadeMedidaService } from '../../services/api';
 import { useToast } from '@/hooks/use-toast';
 
 const UnidadesTab = () => {
   const [unidades, setUnidades] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUnidade, setEditingUnidade] = useState(null);
   const [formData, setFormData] = useState({ nome: '', sigla: '', ativo: true });
@@ -42,6 +43,8 @@ const UnidadesTab = () => {
     e.preventDefault();
     
     try {
+      setSubmitting(true);
+      
       if (editingUnidade) {
         await unidadeMedidaService.update(editingUnidade.id, formData);
         toast({
@@ -66,6 +69,8 @@ const UnidadesTab = () => {
         description: error.message || "Erro ao salvar unidade de medida",
         variant: "destructive",
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -123,6 +128,63 @@ const UnidadesTab = () => {
     return <div className="text-center py-4">Carregando unidades de medida...</div>;
   }
 
+  const columns = [
+    {
+      key: 'nome',
+      label: 'Nome',
+      render: (value) => <span className="font-medium">{value}</span>
+    },
+    {
+      key: 'sigla',
+      label: 'Sigla',
+      render: (value) => <Badge variant="outline">{value}</Badge>
+    },
+    {
+      key: 'ativo',
+      label: 'Status',
+      render: (value) => (
+        <Badge variant={value ? "default" : "secondary"}>
+          {value ? 'Ativo' : 'Inativo'}
+        </Badge>
+      )
+    },
+    {
+      key: 'actions',
+      label: 'Ações',
+      sortable: false,
+      className: 'text-right',
+      render: (_, unidade) => (
+        <div className="flex justify-end space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleEdit(unidade)}
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          
+          {unidade.ativo ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleDeactivate(unidade)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleReactivate(unidade)}
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      )
+    }
+  ];
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -140,18 +202,20 @@ const UnidadesTab = () => {
               Nova Unidade
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {editingUnidade ? 'Editar Unidade de Medida' : 'Nova Unidade de Medida'}
-              </DialogTitle>
-              <DialogDescription>
-                {editingUnidade 
-                  ? 'Edite as informações da unidade de medida' 
-                  : 'Adicione uma nova unidade de medida ao sistema'
-                }
-              </DialogDescription>
-            </DialogHeader>
+          <DialogContent className="sm:max-w-[425px] cursor-move">
+            <div className="cursor-grab active:cursor-grabbing" onMouseDown={(e) => e.stopPropagation()}>
+              <DialogHeader>
+                <DialogTitle>
+                  {editingUnidade ? 'Editar Unidade de Medida' : 'Nova Unidade de Medida'}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingUnidade 
+                    ? 'Edite as informações da unidade de medida' 
+                    : 'Adicione uma nova unidade de medida ao sistema'
+                  }
+                </DialogDescription>
+              </DialogHeader>
+            </div>
             
             <form onSubmit={handleSubmit}>
               <div className="space-y-4">
@@ -180,11 +244,18 @@ const UnidadesTab = () => {
               </div>
               
               <DialogFooter className="mt-6">
-                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>
                   Cancelar
                 </Button>
-                <Button type="submit">
-                  {editingUnidade ? 'Atualizar' : 'Criar'}
+                <Button type="submit" disabled={submitting}>
+                  {submitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Salvando...
+                    </>
+                  ) : (
+                    editingUnidade ? 'Atualizar' : 'Criar'
+                  )}
                 </Button>
               </DialogFooter>
             </form>
@@ -194,68 +265,12 @@ const UnidadesTab = () => {
 
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Sigla</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {unidades.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center py-4 text-gray-500">
-                    Nenhuma unidade de medida encontrada
-                  </TableCell>
-                </TableRow>
-              ) : (
-                unidades.map((unidade) => (
-                  <TableRow key={unidade.id}>
-                    <TableCell className="font-medium">{unidade.nome}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{unidade.sigla}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={unidade.ativo ? "default" : "secondary"}>
-                        {unidade.ativo ? 'Ativo' : 'Inativo'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(unidade)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        
-                        {unidade.ativo ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeactivate(unidade)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleReactivate(unidade)}
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          <SortableTable
+            data={unidades}
+            columns={columns}
+            searchPlaceholder="Buscar unidades de medida..."
+            emptyMessage="Nenhuma unidade de medida encontrada"
+          />
         </CardContent>
       </Card>
     </div>

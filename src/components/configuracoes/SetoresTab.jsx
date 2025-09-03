@@ -2,17 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, Trash2, RotateCcw } from 'lucide-react';
+import SortableTable from '../ui/sortable-table';
 import { setorService } from '../../services/api';
 import { useToast } from '@/hooks/use-toast';
 
 const SetoresTab = () => {
   const [setores, setSetores] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSetor, setEditingSetor] = useState(null);
   const [formData, setFormData] = useState({ nome: '', ativo: true });
@@ -42,6 +43,8 @@ const SetoresTab = () => {
     e.preventDefault();
     
     try {
+      setSubmitting(true);
+      
       if (editingSetor) {
         await setorService.update(editingSetor.id, formData);
         toast({
@@ -66,6 +69,8 @@ const SetoresTab = () => {
         description: error.message || "Erro ao salvar setor",
         variant: "destructive",
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -123,6 +128,58 @@ const SetoresTab = () => {
     return <div className="text-center py-4">Carregando setores...</div>;
   }
 
+  const columns = [
+    {
+      key: 'nome',
+      label: 'Nome',
+      render: (value) => <span className="font-medium">{value}</span>
+    },
+    {
+      key: 'ativo',
+      label: 'Status',
+      render: (value) => (
+        <Badge variant={value ? "default" : "secondary"}>
+          {value ? 'Ativo' : 'Inativo'}
+        </Badge>
+      )
+    },
+    {
+      key: 'actions',
+      label: 'Ações',
+      sortable: false,
+      className: 'text-right',
+      render: (_, setor) => (
+        <div className="flex justify-end space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleEdit(setor)}
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          
+          {setor.ativo ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleDeactivate(setor)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleReactivate(setor)}
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      )
+    }
+  ];
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -140,18 +197,20 @@ const SetoresTab = () => {
               Novo Setor
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {editingSetor ? 'Editar Setor' : 'Novo Setor'}
-              </DialogTitle>
-              <DialogDescription>
-                {editingSetor 
-                  ? 'Edite as informações do setor' 
-                  : 'Adicione um novo setor ao sistema'
-                }
-              </DialogDescription>
-            </DialogHeader>
+          <DialogContent className="sm:max-w-[425px] cursor-move">
+            <div className="cursor-grab active:cursor-grabbing" onMouseDown={(e) => e.stopPropagation()}>
+              <DialogHeader>
+                <DialogTitle>
+                  {editingSetor ? 'Editar Setor' : 'Novo Setor'}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingSetor 
+                    ? 'Edite as informações do setor' 
+                    : 'Adicione um novo setor ao sistema'
+                  }
+                </DialogDescription>
+              </DialogHeader>
+            </div>
             
             <form onSubmit={handleSubmit}>
               <div className="space-y-4">
@@ -168,11 +227,18 @@ const SetoresTab = () => {
               </div>
               
               <DialogFooter className="mt-6">
-                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>
                   Cancelar
                 </Button>
-                <Button type="submit">
-                  {editingSetor ? 'Atualizar' : 'Criar'}
+                <Button type="submit" disabled={submitting}>
+                  {submitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Salvando...
+                    </>
+                  ) : (
+                    editingSetor ? 'Atualizar' : 'Criar'
+                  )}
                 </Button>
               </DialogFooter>
             </form>
@@ -182,64 +248,12 @@ const SetoresTab = () => {
 
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {setores.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={3} className="text-center py-4 text-gray-500">
-                    Nenhum setor encontrado
-                  </TableCell>
-                </TableRow>
-              ) : (
-                setores.map((setor) => (
-                  <TableRow key={setor.id}>
-                    <TableCell className="font-medium">{setor.nome}</TableCell>
-                    <TableCell>
-                      <Badge variant={setor.ativo ? "default" : "secondary"}>
-                        {setor.ativo ? 'Ativo' : 'Inativo'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(setor)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        
-                        {setor.ativo ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeactivate(setor)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleReactivate(setor)}
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          <SortableTable
+            data={setores}
+            columns={columns}
+            searchPlaceholder="Buscar setores..."
+            emptyMessage="Nenhum setor encontrado"
+          />
         </CardContent>
       </Card>
     </div>
