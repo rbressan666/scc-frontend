@@ -33,7 +33,7 @@ const UserCreatePage = () => {
   const [formData, setFormData] = useState({
     nome_completo: '',
     email: '',
-    perfil: 'Operador',
+    perfil: 'usuario',
     senha: '',
     ativo: true
   });
@@ -199,7 +199,7 @@ const UserCreatePage = () => {
                       <SelectValue placeholder="Selecione o perfil" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="usuario">Usuário</SelectItem>
+                      <SelectItem value="operador">Usuário</SelectItem>
                       <SelectItem value="admin">Administrador</SelectItem>
                     </SelectContent>
                   </Select>
