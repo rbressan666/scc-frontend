@@ -145,16 +145,19 @@ const CategoriasTab = () => {
     {
       key: 'nome',
       label: 'Nome',
+      filterable: true,
       render: (value) => <span className="font-medium">{value}</span>
     },
     {
       key: 'categoria_pai_nome',
       label: 'Categoria Pai',
+      filterable: true,
       render: (value) => value || '-'
     },
     {
       key: 'ativo',
       label: 'Status',
+      filterable: true,
       render: (value) => (
         <Badge variant={value ? "default" : "secondary"}>
           {value ? 'Ativo' : 'Inativo'}
@@ -165,6 +168,7 @@ const CategoriasTab = () => {
       key: 'actions',
       label: 'Ações',
       sortable: false,
+      filterable: false,
       className: 'text-right',
       render: (_, categoria) => (
         <div className="flex justify-end space-x-2">
@@ -215,20 +219,18 @@ const CategoriasTab = () => {
               Nova Categoria
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] cursor-move">
-            <div className="cursor-grab active:cursor-grabbing" onMouseDown={(e) => e.stopPropagation()}>
-              <DialogHeader>
-                <DialogTitle>
-                  {editingCategoria ? 'Editar Categoria' : 'Nova Categoria'}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingCategoria 
-                    ? 'Edite as informações da categoria' 
-                    : 'Adicione uma nova categoria ao sistema'
-                  }
-                </DialogDescription>
-              </DialogHeader>
-            </div>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>
+                {editingCategoria ? 'Editar Categoria' : 'Nova Categoria'}
+              </DialogTitle>
+              <DialogDescription>
+                {editingCategoria 
+                  ? 'Edite as informações da categoria' 
+                  : 'Adicione uma nova categoria ao sistema'
+                }
+              </DialogDescription>
+            </DialogHeader>
             
             <form onSubmit={handleSubmit}>
               <div className="space-y-4">

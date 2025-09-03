@@ -132,11 +132,13 @@ const SetoresTab = () => {
     {
       key: 'nome',
       label: 'Nome',
+      filterable: true,
       render: (value) => <span className="font-medium">{value}</span>
     },
     {
       key: 'ativo',
       label: 'Status',
+      filterable: true,
       render: (value) => (
         <Badge variant={value ? "default" : "secondary"}>
           {value ? 'Ativo' : 'Inativo'}
@@ -147,6 +149,7 @@ const SetoresTab = () => {
       key: 'actions',
       label: 'Ações',
       sortable: false,
+      filterable: false,
       className: 'text-right',
       render: (_, setor) => (
         <div className="flex justify-end space-x-2">
@@ -197,20 +200,18 @@ const SetoresTab = () => {
               Novo Setor
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] cursor-move">
-            <div className="cursor-grab active:cursor-grabbing" onMouseDown={(e) => e.stopPropagation()}>
-              <DialogHeader>
-                <DialogTitle>
-                  {editingSetor ? 'Editar Setor' : 'Novo Setor'}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingSetor 
-                    ? 'Edite as informações do setor' 
-                    : 'Adicione um novo setor ao sistema'
-                  }
-                </DialogDescription>
-              </DialogHeader>
-            </div>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>
+                {editingSetor ? 'Editar Setor' : 'Novo Setor'}
+              </DialogTitle>
+              <DialogDescription>
+                {editingSetor 
+                  ? 'Edite as informações do setor' 
+                  : 'Adicione um novo setor ao sistema'
+                }
+              </DialogDescription>
+            </DialogHeader>
             
             <form onSubmit={handleSubmit}>
               <div className="space-y-4">

@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ArrowUpDown, ArrowUp, ArrowDown, Search } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ArrowUpDown, ArrowUp, ArrowDown, Search, Filter, X } from 'lucide-react';
 
 const SortableTable = ({ 
   data = [], 
@@ -14,6 +15,14 @@ const SortableTable = ({
 }) => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [searchTerm, setSearchTerm] = useState('');
+  const [columnFilters, setColumnFilters] = useState({});
+  const [showColumnFilters, setShowColumnFilters] = useState({});
+
+  // Função para obter valores únicos de uma coluna
+  const getUniqueValues = (columnKey) => {
+    const values = data.map(item => item[columnKey]).filter(value => value !== null && value !== undefined);
+    return [...new Set(values)].sort();
+  };
 
   // Função para ordenar dados
   const sortedData = useMemo(() => {
@@ -50,18 +59,35 @@ const SortableTable = ({
     return sortableData;
   }, [data, sortConfig]);
 
-  // Função para filtrar dados
+  // Função para filtrar dados (busca global + filtros por coluna)
   const filteredData = useMemo(() => {
-    if (!searchTerm) return sortedData;
+    let filtered = sortedData;
     
-    return sortedData.filter(item => {
-      return columns.some(column => {
-        const value = item[column.key];
-        if (value === null || value === undefined) return false;
-        return String(value).toLowerCase().includes(searchTerm.toLowerCase());
+    // Filtro global (busca)
+    if (searchTerm) {
+      filtered = filtered.filter(item => {
+        return columns.some(column => {
+          const value = item[column.key];
+          if (value === null || value === undefined) return false;
+          return String(value).toLowerCase().includes(searchTerm.toLowerCase());
+        });
       });
+    }
+    
+    // Filtros por coluna
+    Object.entries(columnFilters).forEach(([columnKey, filterValue]) => {
+      if (filterValue && filterValue !== 'all') {
+        filtered = filtered.filter(item => {
+          const value = item[columnKey];
+          if (filterValue === 'true') return value === true;
+          if (filterValue === 'false') return value === false;
+          return String(value) === String(filterValue);
+        });
+      }
     });
-  }, [sortedData, searchTerm, columns]);
+    
+    return filtered;
+  }, [sortedData, searchTerm, columnFilters, columns]);
 
   // Função para lidar com ordenação
   const handleSort = (key) => {
@@ -82,9 +108,93 @@ const SortableTable = ({
       : <ArrowDown className="h-4 w-4" />;
   };
 
+  // Função para toggle do filtro de coluna
+  const toggleColumnFilter = (columnKey) => {
+    setShowColumnFilters(prev => ({
+      ...prev,
+      [columnKey]: !prev[columnKey]
+    }));
+  };
+
+  // Função para limpar filtro de coluna
+  const clearColumnFilter = (columnKey) => {
+    setColumnFilters(prev => {
+      const newFilters = { ...prev };
+      delete newFilters[columnKey];
+      return newFilters;
+    });
+    setShowColumnFilters(prev => ({
+      ...prev,
+      [columnKey]: false
+    }));
+  };
+
+  // Função para renderizar filtro de coluna
+  const renderColumnFilter = (column) => {
+    if (!column.filterable) return null;
+    
+    const uniqueValues = getUniqueValues(column.key);
+    const hasFilter = columnFilters[column.key];
+    
+    return (
+      <div className="flex items-center space-x-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => toggleColumnFilter(column.key)}
+          className={`h-6 w-6 p-0 ${hasFilter ? 'text-blue-600' : 'text-gray-400'}`}
+        >
+          <Filter className="h-3 w-3" />
+        </Button>
+        
+        {showColumnFilters[column.key] && (
+          <div className="absolute z-10 mt-1 bg-white border rounded-md shadow-lg p-2 min-w-[150px]">
+            <Select
+              value={columnFilters[column.key] || 'all'}
+              onValueChange={(value) => setColumnFilters(prev => ({
+                ...prev,
+                [column.key]: value === 'all' ? undefined : value
+              }))}
+            >
+              <SelectTrigger className="h-8">
+                <SelectValue placeholder="Filtrar..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {column.key === 'ativo' ? (
+                  <>
+                    <SelectItem value="true">Ativo</SelectItem>
+                    <SelectItem value="false">Inativo</SelectItem>
+                  </>
+                ) : (
+                  uniqueValues.map(value => (
+                    <SelectItem key={value} value={String(value)}>
+                      {String(value)}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+            
+            {hasFilter && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => clearColumnFilter(column.key)}
+                className="h-6 w-6 p-0 mt-1"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className={`space-y-4 ${className}`}>
-      {/* Barra de busca */}
+      {/* Barra de busca global */}
       {searchable && (
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -105,12 +215,21 @@ const SortableTable = ({
               {columns.map((column) => (
                 <TableHead 
                   key={column.key}
-                  className={column.sortable !== false ? "cursor-pointer select-none hover:bg-gray-50" : ""}
-                  onClick={() => column.sortable !== false && handleSort(column.key)}
+                  className="relative"
                 >
-                  <div className="flex items-center space-x-2">
-                    <span>{column.label}</span>
-                    {column.sortable !== false && getSortIcon(column.key)}
+                  <div className="flex items-center justify-between">
+                    <div 
+                      className={`flex items-center space-x-2 ${
+                        column.sortable !== false ? "cursor-pointer select-none hover:bg-gray-50 p-1 rounded" : ""
+                      }`}
+                      onClick={() => column.sortable !== false && handleSort(column.key)}
+                    >
+                      <span>{column.label}</span>
+                      {column.sortable !== false && getSortIcon(column.key)}
+                    </div>
+                    
+                    {/* Filtro por coluna */}
+                    {column.filterable && renderColumnFilter(column)}
                   </div>
                 </TableHead>
               ))}
