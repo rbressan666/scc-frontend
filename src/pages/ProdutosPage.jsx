@@ -18,8 +18,8 @@ const ProdutosPage = () => {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     nome: '',
-    setor: 'all',
-    categoria: 'all',
+    setor: 'todos',
+    categoria: 'todas',
     estoque_baixo: false
   });
   const { toast } = useToast();
@@ -60,8 +60,8 @@ const ProdutosPage = () => {
       // Converter filtros para o formato esperado pela API
       const apiFilters = {
         nome: filters.nome || undefined,
-        setor: filters.setor === 'all' ? undefined : filters.setor,
-        categoria: filters.categoria === 'all' ? undefined : filters.categoria,
+        setor: filters.setor === 'todos' ? undefined : filters.setor,
+        categoria: filters.categoria === 'todas' ? undefined : filters.categoria,
         estoque_baixo: filters.estoque_baixo
       };
       
@@ -86,8 +86,8 @@ const ProdutosPage = () => {
   const clearFilters = () => {
     setFilters({
       nome: '',
-      setor: 'all',
-      categoria: 'all',
+      setor: 'todos',
+      categoria: 'todas',
       estoque_baixo: false
     });
   };
@@ -180,7 +180,7 @@ const ProdutosPage = () => {
                       <SelectValue placeholder="Todos os setores" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos os setores</SelectItem>
+                      <SelectItem value="todos">Todos os setores</SelectItem>
                       {setores.map((setor) => (
                         <SelectItem key={setor.id} value={setor.id}>
                           {setor.nome}
@@ -194,7 +194,7 @@ const ProdutosPage = () => {
                       <SelectValue placeholder="Todas as categorias" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todas as categorias</SelectItem>
+                      <SelectItem value="todas">Todas as categorias</SelectItem>
                       {categorias.map((categoria) => (
                         <SelectItem key={categoria.id} value={categoria.id}>
                           {categoria.nome}
