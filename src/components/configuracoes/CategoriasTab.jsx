@@ -17,7 +17,7 @@ const CategoriasTab = () => {
   const [submitting, setSubmitting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCategoria, setEditingCategoria] = useState(null);
-  const [formData, setFormData] = useState({ nome: '', id_categoria_pai: '', ativo: true });
+  const [formData, setFormData] = useState({ nome: '', id_categoria_pai: 'none', ativo: true });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -48,7 +48,7 @@ const CategoriasTab = () => {
       
       const dataToSend = {
         ...formData,
-        id_categoria_pai: formData.id_categoria_pai || null
+        id_categoria_pai: formData.id_categoria_pai === 'none' ? null : formData.id_categoria_pai
       };
 
       if (editingCategoria) {
@@ -67,7 +67,7 @@ const CategoriasTab = () => {
       
       setDialogOpen(false);
       setEditingCategoria(null);
-      setFormData({ nome: '', id_categoria_pai: '', ativo: true });
+      setFormData({ nome: '', id_categoria_pai: 'none', ativo: true });
       loadCategorias();
     } catch (error) {
       toast({
@@ -84,7 +84,7 @@ const CategoriasTab = () => {
     setEditingCategoria(categoria);
     setFormData({ 
       nome: categoria.nome, 
-      id_categoria_pai: categoria.id_categoria_pai || '',
+      id_categoria_pai: categoria.id_categoria_pai || 'none',
       ativo: categoria.ativo 
     });
     setDialogOpen(true);
@@ -130,7 +130,7 @@ const CategoriasTab = () => {
 
   const openCreateDialog = () => {
     setEditingCategoria(null);
-    setFormData({ nome: '', id_categoria_pai: '', ativo: true });
+    setFormData({ nome: '', id_categoria_pai: 'none', ativo: true });
     setDialogOpen(true);
   };
 
@@ -256,7 +256,7 @@ const CategoriasTab = () => {
                       <SelectValue placeholder="Selecione uma categoria pai" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nenhuma (Categoria raiz)</SelectItem>
+                      <SelectItem value="none">Nenhuma (Categoria raiz)</SelectItem>
                       {categoriasAtivas.map((categoria) => (
                         <SelectItem key={categoria.id} value={categoria.id}>
                           {categoria.nome}
