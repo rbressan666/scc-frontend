@@ -18,8 +18,8 @@ const ProdutosPage = () => {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     nome: '',
-    setor: '',
-    categoria: '',
+    setor: 'all',
+    categoria: 'all',
     estoque_baixo: false
   });
   const { toast } = useToast();
@@ -56,7 +56,16 @@ const ProdutosPage = () => {
   const loadVariacoes = async () => {
     try {
       setLoading(true);
-      const response = await variacaoService.getAll(filters);
+      
+      // Converter filtros para o formato esperado pela API
+      const apiFilters = {
+        nome: filters.nome || undefined,
+        setor: filters.setor === 'all' ? undefined : filters.setor,
+        categoria: filters.categoria === 'all' ? undefined : filters.categoria,
+        estoque_baixo: filters.estoque_baixo
+      };
+      
+      const response = await variacaoService.getAll(apiFilters);
       setVariacoes(response.data || []);
     } catch (error) {
       console.error('Erro ao carregar variações:', error);
@@ -77,8 +86,8 @@ const ProdutosPage = () => {
   const clearFilters = () => {
     setFilters({
       nome: '',
-      setor: '',
-      categoria: '',
+      setor: 'all',
+      categoria: 'all',
       estoque_baixo: false
     });
   };
@@ -171,7 +180,7 @@ const ProdutosPage = () => {
                       <SelectValue placeholder="Todos os setores" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos os setores</SelectItem>
+                      <SelectItem value="all">Todos os setores</SelectItem>
                       {setores.map((setor) => (
                         <SelectItem key={setor.id} value={setor.id}>
                           {setor.nome}
@@ -185,7 +194,7 @@ const ProdutosPage = () => {
                       <SelectValue placeholder="Todas as categorias" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todas as categorias</SelectItem>
+                      <SelectItem value="all">Todas as categorias</SelectItem>
                       {categorias.map((categoria) => (
                         <SelectItem key={categoria.id} value={categoria.id}>
                           {categoria.nome}
