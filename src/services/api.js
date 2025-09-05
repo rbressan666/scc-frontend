@@ -99,7 +99,12 @@ export const authService = {
     }
   },
 
-  // Verificar se está autenticado
+  // Verificar token
+  async verifyToken() {
+    return await api.get('/api/auth/verify');
+  },
+
+  
   isAuthenticated() {
     return !!Cookies.get('scc_token');
   },
@@ -110,10 +115,53 @@ export const authService = {
     return userCookie ? JSON.parse(userCookie) : null;
   },
 
+
   // Verificar se é admin
   isAdmin() {
     const user = this.getCurrentUser();
     return user && user.perfil === 'admin';
+  }
+};
+
+// Utilitários
+export const apiUtils = {
+  // Verificar se usuário está logado
+  isAuthenticated() {
+    return !!Cookies.get('scc_token');
+  },
+
+  // Obter dados do usuário dos cookies
+  getCurrentUser() {
+    const userCookie = Cookies.get('scc_user');
+    return userCookie ? JSON.parse(userCookie) : null;
+  },
+
+  // Obter token dos cookies
+  getToken() {
+    return Cookies.get('scc_token');
+  },
+
+  // Verificar se usuário é admin
+  isAdmin() {
+    const user = this.getCurrentUser();
+    return user?.perfil === 'admin';
+  },
+
+  // Formatar erros da API
+  formatError(error) {
+    if (typeof error === 'string') {
+      return error;
+    }
+    
+    if (error.message) {
+      return error.message;
+    }
+    
+    if (error.data?.errors) {
+      return error.data.errors.map(err => err.msg).join(', ');
+    }
+    
+    return 'Erro desconhecido';
   }
 };
 
@@ -330,6 +378,10 @@ export const variacaoService = {
 
   async update(id, variacaoData) {
     return await api.put(`/api/variacoes/${id}`, variacaoData);
+  },
+
+  async updateStock(id, estoqueAtual) {
+    return await api.put(`/api/variacoes/${id}/estoque`, { estoque_atual: estoqueAtual });
   },
 
   async deactivate(id) {
