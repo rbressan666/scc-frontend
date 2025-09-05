@@ -104,22 +104,55 @@ export const authService = {
     return await api.get('/api/auth/verify');
   },
 
-  
-  isAuthenticated() {
-    return !!Cookies.get('scc_token');
+  // Alterar senha
+  async changePassword(senhaAtual, novaSenha, confirmarSenha) {
+    return await api.put('/api/auth/change-password', {
+      senhaAtual,
+      novaSenha,
+      confirmarSenha
+    });
+  }
+};
+
+// Serviços de Usuários
+export const userService = {
+  async getAll() {
+    return await api.get('/api/usuarios');
   },
 
-  // Obter usuário atual
-  getCurrentUser() {
-    const userCookie = Cookies.get('scc_user');
-    return userCookie ? JSON.parse(userCookie) : null;
+  // Buscar usuário por ID
+  async getById(id) {
+    return await api.get(`/api/usuarios/${id}`);
   },
 
+  // Criar novo usuário
+  async create(userData) {
+    return await api.post('/api/usuarios', userData);
+  },
 
-  // Verificar se é admin
-  isAdmin() {
-    const user = this.getCurrentUser();
-    return user && user.perfil === 'admin';
+  // Atualizar usuário
+  async update(id, userData) {
+    return await api.put(`/api/usuarios/${id}`, userData);
+  },
+
+  // Desativar usuário
+  async deactivate(id) {
+    return await api.delete(`/api/usuarios/${id}`);
+  },
+
+  // Reativar usuário
+  async reactivate(id) {
+    return await api.put(`/api/usuarios/${id}/reactivate`);
+  },
+
+  // Obter perfil do usuário logado
+  async getProfile() {
+    return await api.get('/api/usuarios/profile');
+  },
+
+  // Atualizar perfil do usuário logado
+  async updateProfile(userData) {
+    return await api.put('/api/usuarios/profile', userData);
   }
 };
 
@@ -162,49 +195,6 @@ export const apiUtils = {
     }
     
     return 'Erro desconhecido';
-  }
-};
-
-// Serviços de Usuários
-export const userService = {
-  async getAll(includeInactive = false) {
-    return await api.get(`/api/users?includeInactive=${includeInactive}`);
-  },
-
-  async getById(id) {
-    return await api.get(`/api/users/${id}`);
-  },
-
-  async create(userData) {
-    return await api.post('/api/users', userData);
-  },
-
-  async update(id, userData) {
-    return await api.put(`/api/users/${id}`, userData);
-  },
-
-  async deactivate(id) {
-    return await api.delete(`/api/users/${id}`);
-  },
-
-  async reactivate(id) {
-    return await api.put(`/api/users/${id}/reactivate`);
-  },
-
-  async changePassword(passwordData) {
-    return await api.put('/api/users/change-password', passwordData);
-  },
-
-  async resetPassword(id) {
-    return await api.put(`/api/users/${id}/reset-password`);
-  },
-
-  async getProfile() {
-    return await api.get('/api/users/profile');
-  },
-
-  async updateProfile(profileData) {
-    return await api.put('/api/users/profile', profileData);
   }
 };
 
@@ -398,33 +388,37 @@ export const variacaoService = {
 };
 
 // Serviços de Fatores de Conversão
-export const fatorConversaoService = {
-  async getAll() {
-    return await api.get('/api/fatores-conversao');
-  },
-
+export const conversaoService = {
   async getByVariacao(idVariacao) {
-    return await api.get(`/api/fatores-conversao/variacao/${idVariacao}`);
+    return await api.get(`/api/conversoes/por-variacao/${idVariacao}`);
   },
 
-  async create(fatorData) {
-    return await api.post('/api/fatores-conversao', fatorData);
+  async getById(id) {
+    return await api.get(`/api/conversoes/${id}`);
   },
 
-  async createMultiple(fatoresData) {
-    return await api.post('/api/fatores-conversao/multiple', fatoresData);
+  async create(conversaoData) {
+    return await api.post('/api/conversoes', conversaoData);
   },
 
-  async update(id, fatorData) {
-    return await api.put(`/api/fatores-conversao/${id}`, fatorData);
+  async createMultiple(fatores) {
+    return await api.post('/api/conversoes/multiplos', { fatores });
+  },
+
+  async update(id, conversaoData) {
+    return await api.put(`/api/conversoes/${id}`, conversaoData);
   },
 
   async delete(id) {
-    return await api.delete(`/api/fatores-conversao/${id}`);
+    return await api.delete(`/api/conversoes/${id}`);
   },
 
-  async convertQuantity(conversionData) {
-    return await api.post('/api/fatores-conversao/convert', conversionData);
+  async convertQuantity(idVariacao, quantidade, idUnidadeOrigem, idUnidadeDestino) {
+    return await api.post(`/api/conversoes/converter/${idVariacao}`, {
+      quantidade,
+      id_unidade_origem: idUnidadeOrigem,
+      id_unidade_destino: idUnidadeDestino
+    });
   }
 };
 
