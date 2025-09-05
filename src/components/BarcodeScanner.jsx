@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/library';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Camera, X, RotateCcw, AlertCircle, Info } from 'lucide-react';
+import { Camera, X, RotateCcw, AlertCircle, Info, SwitchCamera } from 'lucide-react';
 
 const BarcodeScanner = ({ onScan, onClose, isOpen }) => {
   const webcamRef = useRef(null);
@@ -17,11 +17,24 @@ const BarcodeScanner = ({ onScan, onClose, isOpen }) => {
   const codeReaderRef = useRef(null);
   const streamRef = useRef(null);
 
-  // Inicializar o leitor de código de barras
+  // Resetar estado quando o modal abre
   useEffect(() => {
     if (isOpen) {
+      // Resetar todos os estados
+      setIsScanning(false);
+      setError(null);
+      setScanResult(null);
+      setShowInstructions(false);
+      setPermissionState('prompt');
+      setDevices([]);
+      setSelectedDevice(null);
+      
+      // Inicializar
       codeReaderRef.current = new BrowserMultiFormatReader();
       checkCameraPermission();
+    } else {
+      // Limpar quando fechar
+      cleanup();
     }
     
     return () => {
@@ -220,7 +233,7 @@ const BarcodeScanner = ({ onScan, onClose, isOpen }) => {
     setScanResult(null);
   }, [cleanup]);
 
-  // Trocar câmera
+  // Trocar câmera (ícone correto para mobile)
   const switchCamera = () => {
     if (devices.length > 1) {
       const currentIndex = devices.findIndex(d => d.deviceId === selectedDevice?.deviceId);
@@ -383,8 +396,8 @@ const BarcodeScanner = ({ onScan, onClose, isOpen }) => {
             )}
             
             {devices.length > 1 && selectedDevice && (
-              <Button onClick={switchCamera} variant="outline" size="sm">
-                <RotateCcw className="h-4 w-4" />
+              <Button onClick={switchCamera} variant="outline" size="sm" title="Trocar Câmera">
+                <SwitchCamera className="h-4 w-4" />
               </Button>
             )}
           </div>
