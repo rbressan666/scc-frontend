@@ -11,6 +11,7 @@ import UserCreatePage from './pages/UserCreatePage';
 import ProfilePage from './pages/ProfilePage';
 import ConfiguracoesPage from './pages/ConfiguracoesPage';
 import ProdutosPage from './pages/ProdutosPage';
+import CadastroPorCameraPage from './pages/CadastroPorCameraPage';
 import './App.css';
 
 // Componente 404 separado para usar useNavigate
@@ -126,6 +127,16 @@ function App() {
               } 
             />
             
+            {/* Nova rota de cadastro por câmera - apenas para admin */}
+            <Route 
+              path="/produtos/cadastro-camera" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <CadastroPorCameraPage />
+                </ProtectedRoute>
+              } 
+            />
+            
             {/* Rota padrão - redirecionar para dashboard */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             
@@ -139,3 +150,4 @@ function App() {
 }
 
 export default App;
+

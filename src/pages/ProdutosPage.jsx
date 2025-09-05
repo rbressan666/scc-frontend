@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, Edit, Trash2, Search, Filter } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Search, Filter, Camera } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { variacaoService, setorService, categoriaService } from '../services/api';
 import { useToast } from '@/hooks/use-toast';
@@ -109,6 +109,11 @@ const ProdutosPage = () => {
     return { variant: 'default', text: 'Normal' };
   };
 
+  // Navegar para cadastro por câmera
+  const goToCameraRegistration = () => {
+    navigate('/produtos/cadastro-camera');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -149,10 +154,16 @@ const ProdutosPage = () => {
                     Gerencie todas as variações de produtos do estoque
                   </CardDescription>
                 </div>
-                <Button disabled>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Produto (Em breve)
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={goToCameraRegistration} className="bg-blue-600 hover:bg-blue-700">
+                    <Camera className="h-4 w-4 mr-2" />
+                    Cadastrar via Câmera
+                  </Button>
+                  <Button disabled variant="outline">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Manual (Em breve)
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             
@@ -242,7 +253,17 @@ const ProdutosPage = () => {
                       {variacoes.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                            Nenhuma variação de produto encontrada
+                            <div className="flex flex-col items-center space-y-3">
+                              <Camera className="h-12 w-12 text-gray-300" />
+                              <div>
+                                <p className="font-medium">Nenhum produto encontrado</p>
+                                <p className="text-sm">Comece cadastrando produtos via câmera</p>
+                              </div>
+                              <Button onClick={goToCameraRegistration} size="sm">
+                                <Camera className="h-4 w-4 mr-2" />
+                                Cadastrar Primeiro Produto
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ) : (

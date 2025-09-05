@@ -99,104 +99,82 @@ export const authService = {
     }
   },
 
-  // Verificar token
-  async verifyToken() {
-    return await api.get('/api/auth/verify');
-  },
-
-  // Alterar senha
-  async changePassword(senhaAtual, novaSenha, confirmarSenha) {
-    return await api.put('/api/auth/change-password', {
-      senhaAtual,
-      novaSenha,
-      confirmarSenha
-    });
-  }
-};
-
-// Serviços de Usuários
-export const userService = {
-  // Listar todos os usuários
-  async getAll() {
-    return await api.get('/api/usuarios');
-  },
-
-  // Buscar usuário por ID
-  async getById(id) {
-    return await api.get(`/api/usuarios/${id}`);
-  },
-
-  // Criar novo usuário
-  async create(userData) {
-    return await api.post('/api/usuarios', userData);
-  },
-
-  // Atualizar usuário
-  async update(id, userData) {
-    return await api.put(`/api/usuarios/${id}`, userData);
-  },
-
-  // Desativar usuário
-  async deactivate(id) {
-    return await api.delete(`/api/usuarios/${id}`);
-  },
-
-  // Reativar usuário
-  async reactivate(id) {
-    return await api.put(`/api/usuarios/${id}/reactivate`);
-  },
-
-  // Obter perfil do usuário logado
-  async getProfile() {
-    return await api.get('/api/usuarios/profile');
-  },
-
-  // Atualizar perfil do usuário logado
-  async updateProfile(userData) {
-    return await api.put('/api/usuarios/profile', userData);
-  }
-};
-
-// Utilitários
-export const apiUtils = {
-  // Verificar se usuário está logado
+  // Verificar se está autenticado
   isAuthenticated() {
     return !!Cookies.get('scc_token');
   },
 
-  // Obter dados do usuário dos cookies
+  // Obter usuário atual
   getCurrentUser() {
     const userCookie = Cookies.get('scc_user');
     return userCookie ? JSON.parse(userCookie) : null;
   },
 
-  // Obter token dos cookies
-  getToken() {
-    return Cookies.get('scc_token');
-  },
-
-  // Verificar se usuário é admin
+  // Verificar se é admin
   isAdmin() {
     const user = this.getCurrentUser();
-    return user?.perfil === 'admin';
+    return user && user.perfil === 'admin';
+  }
+};
+
+// Serviços de Usuários
+export const userService = {
+  async getAll(includeInactive = false) {
+    return await api.get(`/api/users?includeInactive=${includeInactive}`);
   },
 
-  // Formatar erros da API
-  formatError(error) {
-    if (typeof error === 'string') {
-      return error;
-    }
-    
-    if (error.message) {
-      return error.message;
-    }
-    
-    if (error.data?.errors) {
-      return error.data.errors.map(err => err.msg).join(', ');
-    }
-    
-    return 'Erro desconhecido';
+  async getById(id) {
+    return await api.get(`/api/users/${id}`);
+  },
+
+  async create(userData) {
+    return await api.post('/api/users', userData);
+  },
+
+  async update(id, userData) {
+    return await api.put(`/api/users/${id}`, userData);
+  },
+
+  async deactivate(id) {
+    return await api.delete(`/api/users/${id}`);
+  },
+
+  async reactivate(id) {
+    return await api.put(`/api/users/${id}/reactivate`);
+  },
+
+  async changePassword(passwordData) {
+    return await api.put('/api/users/change-password', passwordData);
+  },
+
+  async resetPassword(id) {
+    return await api.put(`/api/users/${id}/reset-password`);
+  },
+
+  async getProfile() {
+    return await api.get('/api/users/profile');
+  },
+
+  async updateProfile(profileData) {
+    return await api.put('/api/users/profile', profileData);
   }
+};
+
+// Serviços de QR Code
+export const qrService = {
+  async generateLoginQR() {
+    return await api.get('/api/qr/login');
+  },
+
+  async generateCountingQR(sessionId) {
+    return await api.get(`/api/qr/counting/${sessionId}`);
+  }
+};
+
+// Serviços de WebSocket
+export const socketService = {
+  // Implementação do WebSocket será feita em arquivo separado
+  // Este serviço apenas expõe métodos para interagir com o socket
 };
 
 export default api;
@@ -313,6 +291,11 @@ export const produtoService = {
 
   async reactivate(id) {
     return await api.put(`/api/produtos/${id}/reactivate`);
+  },
+
+  // Novo método para buscar produto por código EAN
+  async lookupByEan(eanData) {
+    return await api.post('/api/produtos/lookup-by-ean', eanData);
   }
 };
 
@@ -349,51 +332,47 @@ export const variacaoService = {
     return await api.put(`/api/variacoes/${id}`, variacaoData);
   },
 
-  async updateStock(id, estoqueAtual) {
-    return await api.put(`/api/variacoes/${id}/estoque`, { estoque_atual: estoqueAtual });
-  },
-
   async deactivate(id) {
     return await api.delete(`/api/variacoes/${id}`);
   },
 
   async reactivate(id) {
     return await api.put(`/api/variacoes/${id}/reactivate`);
+  },
+
+  async updateStock(id, stockData) {
+    return await api.put(`/api/variacoes/${id}/estoque`, stockData);
   }
 };
 
 // Serviços de Fatores de Conversão
-export const conversaoService = {
+export const fatorConversaoService = {
+  async getAll() {
+    return await api.get('/api/fatores-conversao');
+  },
+
   async getByVariacao(idVariacao) {
-    return await api.get(`/api/conversoes/por-variacao/${idVariacao}`);
+    return await api.get(`/api/fatores-conversao/variacao/${idVariacao}`);
   },
 
-  async getById(id) {
-    return await api.get(`/api/conversoes/${id}`);
+  async create(fatorData) {
+    return await api.post('/api/fatores-conversao', fatorData);
   },
 
-  async create(conversaoData) {
-    return await api.post('/api/conversoes', conversaoData);
+  async createMultiple(fatoresData) {
+    return await api.post('/api/fatores-conversao/multiple', fatoresData);
   },
 
-  async createMultiple(fatores) {
-    return await api.post('/api/conversoes/multiplos', { fatores });
-  },
-
-  async update(id, conversaoData) {
-    return await api.put(`/api/conversoes/${id}`, conversaoData);
+  async update(id, fatorData) {
+    return await api.put(`/api/fatores-conversao/${id}`, fatorData);
   },
 
   async delete(id) {
-    return await api.delete(`/api/conversoes/${id}`);
+    return await api.delete(`/api/fatores-conversao/${id}`);
   },
 
-  async convertQuantity(idVariacao, quantidade, idUnidadeOrigem, idUnidadeDestino) {
-    return await api.post(`/api/conversoes/converter/${idVariacao}`, {
-      quantidade,
-      id_unidade_origem: idUnidadeOrigem,
-      id_unidade_destino: idUnidadeDestino
-    });
+  async convertQuantity(conversionData) {
+    return await api.post('/api/fatores-conversao/convert', conversionData);
   }
 };
 
