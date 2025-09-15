@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Camera, Package, AlertCircle, CheckCircle, Edit, Search } from 'lucide-react';
+import { ArrowLeft, Camera, Package, AlertCircle, CheckCircle, Edit, Search, Wifi, WifiOff, Globe } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import BarcodeScanner from '@/components/BarcodeScanner';
 import CadastroProdutoForm from '@/components/CadastroProdutoForm';
@@ -24,6 +24,7 @@ const CadastroPorCameraPage = () => {
   const [productData, setProductData] = useState(null);
   const [existingProduct, setExistingProduct] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [searchStatus, setSearchStatus] = useState(null); // 'searching', 'found', 'not_found', 'error'
   
   // Dados para o formulário
   const [setores, setSetores] = useState([]);
@@ -60,24 +61,31 @@ const CadastroPorCameraPage = () => {
   const startScanning = () => {
     setCurrentStep('scanning');
     setScannerOpen(true);
+    setSearchStatus(null);
   };
 
-  // Verificar se produto já existe no sistema
-  const checkExistingProduct = async (eanCode) => {
+  // Verificar se produto já existe no sistema pelo código de barras
+  const checkExistingProductByBarcode = async (eanCode) => {
     try {
-      // Buscar todas as variações para verificar se o EAN já existe
+      console.log('Verificando produto existente para código:', eanCode);
+      
+      // Buscar todas as variações
       const variacoesResponse = await variacaoService.getAll();
       
       if (variacoesResponse.success && variacoesResponse.data) {
-        // Procurar por variação com o mesmo EAN (assumindo que o EAN está armazenado em algum campo)
-        // Como não vejo campo EAN na estrutura, vou simular a busca por nome ou outro identificador
-        const existingVariation = variacoesResponse.data.find(variacao => 
-          variacao.ean_code === eanCode || 
-          variacao.codigo_barras === eanCode ||
-          variacao.codigo === eanCode
-        );
+        console.log('Total de variações encontradas:', variacoesResponse.data.length);
+        
+        // Procurar por variação com o mesmo código de barras
+        // Verificar múltiplos campos possíveis onde o código pode estar armazenado
+        const existingVariation = variacoesResponse.data.find(variacao => {
+          const codigoVariacao = variacao.codigo_barras || variacao.ean_code || variacao.codigo_ean || variacao.barcode || variacao.ean;
+          console.log(`Comparando ${eanCode} com ${codigoVariacao} (variação: ${variacao.nome})`);
+          return codigoVariacao === eanCode;
+        });
         
         if (existingVariation) {
+          console.log('Produto existente encontrado:', existingVariation);
+          
           // Buscar dados completos do produto
           const produtoResponse = await produtoService.getById(existingVariation.id_produto);
           if (produtoResponse.success) {
@@ -87,6 +95,8 @@ const CadastroPorCameraPage = () => {
               variacao: existingVariation
             };
           }
+        } else {
+          console.log('Nenhum produto encontrado com este código de barras');
         }
       }
       
@@ -97,16 +107,64 @@ const CadastroPorCameraPage = () => {
     }
   };
 
+  // Simular pesquisa na internet (já que não temos acesso a APIs reais)
+  const searchProductOnline = async (eanCode) => {
+    try {
+      setSearchStatus('searching');
+      
+      // Simular delay de pesquisa
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Tentar usar o serviço existente
+      const response = await produtoService.lookupByEan({ ean_code: eanCode });
+      
+      if (response.success) {
+        if (response.data.found) {
+          setSearchStatus('found');
+          return {
+            found: true,
+            suggested_name: response.data.suggested_name || '',
+            suggested_variation_name: response.data.suggested_variation_name || '',
+            suggested_category: response.data.suggested_category || null,
+            source: 'API Externa'
+          };
+        } else {
+          setSearchStatus('not_found');
+          return {
+            found: false,
+            source: 'API Externa'
+          };
+        }
+      } else {
+        throw new Error(response.message || 'Erro na API');
+      }
+    } catch (error) {
+      console.error('Erro na pesquisa online:', error);
+      setSearchStatus('error');
+      
+      // Retornar dados vazios em caso de erro
+      return {
+        found: false,
+        error: error.message || 'Erro na consulta online',
+        source: 'Erro'
+      };
+    }
+  };
+
   // Processar código escaneado
   const handleScan = async (eanCode) => {
     setScannerOpen(false);
     setLoading(true);
+    setSearchStatus(null);
     
     try {
+      console.log('Processando código escaneado:', eanCode);
+      
       // Primeiro verificar se o produto já existe no sistema
-      const existingCheck = await checkExistingProduct(eanCode);
+      const existingCheck = await checkExistingProductByBarcode(eanCode);
       
       if (existingCheck.exists) {
+        console.log('Produto já existe no sistema');
         setExistingProduct(existingCheck);
         setProductData({
           found: true,
@@ -119,65 +177,64 @@ const CadastroPorCameraPage = () => {
         
         toast({
           title: "Produto já cadastrado!",
-          description: "Este código já existe no sistema. Você pode editar os dados.",
+          description: `Código ${eanCode} já existe no sistema. Você pode editar os dados.`,
           variant: "default",
         });
         
         return;
       }
       
-      // Se não existe, buscar na API externa
-      const response = await produtoService.lookupByEan({ ean_code: eanCode });
+      console.log('Produto não existe, pesquisando online...');
       
-      if (response.success) {
-        setProductData({
-          ...response.data,
-          existing: false
+      // Se não existe, buscar na internet
+      const onlineResult = await searchProductOnline(eanCode);
+      
+      setProductData({
+        ...onlineResult,
+        ean_code: eanCode,
+        existing: false
+      });
+      setCurrentStep('form');
+      
+      // Mostrar resultado da pesquisa
+      if (onlineResult.found) {
+        toast({
+          title: "Produto encontrado online!",
+          description: `Dados encontrados na ${onlineResult.source}. Informações pré-preenchidas.`,
         });
-        setCurrentStep('form');
-        
-        if (response.data.found) {
-          toast({
-            title: "Produto encontrado na internet!",
-            description: "Dados pré-preenchidos com informações encontradas online",
-          });
-        } else {
-          toast({
-            title: "Produto não encontrado na internet",
-            description: "Não foram encontradas informações online para este código. Preencha os dados manualmente.",
-            variant: "default",
-          });
-        }
+      } else if (onlineResult.error) {
+        toast({
+          title: "Erro na pesquisa online",
+          description: onlineResult.error + " Preencha os dados manualmente.",
+          variant: "destructive",
+        });
       } else {
-        throw new Error(response.message || 'Erro na busca online');
+        toast({
+          title: "Produto não encontrado online",
+          description: `Código ${eanCode} não foi encontrado nas bases de dados online. Preencha os dados manualmente.`,
+          variant: "default",
+        });
       }
-    } catch (error) {
-      console.error('Erro ao buscar produto:', error);
       
-      // Mesmo com erro, permitir cadastro manual
+    } catch (error) {
+      console.error('Erro geral no processamento:', error);
+      
+      // Em caso de erro geral, permitir cadastro manual
       setProductData({
         found: false,
         ean_code: eanCode,
         suggested_name: '',
         suggested_variation_name: '',
         suggested_category: null,
-        existing: false
+        existing: false,
+        error: error.message
       });
       setCurrentStep('form');
-      
-      // Mensagem mais específica sobre o erro
-      let errorMessage = "Não foi possível buscar dados do produto na internet.";
-      if (error.message && error.message.includes('timeout')) {
-        errorMessage = "Timeout na consulta online. Verifique sua conexão.";
-      } else if (error.message && error.message.includes('network')) {
-        errorMessage = "Erro de rede na consulta online.";
-      } else if (error.message) {
-        errorMessage = `Erro na consulta online: ${error.message}`;
-      }
+      setSearchStatus('error');
       
       toast({
-        title: "Erro na pesquisa online",
-        description: errorMessage + " Preencha os dados manualmente.",
+        title: "Erro no processamento",
+        description: "Erro ao processar código. Preencha os dados manualmente.",
         variant: "destructive",
       });
     } finally {
@@ -197,11 +254,12 @@ const CadastroPorCameraPage = () => {
         throw new Error(produtoResponse.message || 'Erro ao criar produto');
       }
       
-      // Depois criar a variação
+      // Depois criar a variação com o código de barras
       const variacaoData = {
         ...productPayload.variacao,
         id_produto: produtoResponse.data.id,
-        ean_code: productData?.ean_code // Adicionar o código EAN à variação
+        codigo_barras: productData?.ean_code, // Salvar o código de barras
+        ean_code: productData?.ean_code // Também em ean_code se existir o campo
       };
       
       const variacaoResponse = await variacaoService.create(variacaoData);
@@ -236,9 +294,15 @@ const CadastroPorCameraPage = () => {
       }
       
       // Atualizar variação
+      const variacaoData = {
+        ...productPayload.variacao,
+        codigo_barras: productData?.ean_code, // Manter o código de barras
+        ean_code: productData?.ean_code
+      };
+      
       const variacaoResponse = await variacaoService.update(
         existingProduct.variacao.id,
-        productPayload.variacao
+        variacaoData
       );
       
       if (!variacaoResponse.success) {
@@ -266,6 +330,55 @@ const CadastroPorCameraPage = () => {
     setProductData(null);
     setExistingProduct(null);
     setScannerOpen(false);
+    setSearchStatus(null);
+  };
+
+  // Renderizar status da pesquisa
+  const renderSearchStatus = () => {
+    if (!searchStatus) return null;
+    
+    const statusConfig = {
+      searching: {
+        icon: <Globe className="h-5 w-5 text-blue-600 animate-spin" />,
+        title: "Pesquisando online...",
+        description: "Consultando bases de dados de produtos na internet",
+        bgColor: "bg-blue-50",
+        textColor: "text-blue-800"
+      },
+      found: {
+        icon: <Wifi className="h-5 w-5 text-green-600" />,
+        title: "Produto encontrado online!",
+        description: "Dados pré-preenchidos com informações da internet",
+        bgColor: "bg-green-50",
+        textColor: "text-green-800"
+      },
+      not_found: {
+        icon: <Search className="h-5 w-5 text-orange-600" />,
+        title: "Produto não encontrado online",
+        description: "Não foram encontradas informações na internet para este código",
+        bgColor: "bg-orange-50",
+        textColor: "text-orange-800"
+      },
+      error: {
+        icon: <WifiOff className="h-5 w-5 text-red-600" />,
+        title: "Erro na pesquisa online",
+        description: "Não foi possível consultar as bases de dados online",
+        bgColor: "bg-red-50",
+        textColor: "text-red-800"
+      }
+    };
+    
+    const config = statusConfig[searchStatus];
+    
+    return (
+      <div className={`flex items-start gap-3 p-3 rounded-lg ${config.bgColor} mb-4`}>
+        {config.icon}
+        <div className={config.textColor}>
+          <h4 className="font-medium mb-1">{config.title}</h4>
+          <p className="text-sm">{config.description}</p>
+        </div>
+      </div>
+    );
   };
 
   // Renderizar conteúdo baseado no step atual
@@ -308,23 +421,29 @@ const CadastroPorCameraPage = () => {
                 <CardContent className="p-6">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
                   <p>Processando código...</p>
-                  <p className="text-sm text-gray-500 mt-1">Verificando sistema e pesquisando online</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {searchStatus === 'searching' ? 'Pesquisando na internet...' : 'Verificando sistema local...'}
+                  </p>
                 </CardContent>
               </Card>
             )}
+            {renderSearchStatus()}
           </div>
         );
 
       case 'form':
         return (
-          <CadastroProdutoForm
-            productData={productData}
-            onSave={handleSaveProduct}
-            onCancel={restart}
-            setores={setores}
-            categorias={categorias}
-            unidades={unidades}
-          />
+          <div className="space-y-4">
+            {renderSearchStatus()}
+            <CadastroProdutoForm
+              productData={productData}
+              onSave={productData?.editing ? handleUpdateProduct : handleSaveProduct}
+              onCancel={restart}
+              setores={setores}
+              categorias={categorias}
+              unidades={unidades}
+            />
+          </div>
         );
 
       case 'edit':
@@ -342,7 +461,7 @@ const CadastroPorCameraPage = () => {
               </CardHeader>
               
               <CardContent className="space-y-4">
-                <div className="space-y-2 text-sm">
+                <div className="space-y-2 text-sm bg-gray-50 p-3 rounded-lg">
                   <p><strong>Produto:</strong> {existingProduct?.produto?.nome}</p>
                   <p><strong>Variação:</strong> {existingProduct?.variacao?.nome}</p>
                   <p><strong>Código:</strong> {productData?.ean_code}</p>
@@ -355,8 +474,11 @@ const CadastroPorCameraPage = () => {
                       setProductData({
                         ...productData,
                         editing: true,
+                        found: true,
                         produto: existingProduct.produto,
-                        variacao: existingProduct.variacao
+                        variacao: existingProduct.variacao,
+                        suggested_name: existingProduct.produto.nome,
+                        suggested_variation_name: existingProduct.variacao.nome
                       });
                     }} 
                     className="w-full"
@@ -456,6 +578,7 @@ const CadastroPorCameraPage = () => {
         onClose={() => {
           setScannerOpen(false);
           setCurrentStep('intro');
+          setSearchStatus(null);
         }}
       />
     </div>
