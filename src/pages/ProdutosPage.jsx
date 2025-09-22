@@ -1,3 +1,4 @@
+// pages/ProdutosPage.jsx
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -5,10 +6,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, Edit, Trash2, Search, Filter, Camera } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  Plus, 
+  Edit, 
+  Trash2, 
+  Search, 
+  Filter, 
+  Camera, 
+  Image as ImageIcon,
+  Eye,
+  Zap
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { variacaoService, setorService, categoriaService } from '../services/api';
 import { useToast } from '@/hooks/use-toast';
+import Layout from '../components/Layout';
 
 const ProdutosPage = () => {
   const navigate = useNavigate();
@@ -100,245 +113,347 @@ const ProdutosPage = () => {
     }).format(value);
   };
 
-  const getEstoqueStatus = (atual, minimo) => {
-    if (atual <= minimo) {
-      return { variant: 'destructive', text: 'Baixo' };
-    } else if (atual <= minimo * 1.5) {
-      return { variant: 'secondary', text: 'Atenção' };
-    }
-    return { variant: 'default', text: 'Normal' };
+  const formatQuantity = (value) => {
+    if (!value && value !== 0) return '0';
+    return new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 3
+    }).format(value);
   };
 
-  // Navegar para cadastro por câmera
-  const goToCameraRegistration = () => {
-    navigate('/produtos/cadastro-camera');
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 1: return 'bg-red-100 text-red-800';
+      case 2: return 'bg-orange-100 text-orange-800';
+      case 3: return 'bg-yellow-100 text-yellow-800';
+      case 4: return 'bg-blue-100 text-blue-800';
+      case 5: return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPriorityLabel = (priority) => {
+    switch (priority) {
+      case 1: return 'Crítica';
+      case 2: return 'Alta';
+      case 3: return 'Média';
+      case 4: return 'Baixa';
+      case 5: return 'Muito Baixa';
+      default: return 'Indefinida';
+    }
+  };
+
+  const isEstoqueBaixo = (variacao) => {
+    return variacao.estoque_atual <= variacao.estoque_minimo;
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-16">
+    <Layout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => navigate('/dashboard')}
-              className="mr-4"
+              className="text-gray-600 hover:text-gray-900"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar
             </Button>
-            
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center mr-3">
-                <span className="text-white font-bold text-sm">SCC</span>
-              </div>
-              <h1 className="text-xl font-semibold text-gray-900">
-                Gestão de Produtos
-              </h1>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Gestão de Produtos</h1>
+              <p className="text-gray-600">Gerencie produtos, variações e estoque</p>
             </div>
           </div>
-        </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle>Variações de Produtos</CardTitle>
-                  <CardDescription>
-                    Gerencie todas as variações de produtos do estoque
-                  </CardDescription>
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={goToCameraRegistration} className="bg-blue-600 hover:bg-blue-700">
-                    <Camera className="h-4 w-4 mr-2" />
-                    Cadastrar via Câmera
-                  </Button>
-                  <Button disabled variant="outline">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Novo Manual (Em breve)
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
+          <div className="flex gap-3">
+            {/* Botões de funcionalidades de foto */}
+            <Button
+              onClick={() => navigate('/produtos/reconhecimento')}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Zap className="h-4 w-4" />
+              Reconhecer Produto
+            </Button>
             
-            <CardContent>
-              {/* Filtros */}
-              <div className="mb-6 space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Filter className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-700">Filtros:</span>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="Buscar por nome..."
-                      value={filters.nome}
-                      onChange={(e) => handleFilterChange('nome', e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  
-                  <Select value={filters.setor} onValueChange={(value) => handleFilterChange('setor', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todos os setores" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos os setores</SelectItem>
-                      {setores.map((setor) => (
-                        <SelectItem key={setor.id} value={setor.id}>
-                          {setor.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  
-                  <Select value={filters.categoria} onValueChange={(value) => handleFilterChange('categoria', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todas as categorias" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todas">Todas as categorias</SelectItem>
-                      {categorias.map((categoria) => (
-                        <SelectItem key={categoria.id} value={categoria.id}>
-                          {categoria.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  
-                  <div className="flex space-x-2">
-                    <Button
-                      variant={filters.estoque_baixo ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleFilterChange('estoque_baixo', !filters.estoque_baixo)}
-                    >
-                      Estoque Baixo
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={clearFilters}>
-                      Limpar
-                    </Button>
-                  </div>
+            <Button
+              onClick={() => navigate('/produtos/cadastro-via-foto')}
+              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700"
+            >
+              <Camera className="h-4 w-4" />
+              Cadastrar via Foto
+            </Button>
+
+            <Button
+              onClick={() => navigate('/produtos/cadastro-camera')}
+              className="flex items-center gap-2"
+            >
+              <Camera className="h-4 w-4" />
+              Cadastrar via Câmera
+            </Button>
+
+            <Button
+              onClick={() => navigate('/produtos/novo')}
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Novo Produto
+            </Button>
+          </div>
+        </div>
+
+        {/* Filtros */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                <CardTitle className="text-lg">Filtros</CardTitle>
+              </div>
+              <Button variant="outline" size="sm" onClick={clearFilters}>
+                Limpar Filtros
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Nome do Produto</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Buscar por nome..."
+                    value={filters.nome}
+                    onChange={(e) => handleFilterChange('nome', e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
               </div>
 
-              {/* Tabela */}
-              {loading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-                  <p className="mt-2 text-gray-600">Carregando produtos...</p>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Setor</label>
+                <Select
+                  value={filters.setor}
+                  onValueChange={(value) => handleFilterChange('setor', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o setor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os Setores</SelectItem>
+                    {setores.map((setor) => (
+                      <SelectItem key={setor.id} value={setor.id}>
+                        {setor.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Categoria</label>
+                <Select
+                  value={filters.categoria}
+                  onValueChange={(value) => handleFilterChange('categoria', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todas">Todas as Categorias</SelectItem>
+                    {categorias.map((categoria) => (
+                      <SelectItem key={categoria.id} value={categoria.id}>
+                        {categoria.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Estoque</label>
+                <Select
+                  value={filters.estoque_baixo ? 'baixo' : 'todos'}
+                  onValueChange={(value) => handleFilterChange('estoque_baixo', value === 'baixo')}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os Estoques</SelectItem>
+                    <SelectItem value="baixo">Apenas Estoque Baixo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Lista de Produtos */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Produtos Cadastrados</CardTitle>
+                <CardDescription>
+                  {variacoes.length} {variacoes.length === 1 ? 'produto encontrado' : 'produtos encontrados'}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            ) : variacoes.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <ImageIcon className="h-8 w-8 text-gray-400" />
                 </div>
-              ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Produto / Variação</TableHead>
-                        <TableHead>Categoria</TableHead>
-                        <TableHead>Setor</TableHead>
-                        <TableHead>Estoque</TableHead>
-                        <TableHead>Preço Custo</TableHead>
-                        <TableHead>Unidade</TableHead>
-                        <TableHead className="text-right">Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {variacoes.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                            <div className="flex flex-col items-center space-y-3">
-                              <Camera className="h-12 w-12 text-gray-300" />
-                              <div>
-                                <p className="font-medium">Nenhum produto encontrado</p>
-                                <p className="text-sm">Comece cadastrando produtos via câmera</p>
-                              </div>
-                              <Button onClick={goToCameraRegistration} size="sm">
-                                <Camera className="h-4 w-4 mr-2" />
-                                Cadastrar Primeiro Produto
-                              </Button>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Nenhum produto encontrado
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  {Object.values(filters).some(f => f && f !== 'todos' && f !== 'todas')
+                    ? 'Nenhum produto corresponde aos filtros aplicados.'
+                    : 'Comece cadastrando seu primeiro produto.'
+                  }
+                </p>
+                <div className="flex gap-3 justify-center">
+                  <Button
+                    onClick={() => navigate('/produtos/cadastro-via-foto')}
+                    className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700"
+                  >
+                    <Camera className="h-4 w-4" />
+                    Cadastrar via Foto
+                  </Button>
+                  <Button
+                    onClick={() => navigate('/produtos/novo')}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Cadastro Manual
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">Foto</TableHead>
+                      <TableHead>Produto</TableHead>
+                      <TableHead>Variação</TableHead>
+                      <TableHead>Setor</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead>Estoque</TableHead>
+                      <TableHead>Preço</TableHead>
+                      <TableHead>Prioridade</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {variacoes.map((variacao) => (
+                      <TableRow key={variacao.id}>
+                        <TableCell>
+                          <div className="w-10 h-10 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                            {variacao.produto_imagem_principal ? (
+                              <img
+                                src={variacao.produto_imagem_principal}
+                                alt={variacao.produto_nome}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  e.target.nextSibling.style.display = 'flex';
+                                }}
+                              />
+                            ) : null}
+                            <ImageIcon className="h-4 w-4 text-gray-400" />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium text-gray-900">
+                              {variacao.produto_nome}
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        variacoes.map((variacao) => {
-                          const estoqueStatus = getEstoqueStatus(
-                            parseFloat(variacao.estoque_atual) || 0, 
-                            parseFloat(variacao.estoque_minimo) || 0
-                          );
-                          
-                          return (
-                            <TableRow key={variacao.id}>
-                              <TableCell>
-                                <div>
-                                  <div className="font-medium">{variacao.produto_nome || 'N/A'}</div>
-                                  <div className="text-sm text-gray-500">{variacao.nome || 'N/A'}</div>
-                                </div>
-                              </TableCell>
-                              <TableCell>{variacao.categoria_nome || 'N/A'}</TableCell>
-                              <TableCell>{variacao.setor_nome || 'N/A'}</TableCell>
-                              <TableCell>
-                                <div className="space-y-1">
-                                  <div className="flex items-center space-x-2">
-                                    <span className="font-medium">
-                                      {parseFloat(variacao.estoque_atual) || 0}
-                                    </span>
-                                    <Badge variant={estoqueStatus.variant} className="text-xs">
-                                      {estoqueStatus.text}
-                                    </Badge>
-                                  </div>
-                                  <div className="text-xs text-gray-500">
-                                    Mín: {parseFloat(variacao.estoque_minimo) || 0}
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                {formatCurrency(parseFloat(variacao.preco_custo) || 0)}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="outline">
-                                  {variacao.unidade_sigla || 'N/A'}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end space-x-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled
-                                    title="Edição em breve"
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled
-                                    title="Exclusão em breve"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </main>
-    </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm text-gray-900">
+                            {variacao.nome}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {variacao.setor_nome}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {variacao.categoria_nome}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className={`text-sm font-medium ${
+                              isEstoqueBaixo(variacao) ? 'text-red-600' : 'text-gray-900'
+                            }`}>
+                              {formatQuantity(variacao.estoque_atual)} {variacao.unidade_sigla}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              Mín: {formatQuantity(variacao.estoque_minimo)}
+                            </div>
+                            {isEstoqueBaixo(variacao) && (
+                              <Badge variant="destructive" className="text-xs">
+                                Estoque Baixo
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm font-medium text-gray-900">
+                            {formatCurrency(variacao.preco_custo)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getPriorityColor(variacao.fator_prioridade)}>
+                            {getPriorityLabel(variacao.fator_prioridade)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => navigate(`/produtos/${variacao.produto_id}`)}
+                              title="Ver detalhes"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => navigate(`/produtos/${variacao.produto_id}/editar`)}
+                              title="Editar produto"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
   );
 };
 
