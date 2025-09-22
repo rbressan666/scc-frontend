@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Camera, Search, Package } from 'lucide-react';
-import Layout from '../components/Layout';
+import Layout from '../components/ui/layout';
 import PhotoCapture from '../components/PhotoCapture';
 import PhotoSearchResults from '../components/PhotoSearchResults';
 import CadastroProdutoForm from '../components/CadastroProdutoForm';
