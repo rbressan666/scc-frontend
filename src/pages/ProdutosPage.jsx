@@ -21,7 +21,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { variacaoService, setorService, categoriaService } from '../services/api';
 import { useToast } from '@/hooks/use-toast';
-import Layout from '../components/Layout';
+import { Sidebar as Layout } from '../components/ui/sidebar';
 
 const ProdutosPage = () => {
   const navigate = useNavigate();

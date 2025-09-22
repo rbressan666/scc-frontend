@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Camera, Search, Package, BarChart3 } from 'lucide-react';
-import Layout from '../components/ui/layout';
+import { Sidebar as Layout } from '../components/ui/sidebar';
 import PhotoCapture from '../components/PhotoCapture';
 import ProductRecognition from '../components/ProductRecognition';
 
