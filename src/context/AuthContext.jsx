@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
-import { authService, apiUtils } from '../services/api';
+import { authService } from '../services/api';
 
 // Criar contexto
 const AuthContext = createContext();
@@ -31,14 +31,14 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       
       // Verificar se há token nos cookies
-      if (!apiUtils.isAuthenticated()) {
+      if (!authService.isAuthenticated()) {
         setUser(null);
         setIsAuthenticated(false);
         return;
       }
 
       // Obter dados do usuário dos cookies
-      const userData = apiUtils.getCurrentUser();
+      const userData = authService.getCurrentUser();
       
       if (userData) {
         // Verificar se o token ainda é válido
@@ -98,7 +98,7 @@ export const AuthProvider = ({ children }) => {
       console.error('Erro no login:', error);
       return { 
         success: false, 
-        message: apiUtils.formatError(error) 
+        message: error.message || 'Erro no login' 
       };
     }
   };
@@ -157,7 +157,7 @@ export const AuthProvider = ({ children }) => {
       console.error('Erro ao alterar senha:', error);
       return { 
         success: false, 
-        message: apiUtils.formatError(error) 
+        message: error.message || 'Erro no login' 
       };
     }
   };

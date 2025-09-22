@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { userService, apiUtils } from '../services/api';
+import { userService } from '../services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -110,7 +110,7 @@ const UserCreatePage = () => {
         setError(response.message || 'Erro ao criar usuário');
       }
     } catch (error) {
-      setError(apiUtils.formatError(error));
+      setError(error.message || 'Erro ao criar usuário');
     } finally {
       setSaving(false);
     }

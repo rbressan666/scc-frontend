@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { userService, apiUtils } from '../services/api';
+import { userService } from '../services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -47,7 +47,7 @@ const UserViewPage = () => {
         setError('Usuário não encontrado');
       }
     } catch (error) {
-      setError(apiUtils.formatError(error));
+      setError(error.message || 'Erro ao carregar usuários');
     } finally {
       setLoading(false);
     }

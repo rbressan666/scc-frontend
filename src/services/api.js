@@ -173,6 +173,11 @@ export const authService = {
   isAdmin() {
     const user = this.getCurrentUser();
     return user && user.perfil === 'admin';
+  },
+
+  // Verificar validade do token
+  async verifyToken() {
+    return await api.post('/api/auth/verify-token');
   }
 };
 
