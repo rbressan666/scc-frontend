@@ -1,27 +1,32 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import path from 'path'
+import tailwindcss from '@tailwindcss/vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    tailwindcss(), // Plugin TailwindCSS v4 para Vite
+  ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': '/src',
     },
   },
-  optimizeDeps: {
-    include: ['@radix-ui/react-tooltip'],
+  server: {
+    host: '0.0.0.0',
+    port: 3001,
   },
   build: {
+    outDir: 'dist',
+    sourcemap: false,
     rollupOptions: {
-      external: [], // Garante que não estamos externalizando por engano
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          router: ['react-router-dom'],
+        },
+      },
     },
   },
-  // Adicionando esta configuração para forçar o Vite a pré-compilar o módulo
-  // Isso pode resolver problemas de módulos que não são corretamente resolvidos
-  // quando importados de um componente local.
-  // Fonte: https://vitejs.dev/config/dep-optimization-options.html#optimizedeps-force
-  // e discussões sobre problemas de resolução de módulos em componentes locais.
-  force: true,
 })

@@ -18,9 +18,20 @@ O deploy estava falhando devido à dependência `autoprefixer` não estar listad
 ## Configurações do Render
 
 ### Build Settings
-- **Build Command**: `pnpm install && pnpm run build`
+- **Build Command**: `pnpm install --no-frozen-lockfile && pnpm run build` (temporário)
 - **Publish Directory**: `dist`
 - **Node Version**: 22.16.0 (ou superior)
+
+### Solução para pnpm-lock.yaml Desatualizado
+Se encontrar erro de lockfile desatualizado, use uma das opções:
+
+**Opção A (Solução Rápida):**
+- Altere o Build Command para: `pnpm install --no-frozen-lockfile && pnpm run build`
+
+**Opção B (Solução Definitiva):**
+1. Execute o script `update-lockfile.sh` localmente
+2. Faça commit do novo `pnpm-lock.yaml`
+3. Use o Build Command padrão: `pnpm install && pnpm run build`
 
 ### Variáveis de Ambiente
 Certifique-se de configurar:

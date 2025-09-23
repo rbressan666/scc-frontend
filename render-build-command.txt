@@ -1,0 +1,19 @@
+# Comando de Build Alternativo para o Render
+
+## Opção 1: Usar --no-frozen-lockfile (Solução Rápida)
+pnpm install --no-frozen-lockfile && pnpm run build
+
+## Opção 2: Comando Padrão (Após atualizar lockfile)
+pnpm install && pnpm run build
+
+## Como Configurar no Render:
+1. Acesse as Settings do seu serviço no Render
+2. Vá para a seção "Build & Deploy"
+3. No campo "Build Command", use uma das opções acima
+4. Salve as configurações
+
+## Recomendação:
+- Use a Opção 1 temporariamente para resolver o deploy imediato
+- Execute o script update-lockfile.sh localmente
+- Faça commit do novo pnpm-lock.yaml
+- Mude para a Opção 2 para deploys futuros
