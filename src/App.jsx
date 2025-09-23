@@ -1,6 +1,7 @@
 // App.jsx - Versão atualizada com funcionalidades de foto
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { SidebarProvider } from './components/ui/sidebar';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -46,7 +47,8 @@ const NotFoundPage = () => {
 function App() {
   return (
     <AuthProvider>
-      <Router>
+      <SidebarProvider>
+        <Router>
         <div className="App">
           <Routes>
             {/* Rota pública - Login */}
@@ -129,7 +131,8 @@ function App() {
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </div>
-      </Router>
+        </Router>
+      </SidebarProvider>
     </AuthProvider>
   );
 }

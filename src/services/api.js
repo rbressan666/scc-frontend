@@ -177,7 +177,7 @@ export const authService = {
 
   // Verificar validade do token
   async verifyToken() {
-    return await api.post('/api/auth/verify-token');
+    return await api.get("/api/auth/verify");
   }
 };
 
