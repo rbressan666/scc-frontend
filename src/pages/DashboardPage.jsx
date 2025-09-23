@@ -76,19 +76,19 @@ const DashboardPage = () => {
 
   return (
     <MainLayout>
-      <div className="px-4 py-6 sm:px-0">
+      <div className="w-full max-w-none">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">
             Bem-vindo ao Sistema
           </h2>
-          <p className="text-gray-600">
+          <p className="text-lg text-gray-600">
             Selecione uma opção abaixo para começar a usar o sistema.
           </p>
         </div>
 
         {/* Menu Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
           {availableItems.map((item) => {
             const IconComponent = item.icon;
             const isClickable = item.path && !item.disabled;
@@ -107,8 +107,8 @@ const DashboardPage = () => {
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-center space-x-3">
-                    <div className={`w-10 h-10 ${item.color} rounded-lg flex items-center justify-center`}>
-                      <IconComponent className="h-5 w-5 text-white" />
+                    <div className={`w-12 h-12 ${item.color} rounded-lg flex items-center justify-center`}>
+                      <IconComponent className="h-6 w-6 text-white" />
                     </div>
                     <div className="flex-1">
                       <CardTitle className="text-lg">{item.title}</CardTitle>
@@ -144,83 +144,83 @@ const DashboardPage = () => {
           })}
         </div>
 
-          {/* User Info Section */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* User Info Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Informações do Usuário</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Nome:</span>
-                  <span className="text-sm font-medium">{user?.nome_completo}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">E-mail:</span>
-                  <span className="text-sm font-medium">{user?.email}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Perfil:</span>
-                  <span className="text-sm font-medium capitalize">{user?.perfil}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Status:</span>
-                  <span className={`text-sm font-medium ${user?.ativo ? 'text-green-600' : 'text-red-600'}`}>
-                    {user?.ativo ? 'Ativo' : 'Inativo'}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* System Info Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Sistema</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Versão:</span>
-                  <span className="text-sm font-medium">MVP 2.0</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Módulo:</span>
-                  <span className="text-sm font-medium">Gestão Completa</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Último Login:</span>
-                  <span className="text-sm font-medium">
-                    {new Date().toLocaleDateString('pt-BR')}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Quick Actions (apenas para admin) */}
-          {isAdmin() && (
-            <div className="mt-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Ações Rápidas
-              </h3>
-              <div className="flex flex-wrap gap-3">
-                <Button 
-                  onClick={() => navigate('/usuarios/novo')}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Users className="mr-2 h-4 w-4" />
-                  Adicionar Usuário
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => navigate('/usuarios')}
-                >
-                  Ver Todos os Usuários
-                </Button>
+        {/* User Info Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* User Info Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl">Informações do Usuário</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Nome:</span>
+                <span className="text-sm font-medium">{user?.nome_completo}</span>
               </div>
-            </div>
-          )}
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">E-mail:</span>
+                <span className="text-sm font-medium">{user?.email}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Perfil:</span>
+                <span className="text-sm font-medium capitalize">{user?.perfil}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Status:</span>
+                <span className={`text-sm font-medium ${user?.ativo ? 'text-green-600' : 'text-red-600'}`}>
+                  {user?.ativo ? 'Ativo' : 'Inativo'}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* System Info Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl">Sistema</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Versão:</span>
+                <span className="text-sm font-medium">MVP 2.0</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Módulo:</span>
+                <span className="text-sm font-medium">Gestão Completa</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Último Login:</span>
+                <span className="text-sm font-medium">
+                  {new Date().toLocaleDateString('pt-BR')}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* Quick Actions (apenas para admin) */}
+        {isAdmin() && (
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">
+              Ações Rápidas
+            </h3>
+            <div className="flex flex-wrap gap-3">
+              <Button 
+                onClick={() => navigate('/usuarios/novo')}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Users className="mr-2 h-4 w-4" />
+                Adicionar Usuário
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => navigate('/usuarios')}
+              >
+                Ver Todos os Usuários
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </MainLayout>
   );
 };
