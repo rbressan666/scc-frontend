@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Users, Settings, BarChart3, Package, Cog, Database } from 'lucide-react';
+import { Users, Settings, BarChart3, Package, Cog, Database, Import } from 'lucide-react';
 import MainLayout from '../components/MainLayout';
+import { Button } from '@/components/ui/button';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
@@ -69,7 +70,6 @@ const DashboardPage = () => {
     }
   ];
 
-  // Filtrar itens baseado no perfil do usuário
   const availableItems = menuItems.filter(item => 
     !item.adminOnly || isAdmin()
   );
@@ -113,36 +113,36 @@ const DashboardPage = () => {
                     <div className="flex-1">
                       <CardTitle className="text-lg">{item.title}</CardTitle>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <CardDescription className="text-sm text-gray-600 mb-3">
-                      {item.description}
-                    </CardDescription>
-                    
-                    {/* Barra de progresso para uso do banco */}
-                    {item.showProgress && (
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Usado:</span>
-                          <span className="font-medium">~2.1 GB / 8 GB</span>
-                        </div>
-                        <Progress value={26} className="h-2" />
-                        <p className="text-xs text-gray-500">
-                          Plano gratuito Supabase - 26% utilizado
-                        </p>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-sm text-gray-600 mb-3">
+                    {item.description}
+                  </CardDescription>
+                  
+                  {item.showProgress && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Usado:</span>
+                        <span className="font-medium">~2.1 GB / 8 GB</span>
                       </div>
-                    )}
-                    
-                    {item.disabled && (
-                      <div className="text-xs text-gray-400 italic">
-                        Funcionalidade em desenvolvimento
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+                      <Progress value={26} className="h-2" />
+                      <p className="text-xs text-gray-500">
+                        Plano gratuito Supabase - 26% utilizado
+                      </p>
+                    </div>
+                  )}
+                  
+                  {item.disabled && (
+                    <div className="text-xs text-gray-400 italic">
+                      Funcionalidade em desenvolvimento
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
 
           {/* User Info Section */}
           <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
