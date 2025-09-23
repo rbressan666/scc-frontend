@@ -1,75 +1,70 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Users, Smartphone, LogOut, Settings, BarChart3, Package, Cog, Database } from 'lucide-react';
+import { Users, Settings, BarChart3, Package, Cog, Database } from 'lucide-react';
+import MainLayout from '../components/MainLayout';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
-  const { user, logout, isAdmin } = useAuth();
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
+  const { user, isAdmin } = useAuth();
 
   const menuItems = [
     {
-      id: 'users',
-      title: 'Gerenciar Usuários',
-      description: 'Criar, editar e gerenciar usuários do sistema',
+      id: "users",
+      title: "Gerenciar Usuários",
+      description: "Criar, editar e gerenciar usuários do sistema",
       icon: Users,
-      path: '/usuarios',
+      path: "/usuarios",
       adminOnly: true,
-      color: 'bg-blue-500'
+      color: "bg-blue-500"
     },
     {
-      id: 'products',
-      title: 'Produtos',
-      description: 'Gerenciar produtos e variações do estoque',
+      id: "products",
+      title: "Produtos",
+      description: "Gerenciar produtos e variações do estoque",
       icon: Package,
-      path: '/produtos',
+      path: "/produtos",
       adminOnly: true,
-      color: 'bg-orange-500'
+      color: "bg-orange-500"
     },
     {
-      id: 'configuracoes',
-      title: 'Configurações',
-      description: 'Gerenciar setores, categorias e unidades de medida',
+      id: "configuracoes",
+      title: "Configurações",
+      description: "Gerenciar setores, categorias e unidades de medida",
       icon: Cog,
-      path: '/configuracoes',
+      path: "/configuracoes",
       adminOnly: true,
-      color: 'bg-gray-500'
+      color: "bg-gray-500"
     },
     {
-      id: 'profile',
-      title: 'Meu Perfil',
-      description: 'Visualizar e editar informações do perfil',
+      id: "profile",
+      title: "Meu Perfil",
+      description: "Visualizar e editar informações do perfil",
       icon: Settings,
-      path: '/perfil',
+      path: "/perfil",
       adminOnly: false,
-      color: 'bg-green-500'
+      color: "bg-green-500"
     },
     {
-      id: 'reports',
-      title: 'Relatórios',
-      description: 'Visualizar relatórios e estatísticas do sistema (em breve)',
+      id: "reports",
+      title: "Relatórios",
+      description: "Visualizar relatórios e estatísticas do sistema (em breve)",
       icon: BarChart3,
       path: null, // Desabilitado
       adminOnly: true,
-      color: 'bg-purple-500',
+      color: "bg-purple-500",
       disabled: true
     },
     {
-      id: 'database',
-      title: 'Uso do Banco',
-      description: 'Monitorar uso do armazenamento Supabase',
+      id: "database",
+      title: "Uso do Banco",
+      description: "Monitorar uso do armazenamento Supabase",
       icon: Database,
       path: null, // Não navega, apenas mostra informações
       adminOnly: true,
-      color: 'bg-indigo-500',
+      color: "bg-indigo-500",
       showProgress: true
     }
   ];
@@ -80,96 +75,43 @@ const DashboardPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center mr-3">
-                <span className="text-white font-bold text-sm">SCC</span>
-              </div>
-              <h1 className="text-xl font-semibold text-gray-900">
-                Sistema Contagem Cadoz
-              </h1>
-            </div>
-
-            {/* User Info e Actions */}
-            <div className="flex items-center space-x-4">
-              <div className="hidden sm:block text-right">
-                <p className="text-sm font-medium text-gray-900">
-                  Olá, {user?.nome_completo}
-                </p>
-                <p className="text-xs text-gray-500 capitalize">
-                  {user?.perfil}
-                </p>
-              </div>
-
-              {/* Handoff Icon (para futuras funcionalidades) */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-gray-500 hover:text-gray-700"
-                title="Handoff (Em breve)"
-              >
-                <Smartphone className="h-4 w-4" />
-              </Button>
-
-              {/* Logout */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-                className="text-gray-500 hover:text-gray-700"
-                title="Sair"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+    <MainLayout>
+      <div className="px-4 py-6 sm:px-0">
+        {/* Welcome Section */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Bem-vindo ao Sistema
+          </h2>
+          <p className="text-gray-600">
+            Selecione uma opção abaixo para começar a usar o sistema.
+          </p>
         </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          {/* Welcome Section */}
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Bem-vindo ao Sistema
-            </h2>
-            <p className="text-gray-600">
-              Selecione uma opção abaixo para começar a usar o sistema.
-            </p>
-          </div>
-
-          {/* Menu Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {availableItems.map((item) => {
-              const IconComponent = item.icon;
-              const isClickable = item.path && !item.disabled;
-              
-              return (
-                <Card 
-                  key={item.id} 
-                  className={`transition-all duration-200 ${
-                    isClickable 
-                      ? 'hover:shadow-lg cursor-pointer transform hover:-translate-y-1' 
-                      : item.disabled 
-                        ? 'opacity-50 cursor-not-allowed' 
-                        : 'cursor-default'
-                  }`}
-                  onClick={() => isClickable && navigate(item.path)}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-10 h-10 ${item.color} rounded-lg flex items-center justify-center`}>
-                        <IconComponent className="h-5 w-5 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{item.title}</CardTitle>
-                      </div>
+        {/* Menu Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {availableItems.map((item) => {
+            const IconComponent = item.icon;
+            const isClickable = item.path && !item.disabled;
+            
+            return (
+              <Card 
+                key={item.id} 
+                className={`transition-all duration-200 ${
+                  isClickable 
+                    ? 'hover:shadow-lg cursor-pointer transform hover:-translate-y-1' 
+                    : item.disabled 
+                      ? 'opacity-50 cursor-not-allowed' 
+                      : 'cursor-default'
+                }`}
+                onClick={() => isClickable && navigate(item.path)}
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-10 h-10 ${item.color} rounded-lg flex items-center justify-center`}>
+                      <IconComponent className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <CardTitle className="text-lg">{item.title}</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -279,8 +221,7 @@ const DashboardPage = () => {
             </div>
           )}
         </div>
-      </main>
-    </div>
+    </MainLayout>
   );
 };
 

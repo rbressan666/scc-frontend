@@ -21,7 +21,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { variacaoService, setorService, categoriaService } from '../services/api';
 import { useToast } from '@/hooks/use-toast';
-import { Sidebar as Layout } from '../components/ui/sidebar';
+import MainLayout from '../components/MainLayout';
 
 const ProdutosPage = () => {
   const navigate = useNavigate();
@@ -148,7 +148,7 @@ const ProdutosPage = () => {
   };
 
   return (
-    <Layout>
+    <MainLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -453,7 +453,7 @@ const ProdutosPage = () => {
           </CardContent>
         </Card>
       </div>
-    </Layout>
+    </MainLayout>
   );
 };
 
