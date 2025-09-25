@@ -32,3 +32,9 @@
 - **Funcionalidades Preservadas:** Todas as funcionalidades do MVP 2.1 (cadastro por câmera) foram mantidas, apenas integradas na estrutura de layout original.
 - **Resultado:** Layout restaurado para o estado original funcional, eliminando o problema de "objetos distribuídos de forma estranha" e o layout apertado à esquerda.
 
+## 25/09/2025 - Correção de Erro de Referência (Hotfix)
+- **Problema:** Após o deploy, a aplicação apresentou erro `ProfilePage is not defined`, impedindo o carregamento da página principal.
+- **Causa:** No arquivo `App.jsx` restaurado, havia uma referência ao componente `ProfilePage` na rota `/perfil`, mas o componente não foi importado.
+- **Ação Realizada:** Removida a rota `/perfil` que fazia referência ao `ProfilePage` não existente.
+- **Resultado:** Aplicação voltou a funcionar normalmente, carregando a página principal sem erros.
+

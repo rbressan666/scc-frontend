@@ -58,16 +58,6 @@ function App() {
               }
             />
             
-            {/* Rota de perfil */}
-            <Route
-              path="/perfil"
-              element={
-                <ProtectedRoute>
-                  <ProfilePage />
-                </ProtectedRoute>
-              }
-            />
-            
             {/* Rotas de usuários - apenas para admin */}
             <Route
               path="/usuarios"
