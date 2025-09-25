@@ -1,47 +1,65 @@
 # Diário de Ajustes - SCC Frontend
 
-## 25/09/2025 - Correção Definitiva do Erro useSidebar (DashboardPage)
+## 25/09/2025 - Correção do Erro useSidebar (ProdutosPage)
 
 ### Problema Identificado:
-Após a restauração do layout original, o DashboardPage apresentou erro `useSidebar must be used within a SidebarProvider`, impedindo o carregamento da página principal após o login.
+Após a correção do DashboardPage, o ProdutosPage apresentou o mesmo erro `useSidebar must be used within a SidebarProvider`, impedindo o acesso à página de gestão de produtos.
 
 ### Análise Realizada:
-Comparação entre o DashboardPage original (commit `2325c58`) e a versão atual (main branch):
+Comparação entre o ProdutosPage original (commit `2325c58`) e a versão atual (main branch):
 
-**DashboardPage Original (funcionando):**
+**ProdutosPage Original (funcionando):**
 - Layout independente com header próprio
-- Grid de cards de navegação
+- Botão "Voltar" para o dashboard
+- Card principal com tabela de produtos
 - NÃO usa MainLayout ou sistema de sidebar
 - Estrutura HTML/CSS baseada em Tailwind puro
 
-**DashboardPage Atual (com erro):**
+**ProdutosPage Atual (com erro):**
 - Importa e usa `MainLayout` 
 - MainLayout contém `SidebarProvider` e `useSidebar`
 - Estrutura modificada que depende do sistema de sidebar
 
 ### Ação Realizada:
-Restauração completa do DashboardPage para a versão original:
+Restauração completa do ProdutosPage para a versão original:
 
 1. **Removido**: Import e uso do `MainLayout`
 2. **Removido**: Qualquer dependência do sistema de sidebar
 3. **Restaurado**: Layout independente com header próprio
-4. **Restaurado**: Grid de cards de navegação original
-5. **Preservado**: Todas as funcionalidades de navegação e autenticação
+4. **Restaurado**: Botão "Voltar" para o dashboard
+5. **Preservado**: Todas as funcionalidades de filtros, tabela e navegação
+6. **Preservado**: Botão "Cadastrar por Câmera" (funcionalidade do MVP 2.1)
 
 ### Estrutura Restaurada:
 ```jsx
 <div className="min-h-screen bg-gray-50">
   <header className="bg-white shadow-sm border-b">
-    {/* Header com logo, info do usuário e logout */}
+    {/* Header com botão voltar, logo SCC e título */}
   </header>
   
   <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-    {/* Seção de boas-vindas */}
-    {/* Grid de cards de menu */}
+    <Card>
+      <CardHeader>
+        {/* Título e botões de ação */}
+      </CardHeader>
+      <CardContent>
+        {/* Filtros e tabela de produtos */}
+      </CardContent>
+    </Card>
   </main>
 </div>
 ```
 
 ### Resultado:
-O DashboardPage agora deve carregar normalmente sem erros de `useSidebar`, mantendo a funcionalidade completa de navegação e a aparência visual original que estava funcionando corretamente.
+O ProdutosPage agora deve carregar normalmente sem erros de `useSidebar`, mantendo a funcionalidade completa de gestão de produtos e a aparência visual original.
+
+### Próximos Passos:
+Outras páginas provavelmente têm o mesmo problema e precisarão da mesma correção:
+- ConfiguracoesPage.jsx
+- UserListPage.jsx
+- UserCreatePage.jsx
+- UserEditPage.jsx
+- UserViewPage.jsx
+- ProfilePage.jsx
+- Páginas do MVP 2.1 (CadastroPorCameraPage.jsx, etc.)
 
