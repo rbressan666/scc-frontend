@@ -288,23 +288,14 @@ const TurnosPage = () => {
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500">Início:</span>
-                        <p className="font-medium">{formatDateTime(turno.horario_inicio)}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Fim:</span>
-                        <p className="font-medium">{formatDateTime(turno.horario_fim)}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Responsável:</span>
-                        <p className="font-medium">{turno.usuario_abertura}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Status:</span>
-                        <p className="font-medium capitalize">{turno.status}</p>
-                      </div>
+                    <div className="flex items-center space-x-6 text-sm text-gray-600">
+                      <span><strong>Início:</strong> {formatDateTime(turno.horario_inicio)}</span>
+                      <span>•</span>
+                      <span><strong>Fim:</strong> {formatDateTime(turno.horario_fim)}</span>
+                      <span>•</span>
+                      <span><strong>Responsável:</strong> {turno.usuario_abertura}</span>
+                      <span>•</span>
+                      <span><strong>Status:</strong> {turno.status}</span>
                     </div>
 
                     {turno.observacoes_abertura && (

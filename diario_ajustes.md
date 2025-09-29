@@ -149,3 +149,42 @@ Outras páginas provavelmente têm o mesmo problema e precisarão da mesma corre
 - Conectar ContagemPage e DashboardContagemPage às APIs
 - Implementar AnaliseVariacaoPage com dados reais
 - Adicionar checklists de entrada/saída de turno (futuro)
+
+## [2025-09-29] - Ajustes de Layout e Conexão com APIs Reais
+
+### Ajustes de Layout Implementados:
+- **Layout slim**: Informações dos turnos agora em linha única com separadores (•) em vez de formato "ficha"
+- **DashboardContagemPage redesenhado**: Turno como cabeçalho geral com informações inline
+- **Cards menores**: Atividades do turno organizadas em cards compactos em duas colunas
+- **Estatísticas otimizadas**: Cards de estatísticas mais compactos com informações essenciais
+
+### Conexões com APIs Implementadas:
+- **Produtos contados**: Conectado com API de produtos para calcular progresso real
+- **Usuários ativos**: Conectado com API de usuários para mostrar operadores ativos
+- **Barra de progresso**: Cálculo real baseado em produtos contados vs total de produtos
+- **Tempo médio**: Removido conforme solicitado
+
+### Estrutura do Dashboard de Contagem:
+- **Cabeçalho do turno**: Informações do turno em linha (data, horário, responsável, status)
+- **Estatísticas rápidas**: 4 cards com progresso, operadores, alertas e contagens
+- **Cards de atividades** (2 colunas):
+  - Checklist de Entrada (mockado como concluído)
+  - Contagens (conectado com API real)
+  - Alertas (conectado com API real)
+  - Checklist de Saída (mockado como pendente)
+
+### Funcionalidades Implementadas:
+- **Cálculo de progresso real**: Baseado em produtos contados vs total de produtos
+- **Navegação integrada**: Botões para iniciar contagem e ver alertas
+- **Checklists mockados**: Preparação para implementação futura
+- **Botão de fechamento**: Apenas para administradores
+
+### Arquivos Modificados:
+- `src/pages/DashboardContagemPage.jsx`: Redesign completo com APIs reais
+- `src/pages/TurnosPage.jsx`: Layout slim para informações dos turnos
+
+### Melhorias Visuais:
+- Layout mais compacto e profissional
+- Informações organizadas de forma mais eficiente
+- Cards menores que permitem melhor aproveitamento do espaço
+- Progresso visual com barras e badges informativos

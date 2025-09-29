@@ -1,122 +1,123 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
-import { ArrowLeft, Clock, Package, AlertTriangle, Users, TrendingUp, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Clock, Package, AlertTriangle, Users, CheckCircle, X, Play, Square } from 'lucide-react';
+import { turnosService, contagensService, alertasService, userService, produtoService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const DashboardContagemPage = () => {
   const navigate = useNavigate();
-  const [turnoAtual, setTurnoAtual] = useState(null);
-  const [contagensAndamento, setContagensAndamento] = useState([]);
-  const [alertasRecentes, setAlertasRecentes] = useState([]);
+  const { id: turnoId } = useParams();
+  const { isAdmin } = useAuth();
+  const [turno, setTurno] = useState(null);
+  const [contagens, setContagens] = useState([]);
+  const [alertas, setAlertas] = useState([]);
+  const [usuarios, setUsuarios] = useState([]);
+  const [produtos, setProdutos] = useState([]);
   const [estatisticas, setEstatisticas] = useState({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    if (turnoId) {
+      fetchDashboardData();
+    }
+  }, [turnoId]);
 
   const fetchDashboardData = async () => {
     try {
-      // Simular dados para demonstração
-      const mockTurnoAtual = {
-        id: '1',
-        data_turno: '2025-09-26',
-        tipo_turno: 'diurno',
-        horario_inicio: '2025-09-26T08:00:00Z',
-        status: 'aberto',
-        usuario_abertura: 'João Silva'
-      };
+      setError(null);
+      
+      // Buscar dados em paralelo
+      const [turnoRes, contagensRes, alertasRes, usuariosRes, produtosRes] = await Promise.allSettled([
+        turnosService.getById(turnoId),
+        contagensService.getByTurno(turnoId),
+        alertasService.getAll(),
+        userService.getAll(),
+        produtoService.getAll()
+      ]);
 
-      const mockContagens = [
-        {
-          id: '1',
-          tipo_contagem: 'inicial',
-          status: 'em_andamento',
-          usuario_responsavel: 'João Silva',
-          total_itens_contados: 15,
-          progresso: 65,
-          tempo_decorrido: 45
-        },
-        {
-          id: '2',
-          tipo_contagem: 'final',
-          status: 'pre_fechada',
-          usuario_responsavel: 'Maria Santos',
-          total_itens_contados: 23,
-          progresso: 100,
-          tempo_decorrido: 120
-        }
-      ];
+      // Processar turno
+      if (turnoRes.status === 'fulfilled') {
+        setTurno(turnoRes.value.data);
+      }
 
-      const mockAlertas = [
-        {
-          id: '1',
-          tipo_alerta: 'compra_urgente',
-          prioridade: 'urgente',
-          titulo: 'Compra Urgente - Heineken 600ml',
-          created_at: '2025-09-26T10:30:00Z'
-        },
-        {
-          id: '2',
-          tipo_alerta: 'parecer_operador',
-          prioridade: 'alta',
-          titulo: 'Parecer do Operador',
-          created_at: '2025-09-26T08:45:00Z'
-        }
-      ];
+      // Processar contagens
+      if (contagensRes.status === 'fulfilled') {
+        setContagens(contagensRes.value.data || []);
+      }
 
-      const mockEstatisticas = {
-        totalProdutos: 150,
-        produtosContados: 98,
-        percentualConcluido: 65,
-        tempoMedio: 2.5,
-        operadoresAtivos: 3,
-        alertasAtivos: 5
-      };
+      // Processar alertas (filtrar apenas os ativos)
+      if (alertasRes.status === 'fulfilled') {
+        const alertasAtivos = (alertasRes.value.data || []).filter(a => a.status === 'ativo');
+        setAlertas(alertasAtivos);
+      }
 
-      setTurnoAtual(mockTurnoAtual);
-      setContagensAndamento(mockContagens);
-      setAlertasRecentes(mockAlertas);
-      setEstatisticas(mockEstatisticas);
-      setLoading(false);
+      // Processar usuários ativos
+      if (usuariosRes.status === 'fulfilled') {
+        const usuariosAtivos = (usuariosRes.value.data || []).filter(u => u.ativo);
+        setUsuarios(usuariosAtivos);
+      }
+
+      // Processar produtos
+      if (produtosRes.status === 'fulfilled') {
+        setProdutos(produtosRes.value.data || []);
+      }
+
+      // Calcular estatísticas
+      calcularEstatisticas(contagensRes.value?.data || [], produtosRes.value?.data || []);
+
     } catch (error) {
       console.error('Erro ao buscar dados do dashboard:', error);
+      setError('Erro ao carregar dados do dashboard.');
+    } finally {
       setLoading(false);
     }
   };
 
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      em_andamento: { variant: 'default', text: 'Em Andamento', color: 'bg-blue-500' },
-      pre_fechada: { variant: 'secondary', text: 'Pré-fechada', color: 'bg-yellow-500' },
-      fechada: { variant: 'secondary', text: 'Fechada', color: 'bg-green-500' }
-    };
+  const calcularEstatisticas = (contagens, produtos) => {
+    const totalProdutos = produtos.length;
+    let produtosContados = 0;
     
-    const config = statusConfig[status] || statusConfig.em_andamento;
-    return (
-      <Badge variant={config.variant} className={`${config.color} text-white`}>
-        {config.text}
-      </Badge>
-    );
+    // Contar produtos que já foram contados
+    contagens.forEach(contagem => {
+      if (contagem.total_itens_contados > 0) {
+        produtosContados += contagem.total_itens_contados;
+      }
+    });
+
+    const percentualConcluido = totalProdutos > 0 ? Math.round((produtosContados / totalProdutos) * 100) : 0;
+
+    setEstatisticas({
+      totalProdutos,
+      produtosContados,
+      percentualConcluido: Math.min(percentualConcluido, 100), // Limitar a 100%
+      operadoresAtivos: usuarios.filter(u => u.ativo).length,
+      alertasAtivos: alertas.length
+    });
   };
 
-  const getPrioridadeBadge = (prioridade) => {
-    const configs = {
-      urgente: { color: 'bg-red-500', text: 'Urgente' },
-      alta: { color: 'bg-orange-500', text: 'Alta' },
-      media: { color: 'bg-yellow-500', text: 'Média' },
-      baixa: { color: 'bg-blue-500', text: 'Baixa' }
-    };
-    
-    const config = configs[prioridade] || configs.media;
-    return (
-      <Badge className={`${config.color} text-white`}>
-        {config.text}
-      </Badge>
-    );
+  const handleFecharTurno = async () => {
+    if (!window.confirm('Tem certeza que deseja fechar este turno?')) {
+      return;
+    }
+
+    try {
+      const response = await turnosService.close(turnoId, {
+        observacoes_fechamento: 'Turno fechado via dashboard'
+      });
+      
+      if (response.success) {
+        alert('Turno fechado com sucesso!');
+        navigate('/turnos');
+      }
+    } catch (error) {
+      console.error('Erro ao fechar turno:', error);
+      alert(error.message || 'Erro ao fechar turno.');
+    }
   };
 
   const formatDateTime = (dateString) => {
@@ -140,9 +141,23 @@ const DashboardContagemPage = () => {
     );
   }
 
+  if (!turno) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+          <p className="text-gray-500">Turno não encontrado</p>
+          <Button onClick={() => navigate('/turnos')} className="mt-4">
+            Voltar aos Turnos
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Header do Turno */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
@@ -150,26 +165,41 @@ const DashboardContagemPage = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/turnos')}
                 className="flex items-center space-x-2"
               >
                 <ArrowLeft className="h-4 w-4" />
                 <span>Voltar</span>
               </Button>
               <div className="flex items-center space-x-3">
-                <div className="bg-purple-600 text-white p-2 rounded-lg">
-                  <TrendingUp className="h-6 w-6" />
+                <div className="bg-blue-600 text-white p-2 rounded-lg">
+                  <Clock className="h-6 w-6" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Dashboard de Contagem</h1>
-                  <p className="text-sm text-gray-500">Visão Geral do Turno Atual</p>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    Turno {turno.tipo_turno} - {formatDate(turno.data_turno)}
+                  </h1>
+                  <div className="flex items-center space-x-4 text-sm text-gray-500">
+                    <span>Início: {formatDateTime(turno.horario_inicio)}</span>
+                    <span>•</span>
+                    <span>Responsável: {turno.usuario_abertura}</span>
+                    <span>•</span>
+                    <Badge className="bg-green-500 text-white">Ativo</Badge>
+                  </div>
                 </div>
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <Badge variant="outline" className="text-green-600 border-green-600">
-                Turno Ativo
-              </Badge>
+              {isAdmin() && (
+                <Button
+                  onClick={handleFecharTurno}
+                  variant="outline"
+                  className="text-red-600 border-red-600 hover:bg-red-50"
+                >
+                  <Square className="h-4 w-4 mr-2" />
+                  Fechar Turno
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -177,144 +207,132 @@ const DashboardContagemPage = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {/* Informações do Turno Atual */}
-        {turnoAtual && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Clock className="h-5 w-5" />
-                <span>Turno Atual</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <span className="text-sm text-gray-500">Data:</span>
-                  <p className="font-medium">{formatDate(turnoAtual.data_turno)}</p>
-                </div>
-                <div>
-                  <span className="text-sm text-gray-500">Tipo:</span>
-                  <p className="font-medium capitalize">{turnoAtual.tipo_turno}</p>
-                </div>
-                <div>
-                  <span className="text-sm text-gray-500">Início:</span>
-                  <p className="font-medium">{formatDateTime(turnoAtual.horario_inicio)}</p>
-                </div>
-                <div>
-                  <span className="text-sm text-gray-500">Responsável:</span>
-                  <p className="font-medium">{turnoAtual.usuario_abertura}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Mensagem de erro */}
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <p className="text-red-700">{error}</p>
+            </div>
+          </div>
         )}
 
         {/* Estatísticas Rápidas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Produtos Contados</p>
-                  <p className="text-2xl font-bold text-green-600">
+                  <p className="text-sm font-medium text-gray-600">Progresso Geral</p>
+                  <p className="text-xl font-bold text-green-600">
                     {estatisticas.produtosContados}/{estatisticas.totalProdutos}
                   </p>
                 </div>
-                <Package className="h-8 w-8 text-green-600" />
+                <Package className="h-6 w-6 text-green-600" />
               </div>
-              <Progress value={estatisticas.percentualConcluido} className="mt-3" />
+              <Progress value={estatisticas.percentualConcluido} className="mt-2" />
               <p className="text-xs text-gray-500 mt-1">{estatisticas.percentualConcluido}% concluído</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Operadores Ativos</p>
-                  <p className="text-2xl font-bold text-blue-600">{estatisticas.operadoresAtivos}</p>
+                  <p className="text-sm font-medium text-gray-600">Operadores</p>
+                  <p className="text-xl font-bold text-blue-600">{usuarios.length}</p>
                 </div>
-                <Users className="h-8 w-8 text-blue-600" />
+                <Users className="h-6 w-6 text-blue-600" />
               </div>
+              <p className="text-xs text-gray-500 mt-1">Usuários ativos</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Tempo Médio</p>
-                  <p className="text-2xl font-bold text-purple-600">{estatisticas.tempoMedio}h</p>
+                  <p className="text-sm font-medium text-gray-600">Alertas</p>
+                  <p className="text-xl font-bold text-red-600">{alertas.length}</p>
                 </div>
-                <Clock className="h-8 w-8 text-purple-600" />
+                <AlertTriangle className="h-6 w-6 text-red-600" />
               </div>
+              <p className="text-xs text-gray-500 mt-1">Requerem atenção</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Alertas Ativos</p>
-                  <p className="text-2xl font-bold text-red-600">{estatisticas.alertasAtivos}</p>
+                  <p className="text-sm font-medium text-gray-600">Contagens</p>
+                  <p className="text-xl font-bold text-purple-600">{contagens.length}</p>
                 </div>
-                <AlertTriangle className="h-8 w-8 text-red-600" />
+                <Clock className="h-6 w-6 text-purple-600" />
               </div>
+              <p className="text-xs text-gray-500 mt-1">Em andamento</p>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Contagens em Andamento */}
+        {/* Cards de Atividades do Turno */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Checklist de Entrada */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Contagens em Andamento</span>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center space-x-2 text-lg">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <span>Checklist de Entrada</span>
+                <Badge className="bg-green-500 text-white text-xs">Concluído</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <span>Verificação de equipamentos</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <span>Conferência de produtos</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <span>Validação de sistema</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Contagens Ativas */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center justify-between text-lg">
+                <div className="flex items-center space-x-2">
+                  <Package className="h-5 w-5 text-blue-600" />
+                  <span>Contagens</span>
+                </div>
                 <Button
-                  onClick={() => navigate('/contagens/nova')}
+                  onClick={() => navigate(`/contagem/${turnoId}`)}
                   size="sm"
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
-                  Nova Contagem
+                  <Play className="h-4 w-4 mr-1" />
+                  Iniciar
                 </Button>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              {contagensAndamento.length === 0 ? (
-                <div className="text-center py-8">
-                  <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Nenhuma contagem em andamento</p>
-                </div>
+            <CardContent className="pt-0">
+              {contagens.length === 0 ? (
+                <p className="text-sm text-gray-500">Nenhuma contagem iniciada</p>
               ) : (
-                <div className="space-y-4">
-                  {contagensAndamento.map((contagem) => (
-                    <div
-                      key={contagem.id}
-                      className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => navigate(`/contagem/${contagem.id}`)}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-2">
-                          <h4 className="font-medium">Contagem {contagem.tipo_contagem}</h4>
-                          {getStatusBadge(contagem.status)}
-                        </div>
-                        <div className="flex items-center space-x-2 text-sm text-gray-500">
-                          <Users className="h-4 w-4" />
-                          <span>{contagem.usuario_responsavel}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Progresso:</span>
-                          <span>{contagem.progresso}%</span>
-                        </div>
-                        <Progress value={contagem.progresso} />
-                        <div className="flex justify-between text-sm text-gray-500">
-                          <span>Itens contados: {contagem.total_itens_contados}</span>
-                          <span>Tempo: {contagem.tempo_decorrido}min</span>
-                        </div>
-                      </div>
+                <div className="space-y-2">
+                  {contagens.slice(0, 3).map((contagem) => (
+                    <div key={contagem.id} className="flex items-center justify-between text-sm">
+                      <span>{contagem.tipo_contagem}</span>
+                      <Badge className="bg-blue-500 text-white text-xs">
+                        {contagem.status}
+                      </Badge>
                     </div>
                   ))}
                 </div>
@@ -322,11 +340,19 @@ const DashboardContagemPage = () => {
             </CardContent>
           </Card>
 
-          {/* Alertas Recentes */}
+          {/* Alertas Ativos */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Alertas Recentes</span>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center justify-between text-lg">
+                <div className="flex items-center space-x-2">
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                  <span>Alertas</span>
+                  {alertas.length > 0 && (
+                    <Badge className="bg-red-500 text-white text-xs">
+                      {alertas.length}
+                    </Badge>
+                  )}
+                </div>
                 <Button
                   onClick={() => navigate('/alertas')}
                   size="sm"
@@ -336,29 +362,51 @@ const DashboardContagemPage = () => {
                 </Button>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              {alertasRecentes.length === 0 ? (
-                <div className="text-center py-8">
-                  <CheckCircle className="h-12 w-12 text-green-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Nenhum alerta recente</p>
+            <CardContent className="pt-0">
+              {alertas.length === 0 ? (
+                <div className="flex items-center space-x-2 text-sm text-green-600">
+                  <CheckCircle className="h-4 w-4" />
+                  <span>Nenhum alerta ativo</span>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {alertasRecentes.map((alerta) => (
-                    <div
-                      key={alerta.id}
-                      className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => navigate(`/alertas/${alerta.id}`)}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-medium text-sm">{alerta.titulo}</h4>
-                        {getPrioridadeBadge(alerta.prioridade)}
-                      </div>
-                      <p className="text-xs text-gray-500">{formatDateTime(alerta.created_at)}</p>
+                <div className="space-y-2">
+                  {alertas.slice(0, 3).map((alerta) => (
+                    <div key={alerta.id} className="flex items-center justify-between text-sm">
+                      <span className="truncate">{alerta.titulo}</span>
+                      <Badge className="bg-red-500 text-white text-xs">
+                        {alerta.prioridade}
+                      </Badge>
                     </div>
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Checklist de Saída */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center space-x-2 text-lg">
+                <X className="h-5 w-5 text-gray-400" />
+                <span>Checklist de Saída</span>
+                <Badge variant="outline" className="text-xs">Pendente</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-2 text-sm text-gray-500">
+                <div className="flex items-center space-x-2">
+                  <div className="h-4 w-4 border-2 border-gray-300 rounded"></div>
+                  <span>Finalizar contagens</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="h-4 w-4 border-2 border-gray-300 rounded"></div>
+                  <span>Resolver alertas</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="h-4 w-4 border-2 border-gray-300 rounded"></div>
+                  <span>Gerar relatórios</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
