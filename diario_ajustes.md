@@ -115,3 +115,37 @@ Outras páginas provavelmente têm o mesmo problema e precisarão da mesma corre
 ### Resultado:
 - Todas as funcionalidades do MVP3 agora estão acessíveis através da interface do usuário
 - Cards visíveis no dashboard principal para navegação intuitiva
+
+## [2025-09-26] - Ajustes Visuais e Conexão com APIs Reais
+
+### Ajustes Visuais no Dashboard:
+- **Cabeçalho corrigido**: Logo SCC agora segue o padrão com ícone em círculo azul e descrição "Sistema Contagem Cadoz"
+- **Layout de cards**: Alterado para duas colunas (grid-cols-2) conforme solicitado
+- **Ordem dos cards**: "Gestão de Turnos" movido para primeira posição
+
+### Conexão com APIs Reais:
+- **Serviços adicionados**: Criados serviços para turnos, contagens, alertas e análise no arquivo `api.js`
+- **TurnosPage conectada**: Substituídos dados mockados por chamadas reais às APIs
+- **AlertasPage conectada**: Implementada integração completa com backend
+
+### Regras de Negócio Implementadas:
+- **Validação de turno único**: Não permite abrir/reabrir turno se já houver um aberto
+- **Permissões de admin**: Apenas administradores podem reabrir turnos e resolver/ignorar alertas
+- **Feedback visual**: Alertas e mensagens de erro/sucesso para todas as operações
+
+### Funcionalidades Implementadas:
+- **Gestão de turnos**: Criar, fechar, reabrir (admin), listar com dados reais
+- **Gestão de alertas**: Listar, marcar como lido, resolver (admin), ignorar (admin)
+- **Tratamento de erros**: Mensagens apropriadas para falhas de conexão
+- **Estados de loading**: Indicadores visuais durante carregamento
+
+### Arquivos Modificados:
+- `src/services/api.js`: Adicionados serviços do MVP3
+- `src/pages/DashboardPage.jsx`: Ajustes visuais e reorganização
+- `src/pages/TurnosPage.jsx`: Conexão completa com APIs
+- `src/pages/AlertasPage.jsx`: Conexão completa com APIs
+
+### Próximos Passos:
+- Conectar ContagemPage e DashboardContagemPage às APIs
+- Implementar AnaliseVariacaoPage com dados reais
+- Adicionar checklists de entrada/saída de turno (futuro)

@@ -439,3 +439,131 @@ export const fatorConversaoService = {
   }
 };
 
+
+
+// Serviços de Turnos (MVP3)
+export const turnosService = {
+  // Listar todos os turnos
+  async getAll() {
+    return await api.get('/api/turnos');
+  },
+  
+  // Obter turno por ID
+  async getById(id) {
+    return await api.get(`/api/turnos/${id}`);
+  },
+  
+  // Obter turno atual (aberto)
+  async getCurrent() {
+    return await api.get('/api/turnos/current');
+  },
+  
+  // Criar novo turno
+  async create(data) {
+    return await api.post('/api/turnos', data);
+  },
+  
+  // Fechar turno
+  async close(id, data) {
+    return await api.put(`/api/turnos/${id}`, data);
+  },
+  
+  // Reabrir turno (apenas admin)
+  async reopen(id) {
+    return await api.put(`/api/turnos/${id}/reopen`);
+  },
+  
+  // Obter estatísticas
+  async getStats() {
+    return await api.get('/api/turnos/stats');
+  },
+};
+
+// Serviços de Contagens (MVP3)
+export const contagensService = {
+  // Criar nova contagem
+  async create(data) {
+    return await api.post('/api/contagens', data);
+  },
+  
+  // Obter contagens por turno
+  async getByTurno(turnoId) {
+    return await api.get(`/api/contagens/turno/${turnoId}`);
+  },
+  
+  // Obter itens de uma contagem
+  async getItens(contagemId) {
+    return await api.get(`/api/contagens/${contagemId}/itens`);
+  },
+  
+  // Adicionar item à contagem
+  async addItem(contagemId, data) {
+    return await api.post(`/api/contagens/${contagemId}/itens`, data);
+  },
+  
+  // Atualizar item da contagem
+  async updateItem(contagemId, itemId, data) {
+    return await api.put(`/api/contagens/${contagemId}/itens/${itemId}`, data);
+  },
+  
+  // Remover item da contagem
+  async removeItem(contagemId, itemId) {
+    return await api.delete(`/api/contagens/${contagemId}/itens/${itemId}`);
+  },
+  
+  // Pré-fechar contagem
+  async preClose(contagemId, data) {
+    return await api.put(`/api/contagens/${contagemId}/pre-close`, data);
+  },
+  
+  // Fechar contagem (apenas admin)
+  async close(contagemId) {
+    return await api.put(`/api/contagens/${contagemId}/close`);
+  },
+  
+  // Reabrir contagem (apenas admin)
+  async reopen(contagemId) {
+    return await api.put(`/api/contagens/${contagemId}/reopen`);
+  },
+};
+
+// Serviços de Alertas (MVP3)
+export const alertasService = {
+  // Listar todos os alertas
+  async getAll() {
+    return await api.get('/api/alertas');
+  },
+  
+  // Obter alerta por ID
+  async getById(id) {
+    return await api.get(`/api/alertas/${id}`);
+  },
+  
+  // Marcar como lido
+  async markAsRead(id) {
+    return await api.put(`/api/alertas/${id}/read`);
+  },
+  
+  // Resolver alerta
+  async resolve(id, data) {
+    return await api.put(`/api/alertas/${id}/resolve`, data);
+  },
+  
+  // Ignorar alerta
+  async ignore(id) {
+    return await api.put(`/api/alertas/${id}/ignore`);
+  },
+};
+
+// Serviços de Análise (MVP3)
+export const analiseService = {
+  // Gerar análise de variação
+  async generate(data) {
+    return await api.post('/api/analise/generate', data);
+  },
+  
+  // Obter relatório de variação por turno
+  async getReport(turnoId) {
+    return await api.get(`/api/analise/report/turno/${turnoId}`);
+  },
+};

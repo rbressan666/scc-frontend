@@ -17,6 +17,24 @@ const DashboardPage = () => {
 
   const menuItems = [
     {
+      id: 'turnos',
+      title: 'Gestão de Turnos',
+      description: 'Gerenciar turnos de trabalho e contagens',
+      icon: Clock,
+      path: '/turnos',
+      adminOnly: false,
+      color: 'bg-blue-600'
+    },
+    {
+      id: 'alertas',
+      title: 'Alertas do Sistema',
+      description: 'Visualizar e gerenciar alertas de contagem',
+      icon: AlertTriangle,
+      path: '/alertas',
+      adminOnly: false,
+      color: 'bg-red-600'
+    },
+    {
       id: 'users',
       title: 'Gerenciar Usuários',
       description: 'Criar, editar e gerenciar usuários do sistema',
@@ -42,24 +60,6 @@ const DashboardPage = () => {
       path: '/configuracoes',
       adminOnly: true,
       color: 'bg-gray-500'
-    },
-    {
-      id: 'turnos',
-      title: 'Gestão de Turnos',
-      description: 'Gerenciar turnos de trabalho e contagens',
-      icon: Clock,
-      path: '/turnos',
-      adminOnly: false,
-      color: 'bg-blue-600'
-    },
-    {
-      id: 'alertas',
-      title: 'Alertas do Sistema',
-      description: 'Visualizar e gerenciar alertas de contagem',
-      icon: AlertTriangle,
-      path: '/alertas',
-      adminOnly: false,
-      color: 'bg-red-600'
     },
     {
       id: 'profile',
@@ -104,8 +104,14 @@ const DashboardPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <div className="flex items-center">
-              <span className="text-white font-bold text-sm">SCC</span>
+            <div className="flex items-center space-x-3">
+              <div className="bg-blue-600 text-white p-2 rounded-lg">
+                <Package className="h-6 w-6" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">SCC</h1>
+                <p className="text-xs text-gray-500">Sistema Contagem Cadoz</p>
+              </div>
             </div>
 
             {/* User Info e Actions */}
@@ -158,7 +164,7 @@ const DashboardPage = () => {
           </div>
 
           {/* Menu Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {availableItems.map((item) => {
               const IconComponent = item.icon;
               const isClickable = item.path && !item.disabled;
