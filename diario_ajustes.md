@@ -239,3 +239,26 @@ Outras páginas provavelmente têm o mesmo problema e precisarão da mesma corre
 - **Persistência**: Checklists salvos localmente para manter estado
 - **Validação**: Verificação de completude dos checklists
 - **Feedback visual**: Status e progresso claramente indicados
+
+## [2025-09-29] - Correção do Erro de Build - Componente Checkbox
+
+### Problema:
+- Build falhou no deploy devido à dependência `@radix-ui/react-checkbox` não instalada
+- Erro: "Rollup failed to resolve import @radix-ui/react-checkbox"
+
+### Causa Raiz:
+- O componente Checkbox existente dependia do Radix UI que não estava nas dependências
+- Os checklists implementados usavam este componente
+
+### Solução Aplicada:
+- **Componente Checkbox simplificado**: Substituído por implementação nativa com `<input type="checkbox">`
+- **Mantida compatibilidade**: Mesma interface (props `id`, `checked`, `onCheckedChange`)
+- **Estilização**: Classes Tailwind para manter aparência consistente
+
+### Arquivos Modificados:
+- `src/components/ui/checkbox.jsx`: Substituído por implementação simples sem dependências externas
+
+### Resultado Esperado:
+- Build deve funcionar corretamente sem dependências externas
+- Checklists funcionais com checkboxes nativos
+- Aparência mantida com Tailwind CSS
