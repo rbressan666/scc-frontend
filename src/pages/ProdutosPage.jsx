@@ -1,318 +1,636 @@
-// pages/ProdutosPage.jsx
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Badge } from '../components/ui/badge';
+import { Textarea } from '../components/ui/textarea';
 import {
   ArrowLeft,
   Plus,
   Edit,
   Trash2,
   Search,
-  Filter,
-  Camera,
-  Image as ImageIcon,
+  Package,
   Eye,
-  Zap
+  Save,
+  X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { variacaoService, setorService, categoriaService } from '../services/api';
-import { useToast } from '@/hooks/use-toast';
 
 const ProdutosPage = () => {
   const navigate = useNavigate();
+  const [produtos, setProdutos] = useState([]);
   const [variacoes, setVariacoes] = useState([]);
   const [setores, setSetores] = useState([]);
   const [categorias, setCategorias] = useState([]);
+  const [unidadesMedida, setUnidadesMedida] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({
+  const [showForm, setShowForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSetor, setSelectedSetor] = useState('');
+  const [selectedCategoria, setSelectedCategoria] = useState('');
+
+  // Form states
+  const [formData, setFormData] = useState({
     nome: '',
-    setor: 'todos',
-    categoria: 'todas',
-    estoque_baixo: false
+    id_categoria: '',
+    id_setor: '',
+    imagem_principal_url: '',
+    variacoes: []
   });
-  const { toast } = useToast();
+
+  const [novaVariacao, setNovaVariacao] = useState({
+    nome: '',
+    estoque_atual: 0,
+    estoque_minimo: 0,
+    preco_custo: 0,
+    fator_prioridade: 3,
+    id_unidade_controle: ''
+  });
 
   useEffect(() => {
     loadData();
-  }, [filters]);
+  }, []);
 
   const loadData = async () => {
     try {
-      const [setoresRes, categoriasRes] = await Promise.all([
-        setorService.getAll(),
-        categoriaService.getAll()
-      ]);
+      setLoading(true);
+      
+      // Simular dados para demonstração - substituir por APIs reais
+      const mockSetores = [
+        { id: '1', nome: 'Alimentação', ativo: true },
+        { id: '2', nome: 'Limpeza', ativo: true },
+        { id: '3', nome: 'Higiene', ativo: true }
+      ];
 
-      setSetores(setoresRes.data || []);
-      setCategorias(categoriasRes.data || []);
+      const mockCategorias = [
+        { id: '1', nome: 'Bebidas', id_categoria_pai: null, ativo: true },
+        { id: '2', nome: 'Laticínios', id_categoria_pai: null, ativo: true },
+        { id: '3', nome: 'Produtos de Limpeza', id_categoria_pai: null, ativo: true }
+      ];
 
-      await loadVariacoes();
+      const mockUnidades = [
+        { id: '1', nome: 'Unidade', sigla: 'UN', ativo: true },
+        { id: '2', nome: 'Quilograma', sigla: 'KG', ativo: true },
+        { id: '3', nome: 'Litro', sigla: 'L', ativo: true },
+        { id: '4', nome: 'Metro', sigla: 'M', ativo: true }
+      ];
+
+      const mockProdutos = [
+        {
+          id: '1',
+          nome: 'Coca-Cola',
+          id_categoria: '1',
+          id_setor: '1',
+          ativo: true,
+          imagem_principal_url: '',
+          categoria_nome: 'Bebidas',
+          setor_nome: 'Alimentação'
+        }
+      ];
+
+      const mockVariacoes = [
+        {
+          id: '1',
+          id_produto: '1',
+          nome: '350ml',
+          estoque_atual: 100,
+          estoque_minimo: 20,
+          preco_custo: 2.50,
+          fator_prioridade: 3,
+          id_unidade_controle: '1',
+          ativo: true,
+          produto_nome: 'Coca-Cola',
+          unidade_nome: 'Unidade'
+        }
+      ];
+
+      setSetores(mockSetores);
+      setCategorias(mockCategorias);
+      setUnidadesMedida(mockUnidades);
+      setProdutos(mockProdutos);
+      setVariacoes(mockVariacoes);
+
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao carregar dados",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const loadVariacoes = async () => {
-    try {
-      setLoading(true);
-
-      // Converter filtros para o formato esperado pela API
-      const apiFilters = {
-        nome: filters.nome || undefined,
-        setor: filters.setor === 'todos' ? undefined : filters.setor,
-        categoria: filters.categoria === 'todas' ? undefined : filters.categoria,
-        estoque_baixo: filters.estoque_baixo
-      };
-
-      const response = await variacaoService.getAll(apiFilters);
-      setVariacoes(response.data || []);
-    } catch (error) {
-      console.error('Erro ao carregar variações de produtos:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao carregar variações de produtos",
-        variant: "destructive",
-      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.nome || !formData.id_categoria || !formData.id_setor) {
+      alert('Preencha todos os campos obrigatórios');
+      return;
+    }
+
+    if (formData.variacoes.length === 0) {
+      alert('Adicione pelo menos uma variação do produto');
+      return;
+    }
+
+    try {
+      // Aqui seria a chamada para a API real
+      console.log('Dados do produto:', formData);
+      
+      // Simular sucesso
+      alert('Produto salvo com sucesso!');
+      setShowForm(false);
+      setEditingProduct(null);
+      resetForm();
+      loadData();
+      
+    } catch (error) {
+      console.error('Erro ao salvar produto:', error);
+      alert('Erro ao salvar produto');
+    }
   };
 
-  const clearFilters = () => {
-    setFilters({
+  const handleAddVariacao = () => {
+    if (!novaVariacao.nome || !novaVariacao.id_unidade_controle) {
+      alert('Preencha o nome e a unidade de medida da variação');
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      variacoes: [...prev.variacoes, { ...novaVariacao, id: Date.now().toString() }]
+    }));
+
+    setNovaVariacao({
       nome: '',
-      setor: 'todos',
-      categoria: 'todas',
-      estoque_baixo: false
+      estoque_atual: 0,
+      estoque_minimo: 0,
+      preco_custo: 0,
+      fator_prioridade: 3,
+      id_unidade_controle: ''
     });
   };
 
-  const formatCurrency = (value) => {
-    if (!value && value !== 0) return 'R$ 0,00';
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
+  const handleRemoveVariacao = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      variacoes: prev.variacoes.filter((_, i) => i !== index)
+    }));
   };
 
-  const getEstoqueStatus = (atual, minimo) => {
-    if (atual <= minimo) {
-      return { variant: 'destructive', text: 'Baixo' };
-    } else if (atual <= minimo * 1.5) {
-      return { variant: 'secondary', text: 'Atenção' };
-    }
-    return { variant: 'default', text: 'Normal' };
+  const resetForm = () => {
+    setFormData({
+      nome: '',
+      id_categoria: '',
+      id_setor: '',
+      imagem_principal_url: '',
+      variacoes: []
+    });
+    setNovaVariacao({
+      nome: '',
+      estoque_atual: 0,
+      estoque_minimo: 0,
+      preco_custo: 0,
+      fator_prioridade: 3,
+      id_unidade_controle: ''
+    });
   };
 
-  const goToCameraRegistration = () => {
-    navigate('/produtos/cadastro-camera');
+  const filteredProdutos = produtos.filter(produto => {
+    const matchesSearch = produto.nome.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSetor = !selectedSetor || produto.id_setor === selectedSetor;
+    const matchesCategoria = !selectedCategoria || produto.id_categoria === selectedCategoria;
+    
+    return matchesSearch && matchesSetor && matchesCategoria;
+  });
+
+  const getVariacoesPorProduto = (produtoId) => {
+    return variacoes.filter(v => v.id_produto === produtoId);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando produtos...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-16">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/dashboard')}
-              className="mr-4"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar
-            </Button>
-            
-            <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center mr-3">
-              <span className="text-white font-bold text-sm">SCC</span>
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/dashboard')}
+                className="flex items-center space-x-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Voltar</span>
+              </Button>
+              <div className="flex items-center space-x-3">
+                <div className="bg-blue-600 text-white p-2 rounded-lg">
+                  <Package className="h-6 w-6" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Gestão de Produtos</h1>
+                  <p className="text-sm text-gray-500">Gerenciar produtos e variações</p>
+                </div>
+              </div>
             </div>
-            
-            <h1 className="text-xl font-semibold text-gray-900">
-              Gestão de Produtos
-            </h1>
+            <div className="flex items-center space-x-2">
+              <Button
+                onClick={() => setShowForm(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Produto
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
+        {!showForm ? (
+          <>
+            {/* Filtros */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Filtros</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Buscar produto
+                    </label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <Input
+                        placeholder="Nome do produto..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Setor
+                    </label>
+                    <select
+                      value={selectedSetor}
+                      onChange={(e) => setSelectedSetor(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="">Todos os setores</option>
+                      {setores.map((setor) => (
+                        <option key={setor.id} value={setor.id}>
+                          {setor.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Categoria
+                    </label>
+                    <select
+                      value={selectedCategoria}
+                      onChange={(e) => setSelectedCategoria(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="">Todas as categorias</option>
+                      {categorias.map((categoria) => (
+                        <option key={categoria.id} value={categoria.id}>
+                          {categoria.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Lista de Produtos */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Produtos Cadastrados ({filteredProdutos.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {filteredProdutos.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">Nenhum produto encontrado</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredProdutos.map((produto) => {
+                      const produtoVariacoes = getVariacoesPorProduto(produto.id);
+                      
+                      return (
+                        <div key={produto.id} className="border rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <h3 className="font-medium text-lg">{produto.nome}</h3>
+                              <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                <span><strong>Setor:</strong> {produto.setor_nome}</span>
+                                <span>•</span>
+                                <span><strong>Categoria:</strong> {produto.categoria_nome}</span>
+                                <span>•</span>
+                                <span><strong>Variações:</strong> {produtoVariacoes.length}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Button size="sm" variant="outline">
+                                <Eye className="h-4 w-4 mr-1" />
+                                Ver
+                              </Button>
+                              <Button size="sm" variant="outline">
+                                <Edit className="h-4 w-4 mr-1" />
+                                Editar
+                              </Button>
+                            </div>
+                          </div>
+                          
+                          {/* Variações */}
+                          {produtoVariacoes.length > 0 && (
+                            <div className="border-t pt-3">
+                              <h4 className="font-medium text-sm text-gray-700 mb-2">Variações:</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                {produtoVariacoes.map((variacao) => (
+                                  <div key={variacao.id} className="bg-gray-50 p-2 rounded text-sm">
+                                    <div className="font-medium">{variacao.nome}</div>
+                                    <div className="text-gray-600">
+                                      Estoque: {variacao.estoque_atual} {variacao.unidade_nome}
+                                    </div>
+                                    <div className="text-gray-600">
+                                      Preço: R$ {variacao.preco_custo.toFixed(2)}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          /* Formulário de Cadastro */
           <Card>
             <CardHeader>
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle>Variações de Produtos</CardTitle>
-                  <CardDescription>
-                    Gerencie produtos e variações do estoque
-                  </CardDescription>
-                </div>
-                <div className="flex space-x-2">
-                  <Button
-                    onClick={goToCameraRegistration}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Camera className="h-4 w-4 mr-2" />
-                    Cadastrar por Câmera
-                  </Button>
-                  <Button variant="outline">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Novo Produto
-                  </Button>
-                </div>
+              <div className="flex items-center justify-between">
+                <CardTitle>
+                  {editingProduct ? 'Editar Produto' : 'Novo Produto'}
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingProduct(null);
+                    resetForm();
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
             </CardHeader>
-            
             <CardContent>
-              {/* Filtros */}
-              <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <Input
-                    placeholder="Buscar por nome..."
-                    value={filters.nome}
-                    onChange={(e) => handleFilterChange('nome', e.target.value)}
-                    className="w-full"
-                  />
-                </div>
-                
-                <div>
-                  <Select
-                    value={filters.setor}
-                    onValueChange={(value) => handleFilterChange('setor', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todos os setores" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos os setores</SelectItem>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Dados Básicos do Produto */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nome do Produto *
+                    </label>
+                    <Input
+                      value={formData.nome}
+                      onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
+                      placeholder="Ex: Coca-Cola"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      URL da Imagem
+                    </label>
+                    <Input
+                      value={formData.imagem_principal_url}
+                      onChange={(e) => setFormData(prev => ({ ...prev, imagem_principal_url: e.target.value }))}
+                      placeholder="https://..."
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Setor *
+                    </label>
+                    <select
+                      value={formData.id_setor}
+                      onChange={(e) => setFormData(prev => ({ ...prev, id_setor: e.target.value }))}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                      required
+                    >
+                      <option value="">Selecione um setor</option>
                       {setores.map((setor) => (
-                        <SelectItem key={setor.id} value={setor.nome}>
+                        <option key={setor.id} value={setor.id}>
                           {setor.nome}
-                        </SelectItem>
+                        </option>
                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <Select
-                    value={filters.categoria}
-                    onValueChange={(value) => handleFilterChange('categoria', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todas as categorias" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todas">Todas as categorias</SelectItem>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Categoria *
+                    </label>
+                    <select
+                      value={formData.id_categoria}
+                      onChange={(e) => setFormData(prev => ({ ...prev, id_categoria: e.target.value }))}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                      required
+                    >
+                      <option value="">Selecione uma categoria</option>
                       {categorias.map((categoria) => (
-                        <SelectItem key={categoria.id} value={categoria.nome}>
+                        <option key={categoria.id} value={categoria.id}>
                           {categoria.nome}
-                        </SelectItem>
+                        </option>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </select>
+                  </div>
                 </div>
-                
-                <div className="flex space-x-2">
+
+                {/* Variações */}
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Variações do Produto</h3>
+                  
+                  {/* Adicionar Nova Variação */}
+                  <div className="border rounded-lg p-4 mb-4 bg-gray-50">
+                    <h4 className="font-medium text-gray-700 mb-3">Adicionar Variação</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Nome *
+                        </label>
+                        <Input
+                          value={novaVariacao.nome}
+                          onChange={(e) => setNovaVariacao(prev => ({ ...prev, nome: e.target.value }))}
+                          placeholder="Ex: 350ml"
+                          size="sm"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Unidade *
+                        </label>
+                        <select
+                          value={novaVariacao.id_unidade_controle}
+                          onChange={(e) => setNovaVariacao(prev => ({ ...prev, id_unidade_controle: e.target.value }))}
+                          className="w-full p-1.5 text-sm border border-gray-300 rounded-md"
+                        >
+                          <option value="">Selecione</option>
+                          {unidadesMedida.map((unidade) => (
+                            <option key={unidade.id} value={unidade.id}>
+                              {unidade.sigla}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Estoque Atual
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.001"
+                          value={novaVariacao.estoque_atual}
+                          onChange={(e) => setNovaVariacao(prev => ({ ...prev, estoque_atual: parseFloat(e.target.value) || 0 }))}
+                          size="sm"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Estoque Mínimo
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.001"
+                          value={novaVariacao.estoque_minimo}
+                          onChange={(e) => setNovaVariacao(prev => ({ ...prev, estoque_minimo: parseFloat(e.target.value) || 0 }))}
+                          size="sm"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Preço Custo
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={novaVariacao.preco_custo}
+                          onChange={(e) => setNovaVariacao(prev => ({ ...prev, preco_custo: parseFloat(e.target.value) || 0 }))}
+                          size="sm"
+                        />
+                      </div>
+                      
+                      <div className="flex items-end">
+                        <Button
+                          type="button"
+                          onClick={handleAddVariacao}
+                          size="sm"
+                          className="w-full"
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Adicionar
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lista de Variações Adicionadas */}
+                  {formData.variacoes.length > 0 && (
+                    <div>
+                      <h4 className="font-medium text-gray-700 mb-3">Variações Adicionadas ({formData.variacoes.length})</h4>
+                      <div className="space-y-2">
+                        {formData.variacoes.map((variacao, index) => {
+                          const unidade = unidadesMedida.find(u => u.id === variacao.id_unidade_controle);
+                          
+                          return (
+                            <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                              <div className="flex items-center space-x-4 text-sm">
+                                <span className="font-medium">{variacao.nome}</span>
+                                <span>Unidade: {unidade?.sigla}</span>
+                                <span>Estoque: {variacao.estoque_atual}</span>
+                                <span>Mínimo: {variacao.estoque_minimo}</span>
+                                <span>Preço: R$ {variacao.preco_custo.toFixed(2)}</span>
+                              </div>
+                              <Button
+                                type="button"
+                                onClick={() => handleRemoveVariacao(index)}
+                                size="sm"
+                                variant="outline"
+                                className="text-red-600 border-red-600 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Botões */}
+                <div className="flex items-center justify-end space-x-4 pt-6 border-t">
                   <Button
+                    type="button"
                     variant="outline"
-                    onClick={clearFilters}
-                    className="flex-1"
+                    onClick={() => {
+                      setShowForm(false);
+                      setEditingProduct(null);
+                      resetForm();
+                    }}
                   >
-                    <Filter className="h-4 w-4 mr-2" />
-                    Limpar
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    {editingProduct ? 'Atualizar' : 'Salvar'} Produto
                   </Button>
                 </div>
-              </div>
-
-              {/* Tabela */}
-              <div className="border rounded-lg">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Produto</TableHead>
-                      <TableHead>Variação</TableHead>
-                      <TableHead>Setor</TableHead>
-                      <TableHead>Categoria</TableHead>
-                      <TableHead>Estoque Atual</TableHead>
-                      <TableHead>Estoque Mínimo</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Preço de Custo</TableHead>
-                      <TableHead>Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading ? (
-                      <TableRow>
-                        <TableCell colSpan={9} className="text-center py-8">
-                          Carregando...
-                        </TableCell>
-                      </TableRow>
-                    ) : variacoes.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={9} className="text-center py-8">
-                          Nenhuma variação encontrada
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      variacoes.map((variacao) => {
-                        const status = getEstoqueStatus(variacao.estoque_atual, variacao.estoque_minimo);
-                        return (
-                          <TableRow key={variacao.id}>
-                            <TableCell className="font-medium">
-                              {variacao.produto?.nome || 'N/A'}
-                            </TableCell>
-                            <TableCell>{variacao.nome}</TableCell>
-                            <TableCell>{variacao.produto?.setor?.nome || 'N/A'}</TableCell>
-                            <TableCell>{variacao.produto?.categoria?.nome || 'N/A'}</TableCell>
-                            <TableCell>{variacao.estoque_atual || 0}</TableCell>
-                            <TableCell>{variacao.estoque_minimo || 0}</TableCell>
-                            <TableCell>
-                              <Badge variant={status.variant}>
-                                {status.text}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>{formatCurrency(variacao.preco_custo)}</TableCell>
-                            <TableCell>
-                              <div className="flex space-x-2">
-                                <Button variant="ghost" size="sm">
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm">
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+              </form>
             </CardContent>
           </Card>
-        </div>
+        )}
       </main>
     </div>
   );
 };
 
 export default ProdutosPage;
-

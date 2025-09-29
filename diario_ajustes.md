@@ -262,3 +262,77 @@ Outras páginas provavelmente têm o mesmo problema e precisarão da mesma corre
 - Build deve funcionar corretamente sem dependências externas
 - Checklists funcionais com checkboxes nativos
 - Aparência mantida com Tailwind CSS
+
+## [2025-09-29] - Reformulação Completa da Tela de Cadastro de Produtos
+
+### Análise do Schema do Banco:
+Baseado no schema fornecido, identifiquei a estrutura correta das tabelas:
+
+**Tabela `produtos`:**
+- `id` (UUID, PK)
+- `nome` (VARCHAR, UNIQUE, NOT NULL)
+- `id_categoria` (UUID, FK para categorias, NOT NULL)
+- `id_setor` (UUID, FK para setores, NOT NULL)
+- `ativo` (BOOLEAN, DEFAULT true)
+- `imagem_principal_url` (TEXT)
+
+**Tabela `variacoes_produto`:**
+- `id` (UUID, PK)
+- `id_produto` (UUID, FK para produtos, NOT NULL)
+- `nome` (VARCHAR, NOT NULL)
+- `estoque_atual` (NUMERIC, DEFAULT 0.000)
+- `estoque_minimo` (NUMERIC, DEFAULT 0.000)
+- `preco_custo` (NUMERIC, DEFAULT 0.00)
+- `fator_prioridade` (INTEGER, DEFAULT 3)
+- `id_unidade_controle` (UUID, FK para unidades_de_medida, NOT NULL)
+- `ativo` (BOOLEAN, DEFAULT true)
+
+### Reformulação Implementada:
+
+**1. Estrutura Correta do Formulário:**
+- Campos obrigatórios: nome, categoria, setor
+- Campo opcional: imagem_principal_url
+- Sistema de variações integrado
+
+**2. Sistema de Variações:**
+- Cada produto pode ter múltiplas variações
+- Campos por variação: nome, unidade de controle, estoque atual/mínimo, preço custo
+- Interface para adicionar/remover variações dinamicamente
+
+**3. Relacionamentos Implementados:**
+- Produtos → Categorias (FK)
+- Produtos → Setores (FK)
+- Variações → Produtos (FK)
+- Variações → Unidades de Medida (FK)
+
+**4. Interface Melhorada:**
+- Formulário em duas seções: dados básicos + variações
+- Grid responsivo para adicionar variações
+- Lista visual das variações adicionadas
+- Filtros por setor e categoria na listagem
+
+**5. Validações Implementadas:**
+- Campos obrigatórios validados
+- Pelo menos uma variação obrigatória
+- Validação de tipos numéricos
+
+### Funcionalidades Implementadas:
+- **Cadastro completo**: Produto + variações em uma única tela
+- **Listagem estruturada**: Produtos com suas variações visíveis
+- **Filtros funcionais**: Por nome, setor e categoria
+- **Interface intuitiva**: Formulário claro e organizado
+
+### Dados Mockados Temporários:
+- Setores: Alimentação, Limpeza, Higiene
+- Categorias: Bebidas, Laticínios, Produtos de Limpeza
+- Unidades: UN, KG, L, M
+- Produto exemplo: Coca-Cola com variação 350ml
+
+### Próximos Passos:
+- Conectar com APIs reais de setores, categorias e unidades
+- Implementar APIs de produtos e variações no backend
+- Adicionar upload de imagens
+- Implementar edição e exclusão de produtos
+
+### Arquivos Modificados:
+- `src/pages/ProdutosPage.jsx`: Reformulação completa baseada no schema real
