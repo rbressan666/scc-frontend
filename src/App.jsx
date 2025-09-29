@@ -16,6 +16,8 @@ import ContagemPage from './pages/ContagemPage';
 import AlertasPage from './pages/AlertasPage';
 import DashboardContagemPage from './pages/DashboardContagemPage';
 import AnaliseVariacaoPage from './pages/AnaliseVariacaoPage';
+import ChecklistEntradaPage from './pages/ChecklistEntradaPage';
+import ChecklistSaidaPage from './pages/ChecklistSaidaPage';
 import './App.css';
 
 // Componente 404 separado para usar useNavigate
@@ -172,6 +174,24 @@ function App() {
               element={
                 <ProtectedRoute>
                   <AnaliseVariacaoPage />
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route
+              path="/checklist-entrada/:turnoId"
+              element={
+                <ProtectedRoute>
+                  <ChecklistEntradaPage />
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route
+              path="/checklist-saida/:turnoId"
+              element={
+                <ProtectedRoute>
+                  <ChecklistSaidaPage />
                 </ProtectedRoute>
               }
             />

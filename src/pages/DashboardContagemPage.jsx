@@ -280,10 +280,19 @@ const DashboardContagemPage = () => {
           {/* Checklist de Entrada */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center space-x-2 text-lg">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                <span>Checklist de Entrada</span>
-                <Badge className="bg-green-500 text-white text-xs">Concluído</Badge>
+              <CardTitle className="flex items-center justify-between text-lg">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <span>Checklist de Entrada</span>
+                  <Badge className="bg-green-500 text-white text-xs">Concluído</Badge>
+                </div>
+                <Button
+                  onClick={() => navigate(`/checklist-entrada/${turnoId}`)}
+                  size="sm"
+                  variant="outline"
+                >
+                  Abrir
+                </Button>
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
@@ -386,10 +395,19 @@ const DashboardContagemPage = () => {
           {/* Checklist de Saída */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center space-x-2 text-lg">
-                <X className="h-5 w-5 text-gray-400" />
-                <span>Checklist de Saída</span>
-                <Badge variant="outline" className="text-xs">Pendente</Badge>
+              <CardTitle className="flex items-center justify-between text-lg">
+                <div className="flex items-center space-x-2">
+                  <X className="h-5 w-5 text-gray-400" />
+                  <span>Checklist de Saída</span>
+                  <Badge variant="outline" className="text-xs">Pendente</Badge>
+                </div>
+                <Button
+                  onClick={() => navigate(`/checklist-saida/${turnoId}`)}
+                  size="sm"
+                  variant="outline"
+                >
+                  Abrir
+                </Button>
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">

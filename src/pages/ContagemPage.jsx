@@ -5,96 +5,213 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
-import { ArrowLeft, Package, Scan, Plus, Check, Clock, User } from 'lucide-react';
+import { ArrowLeft, Package, Plus, Minus, Trash2, Save, CheckCircle, AlertTriangle } from 'lucide-react';
+import { contagensService, produtoService, variacaoService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const ContagemPage = () => {
   const navigate = useNavigate();
   const { turnoId } = useParams();
+  const { user, isAdmin } = useAuth();
   const [contagem, setContagem] = useState(null);
-  const [itensContados, setItensContados] = useState([]);
+  const [itens, setItens] = useState([]);
+  const [produtos, setProdutos] = useState([]);
+  const [variacoes, setVariacoes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showScanner, setShowScanner] = useState(false);
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedProduto, setSelectedProduto] = useState('');
+  const [selectedVariacao, setSelectedVariacao] = useState('');
+  const [quantidade, setQuantidade] = useState('');
   const [parecerOperador, setParecerOperador] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetchContagem();
+    if (turnoId) {
+      fetchContagemData();
+    }
   }, [turnoId]);
 
-  const fetchContagem = async () => {
+  const fetchContagemData = async () => {
     try {
-      // Simular dados para demonstração
-      const mockContagem = {
-        id: '1',
-        turno_id: turnoId,
-        tipo_contagem: 'inicial',
-        status: 'em_andamento',
-        usuario_responsavel: 'João Silva',
-        data_inicio: '2025-09-26T08:30:00Z',
-        total_itens_contados: 15
-      };
+      setError(null);
+      
+      // Buscar contagem existente ou criar nova
+      const contagensRes = await contagensService.getByTurno(turnoId);
+      let contagemAtual = null;
+      
+      if (contagensRes.data && contagensRes.data.length > 0) {
+        // Usar contagem existente
+        contagemAtual = contagensRes.data.find(c => c.status === 'em_andamento') || contagensRes.data[0];
+      } else {
+        // Criar nova contagem
+        const novaContagem = await contagensService.create({
+          turno_id: turnoId,
+          tipo_contagem: 'inicial'
+        });
+        contagemAtual = novaContagem.data;
+      }
 
-      const mockItens = [
-        {
-          id: '1',
-          variacao_id: '1',
-          produto_nome: 'Heineken 600ml',
-          quantidade_contada: 24,
-          unidade_medida: 'un',
-          quantidade_convertida: 24,
-          usuario_contador: 'João Silva',
-          data_contagem: '2025-09-26T09:00:00Z'
-        },
-        {
-          id: '2',
-          variacao_id: '2',
-          produto_nome: 'Coca-Cola Lata 350ml',
-          quantidade_contada: 48,
-          unidade_medida: 'un',
-          quantidade_convertida: 48,
-          usuario_contador: 'João Silva',
-          data_contagem: '2025-09-26T09:15:00Z'
-        }
-      ];
+      setContagem(contagemAtual);
 
-      setContagem(mockContagem);
-      setItensContados(mockItens);
-      setLoading(false);
+      // Buscar itens da contagem
+      if (contagemAtual) {
+        const itensRes = await contagensService.getItens(contagemAtual.id);
+        setItens(itensRes.data || []);
+      }
+
+      // Buscar produtos e variações
+      const [produtosRes, variacoesRes] = await Promise.allSettled([
+        produtoService.getAll(),
+        variacaoService.getAll()
+      ]);
+
+      if (produtosRes.status === 'fulfilled') {
+        setProdutos(produtosRes.value.data || []);
+      }
+
+      if (variacoesRes.status === 'fulfilled') {
+        setVariacoes(variacoesRes.value.data || []);
+      }
+
     } catch (error) {
-      console.error('Erro ao buscar contagem:', error);
+      console.error('Erro ao buscar dados da contagem:', error);
+      setError('Erro ao carregar dados da contagem.');
+    } finally {
       setLoading(false);
     }
   };
 
+  const handleAddItem = async () => {
+    if (!selectedVariacao || !quantidade) {
+      alert('Selecione uma variação e informe a quantidade.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const novoItem = {
+        variacao_id: selectedVariacao,
+        quantidade_contada: parseFloat(quantidade),
+        observacoes: ''
+      };
+
+      const response = await contagensService.addItem(contagem.id, novoItem);
+      
+      if (response.success) {
+        await fetchContagemData(); // Recarregar dados
+        setSelectedProduto('');
+        setSelectedVariacao('');
+        setQuantidade('');
+      }
+    } catch (error) {
+      console.error('Erro ao adicionar item:', error);
+      alert(error.message || 'Erro ao adicionar item.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdateItem = async (itemId, novaQuantidade) => {
+    try {
+      const response = await contagensService.updateItem(contagem.id, itemId, {
+        quantidade_contada: parseFloat(novaQuantidade)
+      });
+      
+      if (response.success) {
+        await fetchContagemData();
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar item:', error);
+      alert(error.message || 'Erro ao atualizar item.');
+    }
+  };
+
+  const handleRemoveItem = async (itemId) => {
+    if (!window.confirm('Tem certeza que deseja remover este item?')) {
+      return;
+    }
+
+    try {
+      const response = await contagensService.removeItem(contagem.id, itemId);
+      
+      if (response.success) {
+        await fetchContagemData();
+      }
+    } catch (error) {
+      console.error('Erro ao remover item:', error);
+      alert(error.message || 'Erro ao remover item.');
+    }
+  };
+
+  const handlePreClose = async () => {
+    if (!parecerOperador.trim()) {
+      alert('Por favor, informe o parecer do operador antes de pré-fechar a contagem.');
+      return;
+    }
+
+    try {
+      const response = await contagensService.preClose(contagem.id, {
+        parecer_operador: parecerOperador
+      });
+      
+      if (response.success) {
+        alert('Contagem pré-fechada com sucesso!');
+        await fetchContagemData();
+      }
+    } catch (error) {
+      console.error('Erro ao pré-fechar contagem:', error);
+      alert(error.message || 'Erro ao pré-fechar contagem.');
+    }
+  };
+
+  const handleClose = async () => {
+    if (!isAdmin()) {
+      alert('Apenas administradores podem fechar contagens.');
+      return;
+    }
+
+    if (!window.confirm('Tem certeza que deseja fechar esta contagem?')) {
+      return;
+    }
+
+    try {
+      const response = await contagensService.close(contagem.id);
+      
+      if (response.success) {
+        alert('Contagem fechada com sucesso!');
+        await fetchContagemData();
+      }
+    } catch (error) {
+      console.error('Erro ao fechar contagem:', error);
+      alert(error.message || 'Erro ao fechar contagem.');
+    }
+  };
+
   const getStatusBadge = (status) => {
-    const statusConfig = {
-      em_andamento: { variant: 'default', text: 'Em Andamento', color: 'bg-blue-500' },
-      pre_fechada: { variant: 'secondary', text: 'Pré-fechada', color: 'bg-yellow-500' },
-      fechada: { variant: 'secondary', text: 'Fechada', color: 'bg-green-500' },
-      reaberta: { variant: 'destructive', text: 'Reaberta', color: 'bg-orange-500' }
+    const configs = {
+      em_andamento: { color: 'bg-blue-500', text: 'Em Andamento' },
+      pre_fechada: { color: 'bg-yellow-500', text: 'Pré-fechada' },
+      fechada: { color: 'bg-green-500', text: 'Fechada' },
+      reaberta: { color: 'bg-orange-500', text: 'Reaberta' }
     };
     
-    const config = statusConfig[status] || statusConfig.em_andamento;
+    const config = configs[status] || configs.em_andamento;
     return (
-      <Badge variant={config.variant} className={`${config.color} text-white`}>
+      <Badge className={`${config.color} text-white`}>
         {config.text}
       </Badge>
     );
   };
 
-  const formatDateTime = (dateString) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleString('pt-BR');
-  };
+  const filteredVariacoes = variacoes.filter(v => 
+    !selectedProduto || v.produto_id === selectedProduto
+  );
 
-  const handlePreClose = async () => {
-    try {
-      // Aqui seria feita a chamada para a API
-      console.log('Pré-fechando contagem com parecer:', parecerOperador);
-      // Atualizar status local
-      setContagem(prev => ({ ...prev, status: 'pre_fechada' }));
-    } catch (error) {
-      console.error('Erro ao pré-fechar contagem:', error);
-    }
+  const getVariacaoNome = (variacaoId) => {
+    const variacao = variacoes.find(v => v.id === variacaoId);
+    const produto = produtos.find(p => p.id === variacao?.produto_id);
+    return variacao && produto ? `${produto.nome} - ${variacao.nome}` : 'Produto não encontrado';
   };
 
   if (loading) {
@@ -129,20 +246,20 @@ const ContagemPage = () => {
                   <Package className="h-6 w-6" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Contagem {contagem?.tipo_contagem}</h1>
-                  <p className="text-sm text-gray-500">Turno: {turnoId}</p>
+                  <h1 className="text-2xl font-bold text-gray-900">Contagem de Produtos</h1>
+                  <div className="flex items-center space-x-4 text-sm text-gray-500">
+                    {contagem && (
+                      <>
+                        <span>Tipo: {contagem.tipo_contagem}</span>
+                        <span>•</span>
+                        <span>Itens: {itens.length}</span>
+                        <span>•</span>
+                        {getStatusBadge(contagem.status)}
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              {getStatusBadge(contagem?.status)}
-              <Button
-                onClick={() => setShowScanner(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-2"
-              >
-                <Scan className="h-4 w-4" />
-                <span>Scanner</span>
-              </Button>
             </div>
           </div>
         </div>
@@ -150,122 +267,179 @@ const ContagemPage = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Informações da Contagem */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Clock className="h-5 w-5" />
-                  <span>Informações</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <span className="text-sm text-gray-500">Responsável:</span>
-                  <p className="font-medium">{contagem?.usuario_responsavel}</p>
-                </div>
-                <div>
-                  <span className="text-sm text-gray-500">Início:</span>
-                  <p className="font-medium">{formatDateTime(contagem?.data_inicio)}</p>
-                </div>
-                <div>
-                  <span className="text-sm text-gray-500">Itens Contados:</span>
-                  <p className="font-medium text-2xl text-green-600">{contagem?.total_itens_contados}</p>
-                </div>
-                
-                {contagem?.status === 'em_andamento' && (
-                  <div className="space-y-3 pt-4 border-t">
-                    <label className="text-sm font-medium text-gray-700">
-                      Parecer do Operador:
-                    </label>
-                    <Textarea
-                      value={parecerOperador}
-                      onChange={(e) => setParecerOperador(e.target.value)}
-                      placeholder="Adicione observações sobre a contagem..."
-                      rows={3}
-                    />
-                    <Button
-                      onClick={handlePreClose}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white"
-                      disabled={!parecerOperador.trim()}
-                    >
-                      <Check className="h-4 w-4 mr-2" />
-                      Concluir Contagem
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+        {/* Mensagem de erro */}
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <p className="text-red-700">{error}</p>
+            </div>
           </div>
+        )}
 
-          {/* Lista de Itens Contados */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Itens Contados</span>
-                  <Button
-                    onClick={() => navigate(`/contagem/${contagem?.id}/adicionar`)}
-                    size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Adicionar Item
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {itensContados.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum item contado</h3>
-                    <p className="text-gray-500 mb-4">Use o scanner ou adicione itens manualmente.</p>
-                    <div className="flex justify-center space-x-2">
-                      <Button
-                        onClick={() => setShowScanner(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        <Scan className="h-4 w-4 mr-2" />
-                        Usar Scanner
-                      </Button>
-                      <Button
-                        onClick={() => navigate(`/contagem/${contagem?.id}/adicionar`)}
-                        variant="outline"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Adicionar Manual
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {itensContados.map((item) => (
-                      <div
-                        key={item.id}
-                        className="border rounded-lg p-4 hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium text-gray-900">{item.produto_nome}</h4>
-                          <Badge variant="outline">
-                            {item.quantidade_contada} {item.unidade_medida}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between text-sm text-gray-500">
-                          <div className="flex items-center space-x-2">
-                            <User className="h-4 w-4" />
-                            <span>{item.usuario_contador}</span>
-                          </div>
-                          <span>{formatDateTime(item.data_contagem)}</span>
-                        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Adicionar Item */}
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <CardTitle>Adicionar Item</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Produto
+                </label>
+                <select
+                  value={selectedProduto}
+                  onChange={(e) => {
+                    setSelectedProduto(e.target.value);
+                    setSelectedVariacao('');
+                  }}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                >
+                  <option value="">Selecione um produto</option>
+                  {produtos.map((produto) => (
+                    <option key={produto.id} value={produto.id}>
+                      {produto.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Variação
+                </label>
+                <select
+                  value={selectedVariacao}
+                  onChange={(e) => setSelectedVariacao(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                  disabled={!selectedProduto}
+                >
+                  <option value="">Selecione uma variação</option>
+                  {filteredVariacoes.map((variacao) => (
+                    <option key={variacao.id} value={variacao.id}>
+                      {variacao.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Quantidade
+                </label>
+                <Input
+                  type="number"
+                  step="0.001"
+                  value={quantidade}
+                  onChange={(e) => setQuantidade(e.target.value)}
+                  placeholder="0.000"
+                />
+              </div>
+
+              <Button
+                onClick={handleAddItem}
+                disabled={saving || !selectedVariacao || !quantidade}
+                className="w-full bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {saving ? 'Adicionando...' : 'Adicionar Item'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Lista de Itens */}
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Itens Contados ({itens.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {itens.length === 0 ? (
+                <div className="text-center py-8">
+                  <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">Nenhum item contado ainda</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {itens.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
+                      <div className="flex-1">
+                        <h4 className="font-medium">{getVariacaoNome(item.variacao_id)}</h4>
+                        <p className="text-sm text-gray-500">
+                          Contado em: {new Date(item.created_at).toLocaleString('pt-BR')}
+                        </p>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Input
+                          type="number"
+                          step="0.001"
+                          value={item.quantidade_contada}
+                          onChange={(e) => handleUpdateItem(item.id, e.target.value)}
+                          className="w-24"
+                        />
+                        <Button
+                          onClick={() => handleRemoveItem(item.id)}
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 border-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
+
+        {/* Parecer do Operador e Ações */}
+        {contagem && contagem.status === 'em_andamento' && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Finalizar Contagem</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Parecer do Operador
+                </label>
+                <Textarea
+                  value={parecerOperador}
+                  onChange={(e) => setParecerOperador(e.target.value)}
+                  placeholder="Informe observações sobre a contagem..."
+                  rows={3}
+                />
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                <Button
+                  onClick={handlePreClose}
+                  disabled={!parecerOperador.trim()}
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Pré-fechar Contagem
+                </Button>
+                
+                {isAdmin() && (
+                  <Button
+                    onClick={handleClose}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Fechar Contagem
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </main>
     </div>
   );
