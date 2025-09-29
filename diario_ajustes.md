@@ -89,3 +89,29 @@ Outras páginas provavelmente têm o mesmo problema e precisarão da mesma corre
 - Integrar as novas páginas com as rotas principais da aplicação.
 - Realizar a conexão das páginas com os endpoints do backend para obter dados dinâmicos.
 - Testar o fluxo completo de contagem por turno no frontend.
+
+
+## [2025-09-26] - Integração das Rotas do MVP3
+
+### Funcionalidades Adicionadas:
+- **Integração de Rotas**: Adicionadas todas as rotas do MVP3 no arquivo `App.jsx` para tornar as páginas acessíveis via navegação.
+- **Cards no Dashboard**: Adicionados novos cards no `DashboardPage.jsx` para acessar as funcionalidades do MVP3.
+
+### Arquivos Modificados:
+- `src/App.jsx`: Adicionadas importações e rotas para todas as páginas do MVP3
+- `src/pages/DashboardPage.jsx`: Adicionados cards "Gestão de Turnos" e "Alertas do Sistema"
+
+### Rotas Adicionadas:
+- `/turnos` - Lista de turnos
+- `/turnos/:id` - Dashboard de contagem do turno
+- `/contagem/:turnoId` - Interface de contagem
+- `/alertas` - Dashboard de alertas
+- `/analise/:turnoId` - Análise de variação
+
+### Cards Adicionados no Dashboard:
+- **Gestão de Turnos**: Acesso à gestão de turnos (disponível para todos os usuários)
+- **Alertas do Sistema**: Acesso aos alertas de contagem (disponível para todos os usuários)
+
+### Resultado:
+- Todas as funcionalidades do MVP3 agora estão acessíveis através da interface do usuário
+- Cards visíveis no dashboard principal para navegação intuitiva

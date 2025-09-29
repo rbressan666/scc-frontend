@@ -11,6 +11,11 @@ import UserCreatePage from './pages/UserCreatePage';
 import ConfiguracoesPage from './pages/ConfiguracoesPage';
 import ProdutosPage from './pages/ProdutosPage';
 import CadastroPorCameraPage from './pages/CadastroPorCameraPage';
+import TurnosPage from './pages/TurnosPage';
+import ContagemPage from './pages/ContagemPage';
+import AlertasPage from './pages/AlertasPage';
+import DashboardContagemPage from './pages/DashboardContagemPage';
+import AnaliseVariacaoPage from './pages/AnaliseVariacaoPage';
 import './App.css';
 
 // Componente 404 separado para usar useNavigate
@@ -121,6 +126,52 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <CadastroPorCameraPage />
+                </ProtectedRoute>
+              }
+            />
+            
+            {/* Rotas do MVP3 - Sistema de Contagem por Turno */}
+            <Route
+              path="/turnos"
+              element={
+                <ProtectedRoute>
+                  <TurnosPage />
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route
+              path="/turnos/:id"
+              element={
+                <ProtectedRoute>
+                  <DashboardContagemPage />
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route
+              path="/contagem/:turnoId"
+              element={
+                <ProtectedRoute>
+                  <ContagemPage />
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route
+              path="/alertas"
+              element={
+                <ProtectedRoute>
+                  <AlertasPage />
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route
+              path="/analise/:turnoId"
+              element={
+                <ProtectedRoute>
+                  <AnaliseVariacaoPage />
                 </ProtectedRoute>
               }
             />

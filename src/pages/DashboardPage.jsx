@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Users, Smartphone, LogOut, Settings, BarChart3, Package, Cog, Database } from 'lucide-react';
+import { Users, Smartphone, LogOut, Settings, BarChart3, Package, Cog, Database, Clock, AlertTriangle, TrendingUp } from 'lucide-react';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
@@ -44,6 +44,24 @@ const DashboardPage = () => {
       color: 'bg-gray-500'
     },
     {
+      id: 'turnos',
+      title: 'Gestão de Turnos',
+      description: 'Gerenciar turnos de trabalho e contagens',
+      icon: Clock,
+      path: '/turnos',
+      adminOnly: false,
+      color: 'bg-blue-600'
+    },
+    {
+      id: 'alertas',
+      title: 'Alertas do Sistema',
+      description: 'Visualizar e gerenciar alertas de contagem',
+      icon: AlertTriangle,
+      path: '/alertas',
+      adminOnly: false,
+      color: 'bg-red-600'
+    },
+    {
       id: 'profile',
       title: 'Meu Perfil',
       description: 'Visualizar e editar informações do perfil',
@@ -76,7 +94,7 @@ const DashboardPage = () => {
 
   // Filtrar itens baseado no perfil do usuário
   const availableItems = menuItems.filter(item => 
-    item.adminOnly || isAdmin()
+    !item.adminOnly || isAdmin()
   );
 
   return (
