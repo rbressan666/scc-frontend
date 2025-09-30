@@ -45,7 +45,6 @@ const ProdutosPage = () => {
   });
 
   const [novaVariacao, setNovaVariacao] = useState({
-    nome: '',
     estoque_atual: 0,
     estoque_minimo: 0,
     preco_custo: 0,
@@ -214,25 +213,25 @@ const ProdutosPage = () => {
   };
 
   const handleAddVariacao = () => {
-    if (!novaVariacao.nome || !novaVariacao.id_unidade_controle) {
-      alert('Nome e unidade de medida são obrigatórios');
+    if (!novaVariacao.id_unidade_controle) {
+      alert('Unidade de medida é obrigatória');
       return;
     }
 
-    // Buscar nome da unidade selecionada para usar como nome da variação se não especificado
+    // Buscar nome da unidade selecionada para usar como nome da variação
     const unidadeSelecionada = unidadesMedida.find(u => u.id === novaVariacao.id_unidade_controle);
     
     setFormData(prev => ({
       ...prev,
       variacoes: [...prev.variacoes, {
         ...novaVariacao,
-        // Se o nome da variação estiver vazio, usar o nome da unidade
-        nome: novaVariacao.nome || unidadeSelecionada?.nome || 'Variação'
+        // Usar o nome da unidade de medida como nome da variação
+        nome: unidadeSelecionada?.nome || 'Variação'
       }]
     }));
 
+    // Resetar apenas os campos do formulário, mantendo a unidade selecionada
     setNovaVariacao({
-      nome: '',
       estoque_atual: 0,
       estoque_minimo: 0,
       preco_custo: 0,
@@ -269,7 +268,6 @@ const ProdutosPage = () => {
       variacoes: []
     });
     setNovaVariacao({
-      nome: '',
       estoque_atual: 0,
       estoque_minimo: 0,
       preco_custo: 0,
@@ -327,11 +325,21 @@ const ProdutosPage = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate('/dashboard')}
+                onClick={() => {
+                  if (showForm) {
+                    // Se estiver no formulário, voltar para lista de produtos
+                    setShowForm(false);
+                    setEditingProduct(null);
+                    resetForm();
+                  } else {
+                    // Se estiver na lista, voltar para dashboard
+                    navigate('/dashboard');
+                  }
+                }}
                 className="flex items-center space-x-2"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span>Voltar</span>
+                <span>{showForm ? 'Voltar para Lista' : 'Voltar'}</span>
               </Button>
               
               <div className="flex items-center space-x-3">
@@ -363,17 +371,19 @@ const ProdutosPage = () => {
                 </CardDescription>
               </div>
               
-              <Button
-                onClick={() => {
-                  resetForm();
-                  setEditingProduct(null);
-                  setShowForm(true);
-                }}
-                className="flex items-center space-x-2"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Novo Produto</span>
-              </Button>
+              {!showForm && (
+                <Button
+                  onClick={() => {
+                    resetForm();
+                    setEditingProduct(null);
+                    setShowForm(true);
+                  }}
+                  className="flex items-center space-x-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Novo Produto</span>
+                </Button>
+              )}
             </div>
           </CardHeader>
           
@@ -470,22 +480,7 @@ const ProdutosPage = () => {
                     {/* Adicionar Nova Variação */}
                     <div className="border rounded-lg p-4 mb-4 bg-gray-50">
                       <h4 className="font-medium text-gray-700 mb-3">Adicionar Variação</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Nome da Variação
-                          </label>
-                          <Input
-                            value={novaVariacao.nome}
-                            onChange={(e) => setNovaVariacao(prev => ({ ...prev, nome: e.target.value }))}
-                            placeholder="Ex: 350ml, Lata, etc."
-                            size="sm"
-                          />
-                          <p className="text-xs text-gray-500 mt-1">
-                            Deixe vazio para usar o nome da unidade
-                          </p>
-                        </div>
-                        
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
                         <div>
                           <label className="block text-xs font-medium text-gray-600 mb-1">
                             Unidade de Medida *
@@ -494,7 +489,6 @@ const ProdutosPage = () => {
                             value={novaVariacao.id_unidade_controle}
                             onChange={(e) => setNovaVariacao(prev => ({ ...prev, id_unidade_controle: e.target.value }))}
                             className="w-full p-1.5 text-sm border border-gray-300 rounded-md"
-                            required
                           >
                             <option value="">Selecione</option>
                             {unidadesMedida.map((unidade) => (
