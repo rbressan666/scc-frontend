@@ -336,3 +336,55 @@ Baseado no schema fornecido, identifiquei a estrutura correta das tabelas:
 
 ### Arquivos Modificados:
 - `src/pages/ProdutosPage.jsx`: Reformulação completa baseada no schema real
+
+## [2025-09-29] - Correções e Melhorias na Tela de Produtos e Dashboard
+
+### Problemas Corrigidos:
+
+**1. Produto não aparecia na lista após cadastro:**
+- **Causa**: Dados mockados não eram persistidos
+- **Solução**: Conectado com APIs reais de produtos e variações
+- **Resultado**: Produtos agora são salvos no banco e aparecem na listagem
+
+**2. Configurações não utilizadas:**
+- **Problema**: Tela de produtos usava dados mockados em vez das configurações existentes
+- **Solução**: Conectado com APIs reais de setores, categorias e unidades de medida
+- **APIs utilizadas**: `setorService.getAll()`, `categoriaService.getAll()`, `unidadeMedidaService.getAll()`
+
+**3. Cards visuais implementados:**
+- **Dashboard de Contagem**: Transformadas as estatísticas em cards com gradientes coloridos
+- **Design melhorado**: Cards com cores temáticas (verde, azul, vermelho, roxo)
+- **Informações mais claras**: Ícones maiores e textos mais legíveis
+
+### Funcionalidades Implementadas:
+
+**Tela de Produtos:**
+- **Carregamento real**: Dados vindos das APIs de configurações
+- **Salvamento funcional**: Produtos e variações salvos no banco via API
+- **Tratamento de erros**: Mensagens de erro específicas
+- **Validação completa**: Campos obrigatórios e estrutura de dados
+
+**Dashboard de Contagem:**
+- **Cards visuais**: Estatísticas em cards coloridos com gradientes
+- **Responsividade**: Layout adaptável para diferentes telas
+- **Ícones temáticos**: Cada métrica com ícone e cor específica
+- **Animações**: Barras de progresso com transições suaves
+
+### APIs Conectadas:
+- `produtoService.create()`: Criação de produtos
+- `variacaoService.create()`: Criação de variações
+- `setorService.getAll()`: Listagem de setores
+- `categoriaService.getAll()`: Listagem de categorias
+- `unidadeMedidaService.getAll()`: Listagem de unidades de medida
+- `produtoService.getAll()`: Listagem de produtos
+- `variacaoService.getAll()`: Listagem de variações
+
+### Melhorias Visuais:
+- **Cards com gradientes**: Verde (progresso), azul (operadores), vermelho (alertas), roxo (contagens)
+- **Ícones maiores**: 8x8 em vez de 6x6 para melhor visibilidade
+- **Textos hierárquicos**: Títulos, valores e descrições bem definidos
+- **Barras de progresso**: Animadas e com cores contrastantes
+
+### Arquivos Modificados:
+- `src/pages/ProdutosPage.jsx`: Conectado com APIs reais e corrigido salvamento
+- `src/pages/DashboardContagemPage.jsx`: Implementados cards visuais com gradientes

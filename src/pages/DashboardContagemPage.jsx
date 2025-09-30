@@ -217,60 +217,74 @@ const DashboardContagemPage = () => {
           </div>
         )}
 
-        {/* Estatísticas Rápidas */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-          <Card>
+        {/* Estatísticas Rápidas - Cards Visuais */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Progresso Geral</p>
-                  <p className="text-xl font-bold text-green-600">
-                    {estatisticas.produtosContados}/{estatisticas.totalProdutos}
-                  </p>
+                <div className="flex-1">
+                  <p className="text-green-100 text-sm font-medium">Progresso Geral</p>
+                  <div className="flex items-baseline space-x-2 mt-1">
+                    <p className="text-2xl font-bold">{estatisticas.produtosContados}</p>
+                    <span className="text-green-200 text-sm">/ {estatisticas.totalProdutos}</span>
+                  </div>
+                  <div className="w-full bg-green-400 rounded-full h-1.5 mt-2">
+                    <div 
+                      className="bg-white h-1.5 rounded-full transition-all duration-300" 
+                      style={{ width: `${estatisticas.percentualConcluido}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-green-200 text-xs mt-1">{estatisticas.percentualConcluido}% concluído</p>
                 </div>
-                <Package className="h-6 w-6 text-green-600" />
+                <div className="ml-3">
+                  <Package className="h-8 w-8 text-green-200" />
+                </div>
               </div>
-              <Progress value={estatisticas.percentualConcluido} className="mt-2" />
-              <p className="text-xs text-gray-500 mt-1">{estatisticas.percentualConcluido}% concluído</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Operadores</p>
-                  <p className="text-xl font-bold text-blue-600">{usuarios.length}</p>
+                <div className="flex-1">
+                  <p className="text-blue-100 text-sm font-medium">Operadores</p>
+                  <p className="text-2xl font-bold mt-1">{usuarios.length}</p>
+                  <p className="text-blue-200 text-xs mt-2">Usuários ativos</p>
                 </div>
-                <Users className="h-6 w-6 text-blue-600" />
+                <div className="ml-3">
+                  <Users className="h-8 w-8 text-blue-200" />
+                </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Usuários ativos</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white border-0 shadow-lg">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Alertas</p>
-                  <p className="text-xl font-bold text-red-600">{alertas.length}</p>
+                <div className="flex-1">
+                  <p className="text-red-100 text-sm font-medium">Alertas</p>
+                  <p className="text-2xl font-bold mt-1">{alertas.length}</p>
+                  <p className="text-red-200 text-xs mt-2">Requerem atenção</p>
                 </div>
-                <AlertTriangle className="h-6 w-6 text-red-600" />
+                <div className="ml-3">
+                  <AlertTriangle className="h-8 w-8 text-red-200" />
+                </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Requerem atenção</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Contagens</p>
-                  <p className="text-xl font-bold text-purple-600">{contagens.length}</p>
+                <div className="flex-1">
+                  <p className="text-purple-100 text-sm font-medium">Contagens</p>
+                  <p className="text-2xl font-bold mt-1">{contagens.length}</p>
+                  <p className="text-purple-200 text-xs mt-2">Em andamento</p>
                 </div>
-                <Clock className="h-6 w-6 text-purple-600" />
+                <div className="ml-3">
+                  <Clock className="h-8 w-8 text-purple-200" />
+                </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Em andamento</p>
             </CardContent>
           </Card>
         </div>

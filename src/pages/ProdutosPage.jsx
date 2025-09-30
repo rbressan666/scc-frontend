@@ -17,6 +17,7 @@ import {
   X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { setorService, categoriaService, unidadeMedidaService, produtoService, variacaoService } from '../services/api';
 
 const ProdutosPage = () => {
   const navigate = useNavigate();
@@ -58,60 +59,34 @@ const ProdutosPage = () => {
     try {
       setLoading(true);
       
-      // Simular dados para demonstração - substituir por APIs reais
-      const mockSetores = [
-        { id: '1', nome: 'Alimentação', ativo: true },
-        { id: '2', nome: 'Limpeza', ativo: true },
-        { id: '3', nome: 'Higiene', ativo: true }
-      ];
+      // Carregar dados das APIs reais
+      const [setoresRes, categoriasRes, unidadesRes, produtosRes, variacoesRes] = await Promise.allSettled([
+        setorService.getAll(),
+        categoriaService.getAll(),
+        unidadeMedidaService.getAll(),
+        produtoService.getAll(),
+        variacaoService.getAll()
+      ]);
 
-      const mockCategorias = [
-        { id: '1', nome: 'Bebidas', id_categoria_pai: null, ativo: true },
-        { id: '2', nome: 'Laticínios', id_categoria_pai: null, ativo: true },
-        { id: '3', nome: 'Produtos de Limpeza', id_categoria_pai: null, ativo: true }
-      ];
+      if (setoresRes.status === 'fulfilled') {
+        setSetores(setoresRes.value.data || []);
+      }
 
-      const mockUnidades = [
-        { id: '1', nome: 'Unidade', sigla: 'UN', ativo: true },
-        { id: '2', nome: 'Quilograma', sigla: 'KG', ativo: true },
-        { id: '3', nome: 'Litro', sigla: 'L', ativo: true },
-        { id: '4', nome: 'Metro', sigla: 'M', ativo: true }
-      ];
+      if (categoriasRes.status === 'fulfilled') {
+        setCategorias(categoriasRes.value.data || []);
+      }
 
-      const mockProdutos = [
-        {
-          id: '1',
-          nome: 'Coca-Cola',
-          id_categoria: '1',
-          id_setor: '1',
-          ativo: true,
-          imagem_principal_url: '',
-          categoria_nome: 'Bebidas',
-          setor_nome: 'Alimentação'
-        }
-      ];
+      if (unidadesRes.status === 'fulfilled') {
+        setUnidadesMedida(unidadesRes.value.data || []);
+      }
 
-      const mockVariacoes = [
-        {
-          id: '1',
-          id_produto: '1',
-          nome: '350ml',
-          estoque_atual: 100,
-          estoque_minimo: 20,
-          preco_custo: 2.50,
-          fator_prioridade: 3,
-          id_unidade_controle: '1',
-          ativo: true,
-          produto_nome: 'Coca-Cola',
-          unidade_nome: 'Unidade'
-        }
-      ];
+      if (produtosRes.status === 'fulfilled') {
+        setProdutos(produtosRes.value.data || []);
+      }
 
-      setSetores(mockSetores);
-      setCategorias(mockCategorias);
-      setUnidadesMedida(mockUnidades);
-      setProdutos(mockProdutos);
-      setVariacoes(mockVariacoes);
+      if (variacoesRes.status === 'fulfilled') {
+        setVariacoes(variacoesRes.value.data || []);
+      }
 
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
@@ -134,10 +109,32 @@ const ProdutosPage = () => {
     }
 
     try {
-      // Aqui seria a chamada para a API real
-      console.log('Dados do produto:', formData);
+      // Criar produto
+      const produtoData = {
+        nome: formData.nome,
+        id_categoria: formData.id_categoria,
+        id_setor: formData.id_setor,
+        imagem_principal_url: formData.imagem_principal_url || null
+      };
+
+      const produtoResponse = await produtoService.create(produtoData);
+      const produtoId = produtoResponse.data.id;
+
+      // Criar variações
+      for (const variacao of formData.variacoes) {
+        const variacaoData = {
+          id_produto: produtoId,
+          nome: variacao.nome,
+          estoque_atual: variacao.estoque_atual,
+          estoque_minimo: variacao.estoque_minimo,
+          preco_custo: variacao.preco_custo,
+          fator_prioridade: variacao.fator_prioridade,
+          id_unidade_controle: variacao.id_unidade_controle
+        };
+
+        await variacaoService.create(variacaoData);
+      }
       
-      // Simular sucesso
       alert('Produto salvo com sucesso!');
       setShowForm(false);
       setEditingProduct(null);
@@ -146,7 +143,7 @@ const ProdutosPage = () => {
       
     } catch (error) {
       console.error('Erro ao salvar produto:', error);
-      alert('Erro ao salvar produto');
+      alert('Erro ao salvar produto: ' + (error.message || 'Erro desconhecido'));
     }
   };
 
