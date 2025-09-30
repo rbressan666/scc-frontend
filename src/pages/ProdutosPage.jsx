@@ -13,7 +13,8 @@ import {
   Package,
   Edit,
   Save,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { setorService, categoriaService, unidadeMedidaService, produtoService, variacaoService } from '../services/api';

@@ -172,6 +172,10 @@ const ContagemPage = () => {
     setProdutoSelecionado(produto);
     setModalAberto(true);
     
+    // Obter unidade principal do produto (primeira variação)
+    const produtoVariacoes = getVariacoesPorProduto(produto.id);
+    const unidadePrincipal = produtoVariacoes.length > 0 ? 'unidade' : 'unidade';
+    
     // Carregar contagem atual se existir
     const contagemAtual = contagens[produto.id] || 0;
     if (contagemAtual > 0) {
@@ -179,13 +183,20 @@ const ContagemPage = () => {
       setContagemDetalhada([{
         id: 'atual',
         quantidade: contagemAtual,
-        unidade: 'unidade',
+        unidade: unidadePrincipal,
         observacao: 'Contagem atual',
         isExisting: true
       }]);
     } else {
       setContagemDetalhada([]);
     }
+    
+    // Definir unidade principal como default para nova linha
+    setNovaLinha({
+      quantidade: 0,
+      unidade: unidadePrincipal,
+      observacao: ''
+    });
   };
 
   const adicionarLinhaDetalhada = () => {
@@ -324,18 +335,32 @@ const ContagemPage = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Categoria
                 </label>
-                <select
-                  value={filtros.categoria}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, categoria: e.target.value }))}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                >
-                  <option value="">Todas as categorias</option>
-                  {categorias.map((categoria) => (
-                    <option key={categoria.id} value={categoria.id}>
-                      {categoria.nome}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <input
+                    type="text"
+                    list="categorias-list"
+                    value={filtros.categoria ? getCategoriaNome(filtros.categoria) : ''}
+                    onChange={(e) => {
+                      const categoriaEncontrada = categorias.find(c => 
+                        c.nome.toLowerCase().includes(e.target.value.toLowerCase())
+                      );
+                      setFiltros(prev => ({ 
+                        ...prev, 
+                        categoria: categoriaEncontrada ? categoriaEncontrada.id : '' 
+                      }));
+                    }}
+                    placeholder="Digite ou selecione uma categoria..."
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                  />
+                  <datalist id="categorias-list">
+                    <option value="">Todas as categorias</option>
+                    {categorias.map((categoria) => (
+                      <option key={categoria.id} value={categoria.nome}>
+                        {categoria.nome}
+                      </option>
+                    ))}
+                  </datalist>
+                </div>
               </div>
               
               <div className="flex-1 min-w-[250px]">

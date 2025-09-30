@@ -687,3 +687,78 @@ switch (item.unidade) {
 - **Interface limpa**: Apenas ações necessárias visíveis
 - **Cálculos precisos**: Sistema de conversão funcionando corretamente
 - **Filtros úteis**: Ferramentas para organizar produtos na contagem
+
+
+## [2025-09-30] - Correções de Bugs e Melhorias de UX
+
+### Problemas Corrigidos:
+
+**1. Erro do Botão Editar de Produtos:**
+- **Problema**: `Uncaught ReferenceError: Trash2 is not defined` impedia o funcionamento do botão Editar
+- **Causa**: Ícone `Trash2` usado no código mas não importado do lucide-react
+- **Solução**: Adicionada importação do ícone `Trash2` na lista de imports do lucide-react
+- **Resultado**: Botão Editar agora funciona normalmente sem erros no console
+
+### Melhorias Implementadas:
+
+**2. Contagem Detalhada - Unidade Principal como Default:**
+- **Implementação**: Sistema agora define automaticamente a unidade principal do produto como padrão
+- **Funcionalidade**: Ao abrir modal de contagem detalhada, a unidade principal é pré-selecionada
+- **Benefício**: Reduz cliques e acelera o processo de contagem para a unidade mais comum
+
+**3. Filtro de Categoria com Busca por Digitação:**
+- **Implementação**: Substituído select por input com datalist para permitir digitação
+- **Funcionalidade**: Usuário pode digitar parte do nome da categoria para filtrar opções
+- **Interface**: Campo com placeholder "Digite ou selecione uma categoria..."
+- **Benefício**: Navegação mais rápida em listas extensas de categorias
+
+### Funcionalidades Técnicas:
+
+**Sistema de Unidade Principal:**
+```javascript
+// Obter unidade principal do produto (primeira variação)
+const produtoVariacoes = getVariacoesPorProduto(produto.id);
+const unidadePrincipal = produtoVariacoes.length > 0 ? 'unidade' : 'unidade';
+
+// Definir como default para nova linha
+setNovaLinha({
+  quantidade: 0,
+  unidade: unidadePrincipal,
+  observacao: ''
+});
+```
+
+**Filtro de Categoria com Busca:**
+```javascript
+// Input com datalist para busca e seleção
+<input
+  type="text"
+  list="categorias-list"
+  value={filtros.categoria ? getCategoriaNome(filtros.categoria) : ''}
+  onChange={(e) => {
+    const categoriaEncontrada = categorias.find(c => 
+      c.nome.toLowerCase().includes(e.target.value.toLowerCase())
+    );
+    setFiltros(prev => ({ 
+      ...prev, 
+      categoria: categoriaEncontrada ? categoriaEncontrada.id : '' 
+    }));
+  }}
+/>
+```
+
+### Arquivos Modificados:
+- `src/pages/ProdutosPage.jsx`: Correção da importação do ícone Trash2
+- `src/pages/ContagemPage.jsx`: Melhorias na contagem detalhada e filtro de categoria
+
+### Melhorias de UX:
+- **Erro eliminado**: Botão Editar funciona sem erros de console
+- **Eficiência aumentada**: Unidade principal pré-selecionada acelera contagem
+- **Navegação melhorada**: Busca por digitação facilita seleção de categorias
+- **Interface mais intuitiva**: Campos com placeholders descritivos
+
+### Status:
+- ✅ Botão Editar de Produtos funcionando
+- ✅ Unidade principal como default implementada
+- ✅ Filtro de categoria com busca implementado
+- ✅ Tela de Detalhe de Turno mantida (já estava adequada)
