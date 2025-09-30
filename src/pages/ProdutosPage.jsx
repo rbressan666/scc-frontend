@@ -8,11 +8,10 @@ import { Textarea } from '../components/ui/textarea';
 import {
   ArrowLeft,
   Plus,
-  Edit,
-  Trash2,
   Search,
+  Filter,
   Package,
-  Eye,
+  Edit,
   Save,
   X
 } from 'lucide-react';
@@ -109,33 +108,68 @@ const ProdutosPage = () => {
     }
 
     try {
-      // Criar produto
-      const produtoData = {
-        nome: formData.nome,
-        id_categoria: formData.id_categoria,
-        id_setor: formData.id_setor,
-        imagem_principal_url: formData.imagem_principal_url || null
-      };
-
-      const produtoResponse = await produtoService.create(produtoData);
-      const produtoId = produtoResponse.data.id;
-
-      // Criar variações
-      for (const variacao of formData.variacoes) {
-        const variacaoData = {
-          id_produto: produtoId,
-          nome: variacao.nome,
-          estoque_atual: variacao.estoque_atual,
-          estoque_minimo: variacao.estoque_minimo,
-          preco_custo: variacao.preco_custo,
-          fator_prioridade: variacao.fator_prioridade,
-          id_unidade_controle: variacao.id_unidade_controle
+      if (editingProduct) {
+        // Atualizar produto existente
+        const produtoData = {
+          nome: formData.nome,
+          id_categoria: formData.id_categoria,
+          id_setor: formData.id_setor,
+          imagem_principal_url: formData.imagem_principal_url || null
         };
 
-        await variacaoService.create(variacaoData);
+        await produtoService.update(editingProduct.id, produtoData);
+
+        // Atualizar variações (remover antigas e criar novas)
+        const variacoesExistentes = getVariacoesPorProduto(editingProduct.id);
+        for (const variacao of variacoesExistentes) {
+          await variacaoService.delete(variacao.id);
+        }
+
+        for (const variacao of formData.variacoes) {
+          const variacaoData = {
+            id_produto: editingProduct.id,
+            nome: variacao.nome,
+            estoque_atual: variacao.estoque_atual,
+            estoque_minimo: variacao.estoque_minimo,
+            preco_custo: variacao.preco_custo,
+            fator_prioridade: variacao.fator_prioridade,
+            id_unidade_controle: variacao.id_unidade_controle
+          };
+
+          await variacaoService.create(variacaoData);
+        }
+
+        alert('Produto atualizado com sucesso!');
+      } else {
+        // Criar produto novo
+        const produtoData = {
+          nome: formData.nome,
+          id_categoria: formData.id_categoria,
+          id_setor: formData.id_setor,
+          imagem_principal_url: formData.imagem_principal_url || null
+        };
+
+        const produtoResponse = await produtoService.create(produtoData);
+        const produtoId = produtoResponse.data.id;
+
+        // Criar variações
+        for (const variacao of formData.variacoes) {
+          const variacaoData = {
+            id_produto: produtoId,
+            nome: variacao.nome,
+            estoque_atual: variacao.estoque_atual,
+            estoque_minimo: variacao.estoque_minimo,
+            preco_custo: variacao.preco_custo,
+            fator_prioridade: variacao.fator_prioridade,
+            id_unidade_controle: variacao.id_unidade_controle
+          };
+
+          await variacaoService.create(variacaoData);
+        }
+
+        alert('Produto criado com sucesso!');
       }
       
-      alert('Produto salvo com sucesso!');
       setShowForm(false);
       setEditingProduct(null);
       resetForm();
@@ -193,10 +227,7 @@ const ProdutosPage = () => {
     });
   };
 
-  const handleViewProduct = (produto) => {
-    // Implementar visualização detalhada do produto
-    alert(`Visualizar produto: ${produto.nome}\n\nEsta funcionalidade será implementada em breve.`);
-  };
+
 
   const handleEditProduct = (produto) => {
     // Carregar dados do produto no formulário para edição
@@ -393,14 +424,6 @@ const ProdutosPage = () => {
                               </div>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => handleViewProduct(produto)}
-                              >
-                                <Eye className="h-4 w-4 mr-1" />
-                                Ver
-                              </Button>
                               <Button 
                                 size="sm" 
                                 variant="outline"

@@ -217,70 +217,76 @@ const DashboardContagemPage = () => {
           </div>
         )}
 
-        {/* Estatísticas Rápidas - Cards Compactos */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <Card className="bg-white border border-green-200 shadow-sm hover:shadow-md transition-shadow col-span-2">
+        {/* Estatísticas Rápidas - Cards Visuais */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <Package className="h-5 w-5 text-green-600" />
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-green-100 text-sm font-medium">Progresso Geral</p>
+                  <div className="flex items-baseline space-x-2 mt-1">
+                    <p className="text-2xl font-bold">{estatisticas.produtosContados}</p>
+                    <span className="text-green-200 text-sm">/ {estatisticas.totalProdutos}</span>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Progresso da Contagem</p>
-                    <div className="flex items-baseline space-x-2">
-                      <p className="text-xl font-bold text-gray-900">{estatisticas.produtosContados}</p>
-                      <span className="text-gray-500 text-sm">/ {estatisticas.totalProdutos}</span>
-                    </div>
+                  <div className="w-full bg-green-400 rounded-full h-1.5 mt-2">
+                    <div 
+                      className="bg-white h-1.5 rounded-full transition-all duration-300" 
+                      style={{ width: `${estatisticas.percentualConcluido}%` }}
+                    ></div>
                   </div>
+                  <p className="text-green-200 text-xs mt-1">{estatisticas.percentualConcluido}% concluído</p>
                 </div>
-                <Button
-                  onClick={() => navigate(`/contagem/${turnoId}`)}
-                  size="sm"
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                >
-                  {estatisticas.produtosContados > 0 ? 'Continuar' : 'Iniciar'} Contagem
-                </Button>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-green-600 h-2 rounded-full transition-all duration-300" 
-                  style={{ width: `${estatisticas.percentualConcluido}%` }}
-                ></div>
-              </div>
-              <p className="text-xs text-gray-500 mt-2">{estatisticas.percentualConcluido}% concluído</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-3">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Users className="h-4 w-4 text-blue-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-gray-600 truncate">Operadores</p>
-                  <p className="text-lg font-bold text-gray-900">{usuarios.length}</p>
+                <div className="ml-3">
+                  <Package className="h-8 w-8 text-green-200" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white border border-red-200 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-3">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-red-100 rounded-lg">
-                  <AlertTriangle className="h-4 w-4 text-red-600" />
+          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-blue-100 text-sm font-medium">Operadores</p>
+                  <p className="text-2xl font-bold mt-1">{usuarios.length}</p>
+                  <p className="text-blue-200 text-xs mt-2">Usuários ativos</p>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-gray-600 truncate">Alertas</p>
-                  <p className="text-lg font-bold text-gray-900">{alertas.length}</p>
+                <div className="ml-3">
+                  <Users className="h-8 w-8 text-blue-200" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
+          <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white border-0 shadow-lg">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-red-100 text-sm font-medium">Alertas</p>
+                  <p className="text-2xl font-bold mt-1">{alertas.length}</p>
+                  <p className="text-red-200 text-xs mt-2">Requerem atenção</p>
+                </div>
+                <div className="ml-3">
+                  <AlertTriangle className="h-8 w-8 text-red-200" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
+          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-purple-100 text-sm font-medium">Contagens</p>
+                  <p className="text-2xl font-bold mt-1">{contagens.length}</p>
+                  <p className="text-purple-200 text-xs mt-2">Em andamento</p>
+                </div>
+                <div className="ml-3">
+                  <Clock className="h-8 w-8 text-purple-200" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Cards de Atividades do Turno */}

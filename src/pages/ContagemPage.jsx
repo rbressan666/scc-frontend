@@ -207,9 +207,18 @@ const ContagemPage = () => {
 
   const calcularTotalDetalhado = () => {
     return contagemDetalhada.reduce((total, item) => {
-      // Aqui seria aplicada a conversão de unidades
-      // Por exemplo: se unidade for "caixa" e produto tem fator 24, multiplicar por 24
-      return total + Number(item.quantidade);
+      const quantidade = Number(item.quantidade) || 0;
+      
+      // Aplicar conversão de unidades
+      switch (item.unidade) {
+        case 'caixa':
+          return total + (quantidade * 24); // 24 unidades por caixa
+        case 'pacote':
+          return total + (quantidade * 12); // 12 unidades por pacote
+        case 'unidade':
+        default:
+          return total + quantidade;
+      }
     }, 0);
   };
 
@@ -361,14 +370,47 @@ const ContagemPage = () => {
                     </h3>
                   </div>
                   
+                  {/* Filtros da tabela */}
+                  <div className="bg-gray-50 p-3 border-b">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <Input
+                          placeholder="Filtrar produtos..."
+                          className="w-48 h-8 text-sm"
+                        />
+                        <select className="h-8 text-sm border border-gray-300 rounded-md">
+                          <option value="">Todos os status</option>
+                          <option value="ativo">Apenas ativos</option>
+                          <option value="inativo">Apenas inativos</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs text-gray-500">Ordenar por:</span>
+                        <select className="h-8 text-sm border border-gray-300 rounded-md">
+                          <option value="nome">Nome</option>
+                          <option value="contagem">Contagem</option>
+                          <option value="variacoes">Nº Variações</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="bg-white rounded-lg overflow-hidden">
                     <table className="w-full">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Produto</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Variações</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contagem Atual</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100">
+                            Produto ↕
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100">
+                            Variações ↕
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100">
+                            Status ↕
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100">
+                            Contagem ↕
+                          </th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
                         </tr>
                       </thead>

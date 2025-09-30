@@ -605,3 +605,85 @@ Cozinha
 - **renderCategoriaComIndentacao()**: Renderiza hierarquia com indentação
 - **editarLinhaDetalhada()**: Permite edição inline de linhas de contagem
 - **Sistema de proteção**: Contagem atual não pode ser editada diretamente
+
+## [2025-09-30] - Correções e Melhorias Finais
+
+### Correções em Produtos:
+
+**Botão Ver Removido:**
+- Removido botão "Ver" da listagem de produtos conforme solicitado
+- Mantido apenas botão "Editar" para ações do usuário
+- Removida importação do ícone Eye não utilizado
+
+**Correção da Edição de Produtos:**
+- **Problema**: Edição criava produto novo em vez de atualizar
+- **Solução**: Implementada lógica condicional no `handleSubmit`
+- **Modo criação**: Quando `editingProduct` é null
+- **Modo edição**: Quando `editingProduct` existe, usa `produtoService.update()`
+- **Atualização de variações**: Remove variações antigas e cria novas
+- **Feedback diferenciado**: "Produto criado" vs "Produto atualizado"
+
+### Correções na Contagem:
+
+**Restauração do Cálculo Correto:**
+- **Problema**: Cálculo de conversão estava incorreto
+- **Solução**: Restaurado sistema de conversão de unidades
+- **Conversões implementadas**:
+  - Caixas: quantidade × 24 unidades
+  - Pacotes: quantidade × 12 unidades  
+  - Unidades: quantidade × 1
+- **Exemplo**: 2 caixas + 2 unidades = (2×24) + 2 = 50 total
+
+### Melhorias na Interface de Contagem:
+
+**Filtros e Ordenação na Tabela:**
+- **Filtros locais**: Campo de busca por nome do produto
+- **Filtro por status**: Todos, apenas ativos, apenas inativos
+- **Ordenação**: Por nome, contagem atual, número de variações
+- **Headers clicáveis**: Indicador visual ↕ para colunas ordenáveis
+- **Layout responsivo**: Filtros organizados em linha com espaçamento adequado
+
+**Interface da Tabela:**
+- **Barra de filtros**: Fundo cinza claro acima da tabela
+- **Controles de ordenação**: Dropdown no canto direito
+- **Headers interativos**: Hover effect nos cabeçalhos clicáveis
+- **Busca rápida**: Campo de filtro com placeholder descritivo
+
+### Funcionalidades Técnicas Implementadas:
+
+**Sistema de Edição de Produtos:**
+```javascript
+if (editingProduct) {
+  // Atualizar produto existente
+  await produtoService.update(editingProduct.id, produtoData);
+  // Remover e recriar variações
+} else {
+  // Criar produto novo
+  await produtoService.create(produtoData);
+}
+```
+
+**Cálculo de Conversão Restaurado:**
+```javascript
+switch (item.unidade) {
+  case 'caixa': return total + (quantidade * 24);
+  case 'pacote': return total + (quantidade * 12);
+  default: return total + quantidade;
+}
+```
+
+**Filtros da Tabela:**
+- Filtro por nome do produto (busca textual)
+- Filtro por status ativo/inativo
+- Ordenação por múltiplos critérios
+- Interface compacta e funcional
+
+### Arquivos Modificados:
+- `src/pages/ProdutosPage.jsx`: Remoção do botão Ver, correção da edição
+- `src/pages/ContagemPage.jsx`: Restauração do cálculo, adição de filtros na tabela
+
+### Melhorias de UX:
+- **Feedback claro**: Mensagens diferentes para criação vs atualização
+- **Interface limpa**: Apenas ações necessárias visíveis
+- **Cálculos precisos**: Sistema de conversão funcionando corretamente
+- **Filtros úteis**: Ferramentas para organizar produtos na contagem
