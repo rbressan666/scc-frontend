@@ -762,3 +762,98 @@ setNovaLinha({
 - ✅ Unidade principal como default implementada
 - ✅ Filtro de categoria com busca implementado
 - ✅ Tela de Detalhe de Turno mantida (já estava adequada)
+
+
+## [2025-09-30] - Correções Críticas de Backend e Persistência
+
+### Problemas Críticos Corrigidos:
+
+**1. Erro de Edição de Produto - Campo Ativo Null:**
+- **Problema**: `error: null value in column "ativo" of relation "produtos" violates not-null constraint`
+- **Causa**: Model `Produto.js` tentava definir campo `ativo` como null quando não fornecido pelo frontend
+- **Solução**: Implementada query dinâmica que atualiza apenas campos fornecidos
+- **Resultado**: Edição de produtos funciona sem erro de constraint
+
+**2. Persistência de Contagens Perdidas:**
+- **Problema**: Contagens não eram salvas no backend, perdendo dados ao navegar entre telas
+- **Causa**: Frontend usava apenas estado local sem persistir no banco de dados
+- **Solução**: Implementada integração completa com APIs de contagem do backend
+- **Resultado**: Contagens são persistidas e mantidas entre sessões
+
+### Implementações Técnicas:
+
+**Backend - Model Produto.js:**
+```javascript
+// Query dinâmica que atualiza apenas campos fornecidos
+static async update(id, data) {
+  const { nome, id_categoria, id_setor, ativo, imagem_principal_url } = data;
+  
+  const fields = [];
+  const values = [];
+  let paramIndex = 1;
+  
+  // Adiciona apenas campos definidos (não undefined)
+  if (nome !== undefined) {
+    fields.push(`nome = $${paramIndex}`);
+    values.push(nome);
+    paramIndex++;
+  }
+  // ... outros campos
+  
+  const query = `UPDATE produtos SET ${fields.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
+  return await pool.query(query, values);
+}
+```
+
+**Frontend - ContagemPage.jsx:**
+```javascript
+// Persistência real das contagens
+const handleContagemSimples = async (produtoId, valor) => {
+  // Buscar ou criar contagem ativa
+  // Verificar item existente ou criar novo
+  // Salvar no backend via API
+  await contagensService.addItem(contagemAtual.id, itemData);
+  
+  // Atualizar estado local
+  setContagens(prev => ({ ...prev, [produtoId]: quantidade }));
+};
+```
+
+### Funcionalidades Implementadas:
+
+**Sistema de Contagem Persistente:**
+- **Criação automática**: Contagem criada automaticamente ao acessar tela pela primeira vez
+- **Carregamento de dados**: Contagens existentes carregadas do banco ao inicializar
+- **Salvamento em tempo real**: Cada alteração salva imediatamente no backend
+- **Contagem simples**: Input direto salva via API
+- **Contagem detalhada**: Modal com múltiplas linhas salvas como itens separados
+
+**Gestão de Itens de Contagem:**
+- **Criação de itens**: Novos itens adicionados via `contagensService.addItem()`
+- **Atualização de itens**: Itens existentes atualizados via `contagensService.updateItem()`
+- **Remoção de itens**: Itens removidos via `contagensService.removeItem()`
+- **Conversão de unidades**: Cálculo automático de quantidades convertidas
+
+### Arquivos Modificados:
+- `models/Produto.js` (backend): Query dinâmica para update sem campos null
+- `src/pages/ContagemPage.jsx` (frontend): Integração completa com APIs de contagem
+
+### Melhorias de Robustez:
+- **Tratamento de erros**: Mensagens específicas para cada tipo de erro
+- **Validações**: Verificação de dados antes de enviar para API
+- **Estados consistentes**: Sincronização entre estado local e backend
+- **Recuperação de dados**: Carregamento automático de contagens existentes
+
+### Fluxo de Persistência:
+1. **Inicialização**: Carrega contagens existentes do turno
+2. **Criação automática**: Cria nova contagem se não existir
+3. **Salvamento**: Cada alteração salva imediatamente
+4. **Sincronização**: Estado local atualizado após sucesso da API
+5. **Recuperação**: Dados mantidos entre navegações
+
+### Status Final:
+- ✅ Erro de campo ativo null corrigido
+- ✅ Contagens persistem no banco de dados
+- ✅ Navegação entre telas mantém dados
+- ✅ Contagem simples e detalhada funcionais
+- ✅ Integração completa com backend

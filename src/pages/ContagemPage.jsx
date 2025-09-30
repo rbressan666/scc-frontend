@@ -28,6 +28,8 @@ const ContagemPage = () => {
   const [setores, setSetores] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [contagens, setContagens] = useState({});
+  const [contagemAtual, setContagemAtual] = useState(null);
+  const [itensContagem, setItensContagem] = useState([]);
   const [usuariosAtivos, setUsuariosAtivos] = useState({});
   const [loading, setLoading] = useState(true);
   
@@ -73,11 +75,12 @@ const ContagemPage = () => {
     try {
       setLoading(true);
       
-      const [produtosRes, variacoesRes, setoresRes, categoriasRes] = await Promise.allSettled([
+      const [produtosRes, variacoesRes, setoresRes, categoriasRes, contagensRes] = await Promise.allSettled([
         produtoService.getAll(),
         variacaoService.getAll(),
         setorService.getAll(),
-        categoriaService.getAll()
+        categoriaService.getAll(),
+        contagensService.getByTurno(turnoId)
       ]);
 
       if (produtosRes.status === 'fulfilled') {
@@ -96,16 +99,54 @@ const ContagemPage = () => {
         setCategorias(categoriasRes.value.data || []);
       }
 
-      // Simular contagens existentes
-      setContagens({
-        'produto-1': 150,
-        'produto-2': 75
-      });
+      // Carregar contagens existentes do turno
+      if (contagensRes.status === 'fulfilled') {
+        const contagensData = contagensRes.value.data || [];
+        
+        // Buscar ou criar contagem ativa para este turno
+        let contagemAtiva = contagensData.find(c => c.status === 'ativa' || c.status === 'em_andamento');
+        
+        if (!contagemAtiva && contagensData.length === 0) {
+          // Criar nova contagem se não existir nenhuma
+          try {
+            const novaContagem = await contagensService.create({
+              turno_id: turnoId,
+              tipo_contagem: 'geral'
+            });
+            contagemAtiva = novaContagem.data;
+          } catch (error) {
+            console.error('Erro ao criar contagem:', error);
+          }
+        }
+        
+        if (contagemAtiva) {
+          setContagemAtual(contagemAtiva);
+          
+          // Carregar itens da contagem
+          try {
+            const itensRes = await contagensService.getItens(contagemAtiva.id);
+            const itens = itensRes.data || [];
+            setItensContagem(itens);
+            
+            // Converter itens para formato de contagens por produto
+            const contagensPorProduto = {};
+            itens.forEach(item => {
+              if (item.variacao_id) {
+                const variacao = variacoes.find(v => v.id === item.variacao_id);
+                if (variacao) {
+                  contagensPorProduto[variacao.id_produto] = item.quantidade_convertida || item.quantidade_contada;
+                }
+              }
+            });
+            setContagens(contagensPorProduto);
+          } catch (error) {
+            console.error('Erro ao carregar itens da contagem:', error);
+          }
+        }
+      }
 
-      // Simular usuários ativos
-      setUsuariosAtivos({
-        'produto-3': 'João Silva'
-      });
+      // Simular usuários ativos (pode ser implementado com WebSocket futuramente)
+      setUsuariosAtivos({});
 
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
@@ -161,11 +202,62 @@ const ContagemPage = () => {
     ));
   };
 
-  const handleContagemSimples = (produtoId, valor) => {
-    setContagens(prev => ({
-      ...prev,
-      [produtoId]: Number(valor) || 0
-    }));
+  const handleContagemSimples = async (produtoId, valor) => {
+    if (!contagemAtual) {
+      alert('Erro: Nenhuma contagem ativa encontrada');
+      return;
+    }
+
+    try {
+      const quantidade = Number(valor) || 0;
+      
+      // Buscar primeira variação do produto para usar como referência
+      const produtoVariacoes = getVariacoesPorProduto(produtoId);
+      if (produtoVariacoes.length === 0) {
+        alert('Produto não possui variações cadastradas');
+        return;
+      }
+      
+      const variacaoPrincipal = produtoVariacoes[0];
+      
+      // Verificar se já existe item para este produto na contagem
+      const itemExistente = itensContagem.find(item => {
+        const variacao = variacoes.find(v => v.id === item.variacao_id);
+        return variacao && variacao.id_produto === produtoId;
+      });
+      
+      if (itemExistente) {
+        // Atualizar item existente
+        await contagensService.updateItem(contagemAtual.id, itemExistente.id, {
+          quantidade_contada: quantidade,
+          quantidade_convertida: quantidade,
+          observacoes: 'Contagem simples atualizada'
+        });
+      } else {
+        // Criar novo item
+        await contagensService.addItem(contagemAtual.id, {
+          variacao_id: variacaoPrincipal.id,
+          quantidade_contada: quantidade,
+          unidade_medida_id: variacaoPrincipal.id_unidade_controle,
+          quantidade_convertida: quantidade,
+          observacoes: 'Contagem simples'
+        });
+      }
+      
+      // Atualizar estado local
+      setContagens(prev => ({
+        ...prev,
+        [produtoId]: quantidade
+      }));
+      
+      // Recarregar itens da contagem
+      const itensRes = await contagensService.getItens(contagemAtual.id);
+      setItensContagem(itensRes.data || []);
+      
+    } catch (error) {
+      console.error('Erro ao salvar contagem:', error);
+      alert('Erro ao salvar contagem: ' + (error.message || 'Erro desconhecido'));
+    }
   };
 
   const abrirModalDetalhado = (produto) => {
@@ -233,11 +325,80 @@ const ContagemPage = () => {
     }, 0);
   };
 
-  const salvarContagemDetalhada = () => {
-    const total = calcularTotalDetalhado();
-    handleContagemSimples(produtoSelecionado.id, total);
-    setModalAberto(false);
-    setProdutoSelecionado(null);
+  const salvarContagemDetalhada = async () => {
+    if (!contagemAtual || !produtoSelecionado) {
+      alert('Erro: Dados insuficientes para salvar');
+      return;
+    }
+
+    try {
+      const produtoVariacoes = getVariacoesPorProduto(produtoSelecionado.id);
+      if (produtoVariacoes.length === 0) {
+        alert('Produto não possui variações cadastradas');
+        return;
+      }
+
+      const variacaoPrincipal = produtoVariacoes[0];
+
+      // Remover itens existentes deste produto na contagem
+      const itensExistentes = itensContagem.filter(item => {
+        const variacao = variacoes.find(v => v.id === item.variacao_id);
+        return variacao && variacao.id_produto === produtoSelecionado.id;
+      });
+
+      for (const item of itensExistentes) {
+        await contagensService.removeItem(contagemAtual.id, item.id);
+      }
+
+      // Adicionar novos itens detalhados (exceto o item atual que é apenas referência)
+      for (const linha of contagemDetalhada) {
+        if (!linha.isExisting && linha.quantidade > 0) {
+          const quantidadeConvertida = calcularQuantidadeConvertida(linha.quantidade, linha.unidade);
+          
+          await contagensService.addItem(contagemAtual.id, {
+            variacao_id: variacaoPrincipal.id,
+            quantidade_contada: linha.quantidade,
+            unidade_medida_id: variacaoPrincipal.id_unidade_controle,
+            quantidade_convertida: quantidadeConvertida,
+            observacoes: linha.observacao || 'Contagem detalhada'
+          });
+        }
+      }
+
+      // Calcular e salvar total
+      const total = calcularTotalDetalhado();
+      
+      // Atualizar estado local
+      setContagens(prev => ({
+        ...prev,
+        [produtoSelecionado.id]: total
+      }));
+
+      // Recarregar itens da contagem
+      const itensRes = await contagensService.getItens(contagemAtual.id);
+      setItensContagem(itensRes.data || []);
+
+      setModalAberto(false);
+      setProdutoSelecionado(null);
+      setContagemDetalhada([]);
+      
+    } catch (error) {
+      console.error('Erro ao salvar contagem detalhada:', error);
+      alert('Erro ao salvar contagem detalhada: ' + (error.message || 'Erro desconhecido'));
+    }
+  };
+
+  const calcularQuantidadeConvertida = (quantidade, unidade) => {
+    const qtd = Number(quantidade) || 0;
+    switch (unidade) {
+      case 'caixa':
+        return qtd * 24; // 24 unidades por caixa
+      case 'pacote':
+        return qtd * 12; // 12 unidades por pacote
+      case 'unidade':
+      default:
+        return qtd;
+    }
   };
 
   // Agrupar produtos por setor e categoria hierárquica
