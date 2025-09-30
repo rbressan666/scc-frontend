@@ -373,7 +373,7 @@ const ProdutosPage = () => {
                                       Estoque: {variacao.estoque_atual} {variacao.unidade_nome}
                                     </div>
                                     <div className="text-gray-600">
-                                      Preço: R$ {variacao.preco_custo.toFixed(2)}
+                                      Preço: R$ {Number(variacao.preco_custo || 0).toFixed(2)}
                                     </div>
                                   </div>
                                 ))}
@@ -581,7 +581,7 @@ const ProdutosPage = () => {
                                 <span>Unidade: {unidade?.sigla}</span>
                                 <span>Estoque: {variacao.estoque_atual}</span>
                                 <span>Mínimo: {variacao.estoque_minimo}</span>
-                                <span>Preço: R$ {variacao.preco_custo.toFixed(2)}</span>
+                                <span>Preço: R$ {Number(variacao.preco_custo || 0).toFixed(2)}</span>
                               </div>
                               <Button
                                 type="button"

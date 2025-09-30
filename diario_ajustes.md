@@ -388,3 +388,57 @@ Baseado no schema fornecido, identifiquei a estrutura correta das tabelas:
 ### Arquivos Modificados:
 - `src/pages/ProdutosPage.jsx`: Conectado com APIs reais e corrigido salvamento
 - `src/pages/DashboardContagemPage.jsx`: Implementados cards visuais com gradientes
+
+## [2025-09-30] - Correções de Layout e Erros Críticos
+
+### Problemas Corrigidos:
+
+**1. Layout dos Cards (Dashboard):**
+- **Problema**: Cards eram barras gigantes ocupando toda a largura
+- **Solução**: Implementados cards compactos reais (pequenos, lado a lado)
+- **Resultado**: Layout limpo com 4 cards por linha em desktop, 2 em mobile
+
+**2. Erro na Tela de Produtos:**
+- **Problema**: `preco_custo.toFixed is not a function`
+- **Causa**: Campo `preco_custo` vinha como string ou null da API
+- **Solução**: Adicionado `Number(variacao.preco_custo || 0).toFixed(2)`
+- **Resultado**: Tela de produtos funcional novamente
+
+**3. Erro 500 na Contagem:**
+- **Problema**: Controllers de contagem retornavam formato inconsistente
+- **Solução**: Padronizado retorno `{success, message, data}` em todas as funções
+- **Melhorias**: Validação de dados obrigatórios e logs de erro detalhados
+
+### Melhorias de Layout:
+
+**Cards Compactos Implementados:**
+- **Tamanho**: Altura reduzida (padding: 12px)
+- **Disposição**: 2 colunas em mobile, 4 em desktop
+- **Conteúdo**: Ícone + título + valor principal
+- **Estilo**: Bordas coloridas sutis, hover effects
+- **Responsividade**: Grid adaptável para diferentes telas
+
+**Características dos Novos Cards:**
+- Progresso: Verde com ícone Package
+- Operadores: Azul com ícone Users  
+- Alertas: Vermelho com ícone AlertTriangle
+- Contagens: Roxo com ícone Clock
+
+### Correções no Backend:
+
+**Controller de Contagens:**
+- `createContagem`: Validação de dados obrigatórios
+- `getContagensByTurno`: Formato de resposta padronizado
+- **Logs melhorados**: Console.error para debugging
+- **Tratamento de erros**: Mensagens específicas para cada tipo de erro
+
+### Arquivos Modificados:
+- `src/pages/DashboardContagemPage.jsx`: Cards compactos implementados
+- `src/pages/ProdutosPage.jsx`: Correção do erro preco_custo.toFixed
+- `controllers/contagemController.js`: Padronização de respostas e validações
+
+### Resultado Final:
+- Dashboard com layout profissional e compacto
+- Tela de produtos funcionando sem erros
+- APIs de contagem com respostas consistentes
+- Melhor experiência do usuário em dispositivos móveis
