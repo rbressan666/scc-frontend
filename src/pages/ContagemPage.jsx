@@ -136,6 +136,31 @@ const ContagemPage = () => {
     return categoria?.nome || '';
   };
 
+  const getCategoriaHierarquia = (categoriaId) => {
+    const categoria = categorias.find(c => c.id === categoriaId);
+    if (!categoria) return '';
+    
+    const hierarquia = [];
+    let categoriaAtual = categoria;
+    
+    // Construir hierarquia até a raiz
+    while (categoriaAtual) {
+      hierarquia.unshift(categoriaAtual);
+      categoriaAtual = categorias.find(c => c.id === categoriaAtual.id_categoria_pai);
+    }
+    
+    return hierarquia;
+  };
+
+  const renderCategoriaComIndentacao = (hierarquia) => {
+    return hierarquia.map((cat, index) => (
+      <span key={cat.id}>
+        {'  '.repeat(index)}{index > 0 ? '└─ ' : ''}{cat.nome}
+        {index < hierarquia.length - 1 && <br />}
+      </span>
+    ));
+  };
+
   const handleContagemSimples = (produtoId, valor) => {
     setContagens(prev => ({
       ...prev,
@@ -146,7 +171,21 @@ const ContagemPage = () => {
   const abrirModalDetalhado = (produto) => {
     setProdutoSelecionado(produto);
     setModalAberto(true);
-    setContagemDetalhada([]);
+    
+    // Carregar contagem atual se existir
+    const contagemAtual = contagens[produto.id] || 0;
+    if (contagemAtual > 0) {
+      // Mostrar valor atual como primeira linha (unidade principal)
+      setContagemDetalhada([{
+        id: 'atual',
+        quantidade: contagemAtual,
+        unidade: 'unidade',
+        observacao: 'Contagem atual',
+        isExisting: true
+      }]);
+    } else {
+      setContagemDetalhada([]);
+    }
   };
 
   const adicionarLinhaDetalhada = () => {
@@ -158,6 +197,12 @@ const ContagemPage = () => {
 
   const removerLinhaDetalhada = (id) => {
     setContagemDetalhada(prev => prev.filter(item => item.id !== id));
+  };
+
+  const editarLinhaDetalhada = (id, novosDados) => {
+    setContagemDetalhada(prev => prev.map(item => 
+      item.id === id ? { ...item, ...novosDados } : item
+    ));
   };
 
   const calcularTotalDetalhado = () => {
@@ -175,19 +220,23 @@ const ContagemPage = () => {
     setProdutoSelecionado(null);
   };
 
-  // Agrupar produtos por setor e categoria
+  // Agrupar produtos por setor e categoria hierárquica
   const produtosAgrupados = produtosFiltrados.reduce((acc, produto) => {
     const setorNome = getSetorNome(produto.id_setor);
-    const categoriaNome = getCategoriaNome(produto.id_categoria);
+    const hierarquiaCategoria = getCategoriaHierarquia(produto.id_categoria);
+    const categoriaKey = hierarquiaCategoria.map(c => c.nome).join(' → ');
     
     if (!acc[setorNome]) {
       acc[setorNome] = {};
     }
-    if (!acc[setorNome][categoriaNome]) {
-      acc[setorNome][categoriaNome] = [];
+    if (!acc[setorNome][categoriaKey]) {
+      acc[setorNome][categoriaKey] = {
+        produtos: [],
+        hierarquia: hierarquiaCategoria
+      };
     }
     
-    acc[setorNome][categoriaNome].push(produto);
+    acc[setorNome][categoriaKey].produtos.push(produto);
     return acc;
   }, {});
 
@@ -243,9 +292,9 @@ const ContagemPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="flex-1 min-w-[200px]">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Setor
                 </label>
                 <select
@@ -262,8 +311,8 @@ const ContagemPage = () => {
                 </select>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="flex-1 min-w-[200px]">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Categoria
                 </label>
                 <select
@@ -280,8 +329,8 @@ const ContagemPage = () => {
                 </select>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="flex-1 min-w-[250px]">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Produto
                 </label>
                 <div className="relative">
@@ -304,9 +353,13 @@ const ContagemPage = () => {
             <div key={setorNome} className={`${coresSetores[setorNome] || 'bg-gray-50'} rounded-lg p-4`}>
               <h2 className="text-lg font-bold text-gray-900 mb-4">{setorNome}</h2>
               
-              {Object.entries(categorias).map(([categoriaNome, produtosCategoria]) => (
-                <div key={categoriaNome} className={`${coresCategorias[categoriaNome] || 'bg-gray-100'} rounded-lg p-3 mb-4`}>
-                  <h3 className="text-md font-semibold text-gray-800 mb-3">{categoriaNome}</h3>
+              {Object.entries(categorias).map(([categoriaKey, categoriaData]) => (
+                <div key={categoriaKey} className={`${coresCategorias[categoriaData.hierarquia[categoriaData.hierarquia.length - 1]?.nome] || 'bg-gray-100'} rounded-lg p-3 mb-4`}>
+                  <div className="mb-3">
+                    <h3 className="text-md font-semibold text-gray-800 font-mono leading-relaxed">
+                      {renderCategoriaComIndentacao(categoriaData.hierarquia)}
+                    </h3>
+                  </div>
                   
                   <div className="bg-white rounded-lg overflow-hidden">
                     <table className="w-full">
@@ -320,7 +373,7 @@ const ContagemPage = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {produtosCategoria.map((produto) => {
+                        {categoriaData.produtos.map((produto) => {
                           const produtoVariacoes = getVariacoesPorProduto(produto.id);
                           const contagemAtual = contagens[produto.id] || 0;
                           const usuarioAtivo = usuariosAtivos[produto.id];
@@ -466,19 +519,53 @@ const ContagemPage = () => {
                 <h4 className="font-medium mb-3">Contagens Adicionadas</h4>
                 <div className="space-y-2">
                   {contagemDetalhada.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center space-x-4 text-sm">
-                        <span className="font-medium">{item.quantidade} {item.unidade}</span>
-                        {item.observacao && <span className="text-gray-600">- {item.observacao}</span>}
+                    <div key={item.id} className="p-3 border rounded-lg">
+                      <div className="grid grid-cols-4 gap-3 items-center">
+                        <div>
+                          <Input
+                            type="number"
+                            value={item.quantidade}
+                            onChange={(e) => editarLinhaDetalhada(item.id, { quantidade: e.target.value })}
+                            className="text-sm"
+                            disabled={item.isExisting}
+                          />
+                        </div>
+                        <div>
+                          <select
+                            value={item.unidade}
+                            onChange={(e) => editarLinhaDetalhada(item.id, { unidade: e.target.value })}
+                            className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                            disabled={item.isExisting}
+                          >
+                            <option value="unidade">Unidades</option>
+                            <option value="caixa">Caixas (24 un)</option>
+                            <option value="pacote">Pacotes (12 un)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Input
+                            value={item.observacao}
+                            onChange={(e) => editarLinhaDetalhada(item.id, { observacao: e.target.value })}
+                            placeholder="Observação"
+                            className="text-sm"
+                            disabled={item.isExisting}
+                          />
+                        </div>
+                        <div className="flex justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => removerLinhaDetalhada(item.id)}
+                            className="text-red-600 border-red-600 hover:bg-red-50"
+                            disabled={item.isExisting}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => removerLinhaDetalhada(item.id)}
-                        className="text-red-600 border-red-600 hover:bg-red-50"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
+                      {item.isExisting && (
+                        <p className="text-xs text-blue-600 mt-1">Contagem atual (não editável)</p>
+                      )}
                     </div>
                   ))}
                 </div>

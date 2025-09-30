@@ -193,6 +193,28 @@ const ProdutosPage = () => {
     });
   };
 
+  const handleViewProduct = (produto) => {
+    // Implementar visualização detalhada do produto
+    alert(`Visualizar produto: ${produto.nome}\n\nEsta funcionalidade será implementada em breve.`);
+  };
+
+  const handleEditProduct = (produto) => {
+    // Carregar dados do produto no formulário para edição
+    const produtoVariacoes = getVariacoesPorProduto(produto.id);
+    
+    setFormData({
+      id: produto.id,
+      nome: produto.nome,
+      id_categoria: produto.id_categoria,
+      id_setor: produto.id_setor,
+      imagem_principal_url: produto.imagem_principal_url || '',
+      variacoes: produtoVariacoes
+    });
+    
+    setEditingProduct(produto);
+    setShowForm(true);
+  };
+
   const filteredProdutos = produtos.filter(produto => {
     const matchesSearch = produto.nome.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSetor = !selectedSetor || produto.id_setor === selectedSetor;
@@ -371,11 +393,19 @@ const ProdutosPage = () => {
                               </div>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Button size="sm" variant="outline">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleViewProduct(produto)}
+                              >
                                 <Eye className="h-4 w-4 mr-1" />
                                 Ver
                               </Button>
-                              <Button size="sm" variant="outline">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleEditProduct(produto)}
+                              >
                                 <Edit className="h-4 w-4 mr-1" />
                                 Editar
                               </Button>

@@ -521,3 +521,87 @@ Baseado no schema fornecido, identifiquei a estrutura correta das tabelas:
 - Implementar sistema de conversão de unidades no backend
 - Adicionar persistência das contagens
 - Implementar validações de conflito de contagem
+
+## [2025-09-30] - Melhorias na Interface e Funcionalidades Avançadas
+
+### Funcionalidades Implementadas em Produtos:
+
+**Botões Ver e Editar:**
+- **Botão Ver**: Implementado com placeholder para visualização detalhada
+- **Botão Editar**: Funcional - carrega dados do produto no formulário para edição
+- **Carregamento de dados**: Produto e suas variações são carregados automaticamente
+- **Modo de edição**: Formulário pré-preenchido com dados existentes
+
+### Melhorias na Tela de Contagem:
+
+**Layout dos Filtros:**
+- **Disposição horizontal**: Filtros organizados em linha única
+- **Responsividade**: Flex layout que se adapta a diferentes telas
+- **Larguras mínimas**: Cada filtro tem largura mínima para usabilidade
+- **Espaçamento otimizado**: Gap de 16px entre elementos
+
+**Sistema de Contagem Detalhada Avançado:**
+- **Persistência de dados**: Contagem atual mostrada como primeira linha
+- **Edição inline**: Todas as linhas editáveis (exceto contagem atual)
+- **Proteção de dados**: Linha de contagem atual marcada como não editável
+- **Interface intuitiva**: Grid de 4 colunas para edição fácil
+
+**Categorias Hierárquicas:**
+- **Estrutura recursiva**: Suporte a múltiplos níveis de categoria
+- **Indentação visual**: Cada nível indentado com espaços e símbolos
+- **Navegação completa**: Mostra caminho completo até a categoria do produto
+- **Renderização dinâmica**: Hierarquia construída automaticamente
+
+### Funcionalidades do Modal de Contagem:
+
+**Gestão de Linhas:**
+- **Linha atual**: Mostra contagem existente (protegida contra edição)
+- **Novas linhas**: Permite adicionar múltiplas entradas
+- **Edição inline**: Campos editáveis diretamente na lista
+- **Remoção seletiva**: Botão de exclusão para cada linha (exceto atual)
+
+**Sistema de Conversão:**
+- **Unidades múltiplas**: Suporte a unidades, caixas (24un), pacotes (12un)
+- **Cálculo automático**: Total calculado com conversões aplicadas
+- **Observações**: Campo de texto livre para cada linha
+- **Validação**: Apenas linhas com quantidade > 0 são aceitas
+
+### Estrutura de Categorias Implementada:
+
+**Exemplo de Hierarquia:**
+```
+Cozinha
+└─ Alimentos
+   └─ Carnes
+      └─ Blend
+```
+
+**Características:**
+- **Indentação progressiva**: Cada nível com 2 espaços adicionais
+- **Símbolos visuais**: └─ para indicar hierarquia
+- **Fonte monospace**: Alinhamento perfeito dos caracteres
+- **Cores dinâmicas**: Cor baseada na categoria final da hierarquia
+
+### Melhorias de Interface:
+
+**Responsividade dos Filtros:**
+- **Flex layout**: Adaptação automática ao tamanho da tela
+- **Larguras mínimas**: 200px para selects, 250px para busca
+- **Quebra de linha**: Wrap automático em telas pequenas
+- **Alinhamento**: Items alinhados pela base dos campos
+
+**Modal de Contagem:**
+- **Grid responsivo**: 4 colunas para edição eficiente
+- **Campos específicos**: Quantidade, unidade, observação, ações
+- **Estados visuais**: Campos desabilitados com indicação clara
+- **Feedback visual**: Cor azul para identificar contagem atual
+
+### Arquivos Modificados:
+- `src/pages/ProdutosPage.jsx`: Botões Ver/Editar funcionais
+- `src/pages/ContagemPage.jsx`: Filtros horizontais, categorias hierárquicas, modal avançado
+
+### Funcionalidades Técnicas:
+- **getCategoriaHierarquia()**: Constrói árvore de categorias recursivamente
+- **renderCategoriaComIndentacao()**: Renderiza hierarquia com indentação
+- **editarLinhaDetalhada()**: Permite edição inline de linhas de contagem
+- **Sistema de proteção**: Contagem atual não pode ser editada diretamente
