@@ -16,7 +16,8 @@ import {
   X,
   Trash2,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { setorService, categoriaService, unidadeMedidaService, produtoService, variacaoService } from '../services/api';
@@ -29,6 +30,7 @@ const ProdutosPage = () => {
   const [categorias, setCategorias] = useState([]);
   const [unidadesMedida, setUnidadesMedida] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -106,6 +108,7 @@ const ProdutosPage = () => {
     }
 
     try {
+      setSaving(true);
       let produto;
       
       if (editingProduct) {
@@ -130,15 +133,16 @@ const ProdutosPage = () => {
           }
         }
 
-        // Criar novas variações
-        for (const variacao of formData.variacoes) {
+        // Criar novas variações com ordem correta
+        for (let i = 0; i < formData.variacoes.length; i++) {
+          const variacao = formData.variacoes[i];
           const variacaoData = {
             id_produto: editingProduct.id,
             nome: variacao.nome,
             estoque_atual: variacao.estoque_atual,
             estoque_minimo: variacao.estoque_minimo,
             preco_custo: variacao.preco_custo,
-            fator_prioridade: variacao.fator_prioridade,
+            fator_prioridade: i + 1, // Usar índice + 1 para manter ordem
             id_unidade_controle: variacao.id_unidade_controle
           };
 
@@ -158,15 +162,16 @@ const ProdutosPage = () => {
         const produtoRes = await produtoService.create(produtoData);
         produto = produtoRes.data;
 
-        // Criar variações
-        for (const variacao of formData.variacoes) {
+        // Criar variações com ordem correta
+        for (let i = 0; i < formData.variacoes.length; i++) {
+          const variacao = formData.variacoes[i];
           const variacaoData = {
             id_produto: produto.id,
             nome: variacao.nome,
             estoque_atual: variacao.estoque_atual,
             estoque_minimo: variacao.estoque_minimo,
             preco_custo: variacao.preco_custo,
-            fator_prioridade: variacao.fator_prioridade,
+            fator_prioridade: i + 1, // Usar índice + 1 para manter ordem
             id_unidade_controle: variacao.id_unidade_controle
           };
 
@@ -174,8 +179,6 @@ const ProdutosPage = () => {
         }
       }
 
-      alert(editingProduct ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
-      
       // Recarregar dados
       await loadData();
       
@@ -184,9 +187,14 @@ const ProdutosPage = () => {
       setShowForm(false);
       setEditingProduct(null);
       
+      // Mostrar mensagem de sucesso sem alert
+      console.log(editingProduct ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
+      
     } catch (error) {
       console.error('Erro ao salvar produto:', error);
       alert('Erro ao salvar produto: ' + (error.message || 'Erro desconhecido'));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -194,12 +202,15 @@ const ProdutosPage = () => {
     setEditingProduct(produto);
     const produtoVariacoes = getVariacoesPorProduto(produto.id);
     
+    // Ordenar variações por fator_prioridade
+    const variacoesOrdenadas = produtoVariacoes.sort((a, b) => a.fator_prioridade - b.fator_prioridade);
+    
     setFormData({
       nome: produto.nome,
       id_categoria: produto.id_categoria,
       id_setor: produto.id_setor,
       imagem_principal_url: produto.imagem_principal_url || '',
-      variacoes: produtoVariacoes.map(v => ({
+      variacoes: variacoesOrdenadas.map(v => ({
         nome: v.nome,
         estoque_atual: v.estoque_atual,
         estoque_minimo: v.estoque_minimo,
@@ -310,6 +321,19 @@ const ProdutosPage = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Carregando produtos...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Tela de loading durante salvamento
+  if (saving) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600 text-lg">Salvando produto...</p>
+          <p className="text-gray-500 text-sm">Por favor, aguarde</p>
         </div>
       </div>
     );
@@ -568,12 +592,7 @@ const ProdutosPage = () => {
                             
                             return (
                               <div key={index} className={`flex items-center justify-between p-3 border rounded-lg ${isDefault ? 'border-blue-500 bg-blue-50' : ''}`}>
-                                <div className="flex items-center space-x-4 text-sm">
-                                  {isDefault && (
-                                    <Badge className="bg-blue-500 text-white text-xs">
-                                      PADRÃO
-                                    </Badge>
-                                  )}
+                                <div className="flex items-center space-x-4 text-sm flex-1">
                                   <span className="font-medium">{variacao.nome}</span>
                                   <span>Unidade: {unidade?.nome} ({unidade?.sigla})</span>
                                   <span>Estoque: {variacao.estoque_atual}</span>
@@ -581,6 +600,12 @@ const ProdutosPage = () => {
                                   <span>Preço: R$ {Number(variacao.preco_custo || 0).toFixed(2)}</span>
                                 </div>
                                 <div className="flex items-center space-x-2">
+                                  {/* Badge PADRÃO à direita */}
+                                  {isDefault && (
+                                    <Badge className="bg-blue-500 text-white text-xs">
+                                      PADRÃO
+                                    </Badge>
+                                  )}
                                   {/* Botões de ordenação */}
                                   {index > 0 && (
                                     <Button
@@ -637,9 +662,18 @@ const ProdutosPage = () => {
                     >
                       Cancelar
                     </Button>
-                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-                      <Save className="h-4 w-4 mr-2" />
-                      {editingProduct ? 'Atualizar' : 'Salvar'} Produto
+                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={saving}>
+                      {saving ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4 mr-2" />
+                          {editingProduct ? 'Atualizar' : 'Salvar'} Produto
+                        </>
+                      )}
                     </Button>
                   </div>
                 </form>
@@ -714,6 +748,8 @@ const ProdutosPage = () => {
                     <TableBody>
                       {filteredProdutos.map((produto) => {
                         const produtoVariacoes = getVariacoesPorProduto(produto.id);
+                        // Ordenar variações por fator_prioridade
+                        const variacoesOrdenadas = produtoVariacoes.sort((a, b) => a.fator_prioridade - b.fator_prioridade);
                         
                         return (
                           <TableRow key={produto.id}>
@@ -748,22 +784,22 @@ const ProdutosPage = () => {
                             </TableCell>
                             <TableCell>
                               <div className="space-y-1">
-                                {produtoVariacoes.slice(0, 2).map((variacao, index) => (
-                                  <div key={variacao.id} className="text-sm">
+                                {variacoesOrdenadas.slice(0, 2).map((variacao, index) => (
+                                  <div key={variacao.id} className="text-sm flex items-center space-x-2">
                                     <span className="font-medium">{variacao.nome}</span>
-                                    <span className="text-gray-500 ml-2">
+                                    <span className="text-gray-500">
                                       ({getUnidadeSigla(variacao.id_unidade_controle)})
                                     </span>
                                     {index === 0 && (
-                                      <Badge className="ml-2 bg-blue-100 text-blue-800 text-xs">
+                                      <Badge className="bg-blue-100 text-blue-800 text-xs">
                                         PADRÃO
                                       </Badge>
                                     )}
                                   </div>
                                 ))}
-                                {produtoVariacoes.length > 2 && (
+                                {variacoesOrdenadas.length > 2 && (
                                   <div className="text-xs text-gray-500">
-                                    +{produtoVariacoes.length - 2} mais
+                                    +{variacoesOrdenadas.length - 2} mais
                                   </div>
                                 )}
                               </div>
