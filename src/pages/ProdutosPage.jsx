@@ -339,14 +339,35 @@ const ProdutosPage = () => {
                       return (
                         <div key={produto.id} className="border rounded-lg p-4">
                           <div className="flex items-center justify-between mb-3">
-                            <div>
-                              <h3 className="font-medium text-lg">{produto.nome}</h3>
-                              <div className="flex items-center space-x-4 text-sm text-gray-500">
-                                <span><strong>Setor:</strong> {produto.setor_nome}</span>
-                                <span>•</span>
-                                <span><strong>Categoria:</strong> {produto.categoria_nome}</span>
-                                <span>•</span>
-                                <span><strong>Variações:</strong> {produtoVariacoes.length}</span>
+                            <div className="flex items-center space-x-4">
+                              {/* Imagem do produto */}
+                              <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                                {produto.imagem_principal_url ? (
+                                  <img 
+                                    src={produto.imagem_principal_url} 
+                                    alt={produto.nome}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      e.target.style.display = 'none';
+                                      e.target.nextSibling.style.display = 'flex';
+                                    }}
+                                  />
+                                ) : null}
+                                <div className={`w-full h-full flex items-center justify-center ${produto.imagem_principal_url ? 'hidden' : 'flex'}`}>
+                                  <Package className="h-6 w-6 text-gray-400" />
+                                </div>
+                              </div>
+                              
+                              {/* Informações do produto */}
+                              <div>
+                                <h3 className="font-medium text-lg">{produto.nome}</h3>
+                                <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                  <span><strong>Setor:</strong> {produto.setor_nome}</span>
+                                  <span>•</span>
+                                  <span><strong>Categoria:</strong> {produto.categoria_nome}</span>
+                                  <span>•</span>
+                                  <span><strong>Variações:</strong> {produtoVariacoes.length}</span>
+                                </div>
                               </div>
                             </div>
                             <div className="flex items-center space-x-2">
