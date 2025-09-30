@@ -16,7 +16,12 @@ const UnidadesTab = () => {
   const [submitting, setSubmitting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUnidade, setEditingUnidade] = useState(null);
-  const [formData, setFormData] = useState({ nome: '', sigla: '', ativo: true });
+  const [formData, setFormData] = useState({ 
+    nome: '', 
+    sigla: '', 
+    quantidade: 1, 
+    ativo: true 
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -60,13 +65,12 @@ const UnidadesTab = () => {
       }
       
       setDialogOpen(false);
-      setEditingUnidade(null);
-      setFormData({ nome: '', sigla: '', ativo: true });
+      resetForm();
       loadUnidades();
     } catch (error) {
       toast({
         title: "Erro",
-        description: error.message || "Erro ao salvar unidade de medida",
+        description: error.response?.data?.message || "Erro ao salvar unidade de medida",
         variant: "destructive",
       });
     } finally {
@@ -76,28 +80,31 @@ const UnidadesTab = () => {
 
   const handleEdit = (unidade) => {
     setEditingUnidade(unidade);
-    setFormData({ nome: unidade.nome, sigla: unidade.sigla, ativo: unidade.ativo });
+    setFormData({
+      nome: unidade.nome,
+      sigla: unidade.sigla,
+      quantidade: unidade.quantidade || 1,
+      ativo: unidade.ativo
+    });
     setDialogOpen(true);
   };
 
   const handleDeactivate = async (unidade) => {
-    if (!confirm(`Tem certeza que deseja desativar a unidade "${unidade.nome}"?`)) {
-      return;
-    }
-
-    try {
-      await unidadeMedidaService.deactivate(unidade.id);
-      toast({
-        title: "Sucesso",
-        description: "Unidade de medida desativada com sucesso",
-      });
-      loadUnidades();
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao desativar unidade de medida",
-        variant: "destructive",
-      });
+    if (window.confirm(`Tem certeza que deseja desativar a unidade "${unidade.nome}"?`)) {
+      try {
+        await unidadeMedidaService.deactivate(unidade.id);
+        toast({
+          title: "Sucesso",
+          description: "Unidade de medida desativada com sucesso",
+        });
+        loadUnidades();
+      } catch (error) {
+        toast({
+          title: "Erro",
+          description: "Erro ao desativar unidade de medida",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -112,7 +119,7 @@ const UnidadesTab = () => {
     } catch (error) {
       toast({
         title: "Erro",
-        description: error.message || "Erro ao reativar unidade de medida",
+        description: "Erro ao reativar unidade de medida",
         variant: "destructive",
       });
     }
@@ -120,33 +127,58 @@ const UnidadesTab = () => {
 
   const openCreateDialog = () => {
     setEditingUnidade(null);
-    setFormData({ nome: '', sigla: '', ativo: true });
+    resetForm();
     setDialogOpen(true);
   };
 
-  if (loading) {
-    return <div className="text-center py-4">Carregando unidades de medida...</div>;
-  }
+  const resetForm = () => {
+    setFormData({ 
+      nome: '', 
+      sigla: '', 
+      quantidade: 1, 
+      ativo: true 
+    });
+  };
 
   const columns = [
     {
       key: 'nome',
       label: 'Nome',
+      sortable: true,
       filterable: true,
-      render: (value) => <span className="font-medium">{value}</span>
+      render: (value) => (
+        <span className="font-medium">{value}</span>
+      )
     },
     {
       key: 'sigla',
       label: 'Sigla',
+      sortable: true,
       filterable: true,
-      render: (value) => <Badge variant="outline">{value}</Badge>
+      render: (value) => (
+        <Badge variant="outline" className="font-mono">
+          {value}
+        </Badge>
+      )
+    },
+    {
+      key: 'quantidade',
+      label: 'Quantidade',
+      sortable: true,
+      filterable: false,
+      render: (value) => (
+        <span className="text-sm text-gray-600">
+          {value ? Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 3 }) : '1'}
+        </span>
+      )
     },
     {
       key: 'ativo',
       label: 'Status',
+      sortable: true,
       filterable: true,
       render: (value) => (
-        <Badge variant={value ? "default" : "secondary"}>
+        <Badge variant={value ? 'default' : 'secondary'}>
           {value ? 'Ativo' : 'Inativo'}
         </Badge>
       )
@@ -227,9 +259,12 @@ const UnidadesTab = () => {
                     id="nome"
                     value={formData.nome}
                     onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                    placeholder="Ex: Unidade, Caixa com 12, Litro"
+                    placeholder="Ex: Unidade, Caixa, Litro, Quilograma"
                     required
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Nome descritivo da unidade de medida
+                  </p>
                 </div>
 
                 <div>
@@ -238,10 +273,38 @@ const UnidadesTab = () => {
                     id="sigla"
                     value={formData.sigla}
                     onChange={(e) => setFormData({ ...formData, sigla: e.target.value.toUpperCase() })}
-                    placeholder="Ex: UN, CX-12, L"
+                    placeholder="Ex: UN, CX, L, KG"
                     required
                     maxLength={10}
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Abreviação da unidade (máximo 10 caracteres)
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="quantidade">Quantidade</Label>
+                  <Input
+                    id="quantidade"
+                    type="number"
+                    step="0.001"
+                    min="0.001"
+                    value={formData.quantidade}
+                    onChange={(e) => setFormData({ ...formData, quantidade: parseFloat(e.target.value) || 1 })}
+                    placeholder="1"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Quantas unidades base esta unidade representa (ex: 1 Caixa = 24 Unidades)
+                  </p>
+                  <div className="text-xs text-blue-600 mt-1">
+                    <strong>Exemplos:</strong>
+                    <br />• Unidade = 1 (padrão)
+                    <br />• Caixa com 24 = 24
+                    <br />• Pacote com 12 = 12
+                    <br />• 1 Litro = 1000 (se base for ml)
+                    <br />• 1 Kg = 1000 (se base for gramas)
+                  </div>
                 </div>
               </div>
               
@@ -280,4 +343,3 @@ const UnidadesTab = () => {
 };
 
 export default UnidadesTab;
-

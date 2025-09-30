@@ -4,19 +4,28 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
-import { Textarea } from '../components/ui/textarea';
-import {
-  ArrowLeft,
-  Search,
-  Filter,
+import { 
+  ArrowLeft, 
+  Search, 
+  Filter, 
+  Plus, 
+  Minus, 
+  Eye,
   Package,
-  Edit3,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
   Users,
-  Plus,
-  Save,
-  X
+  BarChart3
 } from 'lucide-react';
-import { produtoService, variacaoService, setorService, categoriaService, contagensService } from '../services/api';
+import { 
+  produtoService, 
+  variacaoService, 
+  setorService, 
+  categoriaService, 
+  contagensService,
+  unidadeMedidaService 
+} from '../services/api';
 
 const ContagemPage = () => {
   const navigate = useNavigate();
@@ -27,6 +36,7 @@ const ContagemPage = () => {
   const [variacoes, setVariacoes] = useState([]);
   const [setores, setSetores] = useState([]);
   const [categorias, setCategorias] = useState([]);
+  const [unidadesMedida, setUnidadesMedida] = useState([]);
   const [contagens, setContagens] = useState({});
   const [contagemAtual, setContagemAtual] = useState(null);
   const [itensContagem, setItensContagem] = useState([]);
@@ -37,7 +47,8 @@ const ContagemPage = () => {
   const [filtros, setFiltros] = useState({
     setor: '',
     categoria: '',
-    produto: ''
+    produto: '',
+    categoriaInput: ''
   });
   
   // Estados do modal de contagem detalhada
@@ -50,21 +61,6 @@ const ContagemPage = () => {
     observacao: ''
   });
 
-  // Cores para setores e categorias
-  const coresSetores = {
-    'Alimentação': 'bg-blue-50',
-    'Limpeza': 'bg-green-50',
-    'Higiene': 'bg-purple-50',
-    'Bebidas': 'bg-yellow-50'
-  };
-
-  const coresCategorias = {
-    'Bebidas': 'bg-blue-100',
-    'Laticínios': 'bg-green-100',
-    'Produtos de Limpeza': 'bg-purple-100',
-    'Higiene Pessoal': 'bg-yellow-100'
-  };
-
   useEffect(() => {
     if (turnoId) {
       carregarDados();
@@ -75,12 +71,12 @@ const ContagemPage = () => {
     try {
       setLoading(true);
       
-      const [produtosRes, variacoesRes, setoresRes, categoriasRes, contagensRes] = await Promise.allSettled([
+      const [produtosRes, variacoesRes, setoresRes, categoriasRes, unidadesRes] = await Promise.allSettled([
         produtoService.getAll(),
         variacaoService.getAll(),
         setorService.getAll(),
         categoriaService.getAll(),
-        contagensService.getByTurno(turnoId)
+        unidadeMedidaService.getAll()
       ]);
 
       if (produtosRes.status === 'fulfilled') {
@@ -99,59 +95,71 @@ const ContagemPage = () => {
         setCategorias(categoriasRes.value.data || []);
       }
 
-      // Carregar contagens existentes do turno
-      if (contagensRes.status === 'fulfilled') {
-        const contagensData = contagensRes.value.data || [];
-        
-        // Buscar ou criar contagem ativa para este turno
-        let contagemAtiva = contagensData.find(c => c.status === 'ativa' || c.status === 'em_andamento');
-        
-        if (!contagemAtiva && contagensData.length === 0) {
-          // Criar nova contagem se não existir nenhuma
-          try {
-            const novaContagem = await contagensService.create({
-              turno_id: turnoId,
-              tipo_contagem: 'geral'
-            });
-            contagemAtiva = novaContagem.data;
-          } catch (error) {
-            console.error('Erro ao criar contagem:', error);
-          }
-        }
-        
-        if (contagemAtiva) {
-          setContagemAtual(contagemAtiva);
-          
-          // Carregar itens da contagem
-          try {
-            const itensRes = await contagensService.getItens(contagemAtiva.id);
-            const itens = itensRes.data || [];
-            setItensContagem(itens);
-            
-            // Converter itens para formato de contagens por produto
-            const contagensPorProduto = {};
-            itens.forEach(item => {
-              if (item.variacao_id) {
-                const variacao = variacoes.find(v => v.id === item.variacao_id);
-                if (variacao) {
-                  contagensPorProduto[variacao.id_produto] = item.quantidade_convertida || item.quantidade_contada;
-                }
-              }
-            });
-            setContagens(contagensPorProduto);
-          } catch (error) {
-            console.error('Erro ao carregar itens da contagem:', error);
-          }
-        }
+      if (unidadesRes.status === 'fulfilled') {
+        setUnidadesMedida(unidadesRes.value.data || []);
       }
 
-      // Simular usuários ativos (pode ser implementado com WebSocket futuramente)
-      setUsuariosAtivos({});
+      // Carregar ou criar contagem para este turno
+      await carregarOuCriarContagem();
 
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const carregarOuCriarContagem = async () => {
+    try {
+      // Tentar carregar contagens existentes do turno
+      const contagensRes = await contagensService.getByTurno(turnoId);
+      const contagensData = contagensRes.data || [];
+      
+      // Buscar contagem ativa
+      let contagemAtiva = contagensData.find(c => 
+        c.status === 'ativa' || 
+        c.status === 'em_andamento' || 
+        c.status === 'aberta'
+      );
+      
+      // Se não há contagem ativa, criar uma nova
+      if (!contagemAtiva) {
+        console.log('Criando nova contagem para o turno:', turnoId);
+        const novaContagemRes = await contagensService.create({
+          turno_id: turnoId,
+          tipo_contagem: 'geral'
+        });
+        contagemAtiva = novaContagemRes.data;
+        console.log('Nova contagem criada:', contagemAtiva);
+      }
+      
+      if (contagemAtiva) {
+        setContagemAtual(contagemAtiva);
+        console.log('Contagem ativa definida:', contagemAtiva);
+        
+        // Carregar itens da contagem
+        try {
+          const itensRes = await contagensService.getItens(contagemAtiva.id);
+          const itens = itensRes.data || [];
+          setItensContagem(itens);
+          
+          // Converter itens para formato de contagens por produto
+          const contagensPorProduto = {};
+          itens.forEach(item => {
+            if (item.variacao_id) {
+              const variacao = variacoes.find(v => v.id === item.variacao_id);
+              if (variacao) {
+                contagensPorProduto[variacao.id_produto] = item.quantidade_convertida || item.quantidade_contada;
+              }
+            }
+          });
+          setContagens(contagensPorProduto);
+        } catch (error) {
+          console.error('Erro ao carregar itens da contagem:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar/criar contagem:', error);
     }
   };
 
@@ -164,47 +172,91 @@ const ContagemPage = () => {
   });
 
   const getVariacoesPorProduto = (produtoId) => {
-    return variacoes.filter(v => v.id_produto === produtoId);
+    return variacoes.filter(variacao => variacao.id_produto === produtoId);
+  };
+
+  const getUnidadesPorProduto = (produtoId) => {
+    if (!produtoId) return unidadesMedida; // Fallback para todas as unidades
+    
+    // Buscar variações do produto
+    const produtoVariacoes = getVariacoesPorProduto(produtoId);
+    if (produtoVariacoes.length === 0) return unidadesMedida;
+    
+    // Buscar unidades de medida usadas nas variações
+    const unidadesIds = [...new Set(produtoVariacoes.map(v => v.id_unidade_controle))];
+    const unidadesRelacionadas = unidadesMedida.filter(u => unidadesIds.includes(u.id));
+    
+    // Se não encontrou unidades relacionadas, retornar todas
+    if (unidadesRelacionadas.length === 0) return unidadesMedida;
+    
+    // Ordenar: primeira variação (default) primeiro, depois alfabético
+    const variacaoDefault = produtoVariacoes[0];
+    return unidadesRelacionadas.sort((a, b) => {
+      if (a.id === variacaoDefault.id_unidade_controle) return -1;
+      if (b.id === variacaoDefault.id_unidade_controle) return 1;
+      return a.nome.localeCompare(b.nome);
+    });
   };
 
   const getSetorNome = (setorId) => {
     const setor = setores.find(s => s.id === setorId);
-    return setor?.nome || '';
+    return setor ? setor.nome : 'Setor não encontrado';
   };
 
   const getCategoriaNome = (categoriaId) => {
     const categoria = categorias.find(c => c.id === categoriaId);
-    return categoria?.nome || '';
+    return categoria ? categoria.nome : 'Categoria não encontrada';
   };
 
-  const getCategoriaHierarquia = (categoriaId) => {
-    const categoria = categorias.find(c => c.id === categoriaId);
-    if (!categoria) return '';
-    
-    const hierarquia = [];
-    let categoriaAtual = categoria;
-    
-    // Construir hierarquia até a raiz
-    while (categoriaAtual) {
-      hierarquia.unshift(categoriaAtual);
-      categoriaAtual = categorias.find(c => c.id === categoriaAtual.id_categoria_pai);
-    }
-    
-    return hierarquia;
-  };
+  const renderFiltroCategoria = () => {
+    const categoriasFiltradas = categorias.filter(categoria =>
+      categoria.nome.toLowerCase().includes(filtros.categoriaInput.toLowerCase())
+    );
 
-  const renderCategoriaComIndentacao = (hierarquia) => {
-    return hierarquia.map((cat, index) => (
-      <span key={cat.id}>
-        {'  '.repeat(index)}{index > 0 ? '└─ ' : ''}{cat.nome}
-        {index < hierarquia.length - 1 && <br />}
-      </span>
-    ));
+    return (
+      <div className="relative">
+        <Input
+          list="categorias-list"
+          value={filtros.categoriaInput}
+          onChange={(e) => {
+            setFiltros(prev => ({ ...prev, categoriaInput: e.target.value }));
+            // Buscar categoria correspondente
+            const categoriaEncontrada = categorias.find(c => 
+              c.nome.toLowerCase() === e.target.value.toLowerCase()
+            );
+            setFiltros(prev => ({ 
+              ...prev, 
+              categoria: categoriaEncontrada ? categoriaEncontrada.id : '' 
+            }));
+          }}
+          placeholder="Digite ou selecione categoria"
+          className="w-full"
+        />
+        <datalist id="categorias-list">
+          {categoriasFiltradas.map(categoria => (
+            <option key={categoria.id} value={categoria.nome} />
+          ))}
+        </datalist>
+      </div>
+    );
   };
 
   const handleContagemSimples = async (produtoId, valor) => {
-    if (!contagemAtual) {
-      alert('Erro: Nenhuma contagem ativa encontrada');
+    console.log('=== DEBUG CONTAGEM SIMPLES ===');
+    console.log('contagemAtual:', contagemAtual);
+    console.log('produtoId:', produtoId);
+    console.log('valor:', valor);
+    
+    // Validação mais robusta
+    if (!contagemAtual || !contagemAtual.id) {
+      console.error('Contagem atual não encontrada ou sem ID');
+      alert('Erro: Contagem não inicializada. Recarregando página...');
+      window.location.reload();
+      return;
+    }
+
+    if (!produtoId) {
+      alert('Erro: Produto não identificado');
       return;
     }
 
@@ -219,6 +271,7 @@ const ContagemPage = () => {
       }
       
       const variacaoPrincipal = produtoVariacoes[0];
+      console.log('Variação principal:', variacaoPrincipal);
       
       // Verificar se já existe item para este produto na contagem
       const itemExistente = itensContagem.find(item => {
@@ -226,8 +279,11 @@ const ContagemPage = () => {
         return variacao && variacao.id_produto === produtoId;
       });
       
+      console.log('Item existente:', itemExistente);
+      
       if (itemExistente) {
         // Atualizar item existente
+        console.log('Atualizando item existente...');
         await contagensService.updateItem(contagemAtual.id, itemExistente.id, {
           quantidade_contada: quantidade,
           quantidade_convertida: quantidade,
@@ -235,13 +291,17 @@ const ContagemPage = () => {
         });
       } else {
         // Criar novo item
-        await contagensService.addItem(contagemAtual.id, {
+        console.log('Criando novo item...');
+        const novoItem = {
           variacao_id: variacaoPrincipal.id,
           quantidade_contada: quantidade,
           unidade_medida_id: variacaoPrincipal.id_unidade_controle,
           quantidade_convertida: quantidade,
           observacoes: 'Contagem simples'
-        });
+        };
+        console.log('Dados do novo item:', novoItem);
+        
+        await contagensService.addItem(contagemAtual.id, novoItem);
       }
       
       // Atualizar estado local
@@ -254,6 +314,8 @@ const ContagemPage = () => {
       const itensRes = await contagensService.getItens(contagemAtual.id);
       setItensContagem(itensRes.data || []);
       
+      console.log('Contagem salva com sucesso!');
+      
     } catch (error) {
       console.error('Erro ao salvar contagem:', error);
       alert('Erro ao salvar contagem: ' + (error.message || 'Erro desconhecido'));
@@ -262,39 +324,37 @@ const ContagemPage = () => {
 
   const abrirModalDetalhado = (produto) => {
     setProdutoSelecionado(produto);
-    setModalAberto(true);
     
-    // Obter unidade principal do produto (primeira variação)
-    const produtoVariacoes = getVariacoesPorProduto(produto.id);
-    const unidadePrincipal = produtoVariacoes.length > 0 ? 'unidade' : 'unidade';
+    // Buscar unidade default do produto
+    const unidadesProduto = getUnidadesPorProduto(produto.id);
+    const unidadeDefault = unidadesProduto.length > 0 ? unidadesProduto[0].sigla : 'unidade';
     
-    // Carregar contagem atual se existir
-    const contagemAtual = contagens[produto.id] || 0;
-    if (contagemAtual > 0) {
-      // Mostrar valor atual como primeira linha (unidade principal)
-      setContagemDetalhada([{
-        id: 'atual',
-        quantidade: contagemAtual,
-        unidade: unidadePrincipal,
-        observacao: 'Contagem atual',
-        isExisting: true
-      }]);
-    } else {
-      setContagemDetalhada([]);
-    }
+    // Inicializar com uma linha vazia
+    setContagemDetalhada([{
+      id: Date.now(),
+      quantidade: 0,
+      unidade: unidadeDefault,
+      observacao: '',
+      isExisting: false
+    }]);
     
-    // Definir unidade principal como default para nova linha
     setNovaLinha({
       quantidade: 0,
-      unidade: unidadePrincipal,
+      unidade: unidadeDefault,
       observacao: ''
     });
+    
+    setModalAberto(true);
   };
 
   const adicionarLinhaDetalhada = () => {
+    // Buscar unidade default do produto selecionado
+    const unidadesProduto = getUnidadesPorProduto(produtoSelecionado?.id);
+    const unidadeDefault = unidadesProduto.length > 0 ? unidadesProduto[0].sigla : 'unidade';
+    
     if (novaLinha.quantidade > 0) {
       setContagemDetalhada(prev => [...prev, { ...novaLinha, id: Date.now() }]);
-      setNovaLinha({ quantidade: 0, unidade: '', observacao: '' });
+      setNovaLinha({ quantidade: 0, unidade: unidadeDefault, observacao: '' });
     }
   };
 
@@ -309,25 +369,43 @@ const ContagemPage = () => {
   };
 
   const calcularTotalDetalhado = () => {
+    if (!produtoSelecionado) return 0;
+    
+    // Buscar variações do produto para obter unidade default
+    const produtoVariacoes = getVariacoesPorProduto(produtoSelecionado.id);
+    if (produtoVariacoes.length === 0) return 0;
+    
+    const variacaoDefault = produtoVariacoes[0]; // Primeira variação é a default
+    const unidadeDefault = unidadesMedida.find(u => u.id === variacaoDefault.id_unidade_controle);
+    
     return contagemDetalhada.reduce((total, item) => {
       const quantidade = Number(item.quantidade) || 0;
+      if (quantidade <= 0) return total;
       
-      // Aplicar conversão de unidades
-      switch (item.unidade) {
-        case 'caixa':
-          return total + (quantidade * 24); // 24 unidades por caixa
-        case 'pacote':
-          return total + (quantidade * 12); // 12 unidades por pacote
-        case 'unidade':
-        default:
-          return total + quantidade;
-      }
+      const unidadeUsada = unidadesMedida.find(u => u.sigla === item.unidade || u.id === item.unidade);
+      const quantidadeConvertida = calcularQuantidadeConvertida(quantidade, unidadeUsada, unidadeDefault);
+      
+      return total + quantidadeConvertida;
     }, 0);
   };
 
   const salvarContagemDetalhada = async () => {
-    if (!contagemAtual || !produtoSelecionado) {
-      alert('Erro: Dados insuficientes para salvar');
+    console.log('=== DEBUG CONTAGEM DETALHADA ===');
+    console.log('contagemAtual:', contagemAtual);
+    console.log('produtoSelecionado:', produtoSelecionado);
+    console.log('contagemDetalhada:', contagemDetalhada);
+    
+    // Validações mais robustas
+    if (!contagemAtual || !contagemAtual.id) {
+      console.error('Contagem atual não encontrada ou sem ID');
+      alert('Erro: Contagem não inicializada. Recarregando página...');
+      window.location.reload();
+      return;
+    }
+    
+    if (!produtoSelecionado || !produtoSelecionado.id) {
+      console.error('Produto selecionado não encontrado ou sem ID');
+      alert('Erro: Produto não selecionado corretamente');
       return;
     }
 
@@ -339,6 +417,7 @@ const ContagemPage = () => {
       }
 
       const variacaoPrincipal = produtoVariacoes[0];
+      console.log('Variação principal:', variacaoPrincipal);
 
       // Remover itens existentes deste produto na contagem
       const itensExistentes = itensContagem.filter(item => {
@@ -346,27 +425,36 @@ const ContagemPage = () => {
         return variacao && variacao.id_produto === produtoSelecionado.id;
       });
 
+      console.log('Removendo itens existentes:', itensExistentes);
       for (const item of itensExistentes) {
         await contagensService.removeItem(contagemAtual.id, item.id);
       }
 
-      // Adicionar novos itens detalhados (exceto o item atual que é apenas referência)
+      // Adicionar novos itens detalhados
+      const unidadeDefault = unidadesMedida.find(u => u.id === variacaoPrincipal.id_unidade_controle);
+      console.log('Unidade default:', unidadeDefault);
+      
       for (const linha of contagemDetalhada) {
         if (!linha.isExisting && linha.quantidade > 0) {
-          const quantidadeConvertida = calcularQuantidadeConvertida(linha.quantidade, linha.unidade);
+          const unidadeUsada = unidadesMedida.find(u => u.sigla === linha.unidade || u.id === linha.unidade);
+          const quantidadeConvertida = calcularQuantidadeConvertida(linha.quantidade, unidadeUsada, unidadeDefault);
           
-          await contagensService.addItem(contagemAtual.id, {
+          const novoItem = {
             variacao_id: variacaoPrincipal.id,
             quantidade_contada: linha.quantidade,
-            unidade_medida_id: variacaoPrincipal.id_unidade_controle,
+            unidade_medida_id: unidadeUsada?.id || variacaoPrincipal.id_unidade_controle,
             quantidade_convertida: quantidadeConvertida,
-            observacoes: linha.observacao || 'Contagem detalhada'
-          });
+            observacoes: linha.observacao || `Contagem detalhada - ${unidadeUsada?.nome || 'Unidade'}`
+          };
+          
+          console.log('Adicionando item:', novoItem);
+          await contagensService.addItem(contagemAtual.id, novoItem);
         }
       }
 
       // Calcular e salvar total
       const total = calcularTotalDetalhado();
+      console.log('Total calculado:', total);
       
       // Atualizar estado local
       setContagens(prev => ({
@@ -382,42 +470,54 @@ const ContagemPage = () => {
       setProdutoSelecionado(null);
       setContagemDetalhada([]);
       
+      console.log('Contagem detalhada salva com sucesso!');
+      
     } catch (error) {
       console.error('Erro ao salvar contagem detalhada:', error);
       alert('Erro ao salvar contagem detalhada: ' + (error.message || 'Erro desconhecido'));
     }
   };
 
-  const calcularQuantidadeConvertida = (quantidade, unidade) => {
+  const calcularQuantidadeConvertida = (quantidade, unidadeUsada, unidadeDefault) => {
     const qtd = Number(quantidade) || 0;
-    switch (unidade) {
-      case 'caixa':
-        return qtd * 24; // 24 unidades por caixa
-      case 'pacote':
-        return qtd * 12; // 12 unidades por pacote
-      case 'unidade':
-      default:
-        return qtd;
+    
+    // Se não há unidades definidas, retorna a quantidade original
+    if (!unidadeUsada || !unidadeDefault) {
+      return qtd;
     }
+    
+    // Se a unidade usada é a mesma que a default, não precisa converter
+    if (unidadeUsada.id === unidadeDefault.id) {
+      return qtd;
+    }
+    
+    // Converter para unidade base (considerando as quantidades das unidades)
+    const quantidadeUnidadeUsada = Number(unidadeUsada.quantidade) || 1;
+    const quantidadeUnidadeDefault = Number(unidadeDefault.quantidade) || 1;
+    
+    // Calcular proporção
+    // Ex: Se default é Caixa(24) e usuário digitou em Unidade(1)
+    // 12 unidades = 12 * (1/24) = 0.5 caixas
+    const proporcao = quantidadeUnidadeUsada / quantidadeUnidadeDefault;
+    
+    return qtd * proporcao;
   };
 
   // Agrupar produtos por setor e categoria hierárquica
   const produtosAgrupados = produtosFiltrados.reduce((acc, produto) => {
     const setorNome = getSetorNome(produto.id_setor);
-    const hierarquiaCategoria = getCategoriaHierarquia(produto.id_categoria);
-    const categoriaKey = hierarquiaCategoria.map(c => c.nome).join(' → ');
+    const categoriaNome = getCategoriaNome(produto.id_categoria);
     
     if (!acc[setorNome]) {
       acc[setorNome] = {};
     }
-    if (!acc[setorNome][categoriaKey]) {
-      acc[setorNome][categoriaKey] = {
-        produtos: [],
-        hierarquia: hierarquiaCategoria
-      };
+    
+    if (!acc[setorNome][categoriaNome]) {
+      acc[setorNome][categoriaNome] = [];
     }
     
-    acc[setorNome][categoriaKey].produtos.push(produto);
+    acc[setorNome][categoriaNome].push(produto);
+    
     return acc;
   }, {});
 
@@ -425,8 +525,8 @@ const ContagemPage = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando contagem...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando contagem...</p>
         </div>
       </div>
     );
@@ -437,7 +537,7 @@ const ContagemPage = () => {
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
+          <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
@@ -448,15 +548,24 @@ const ContagemPage = () => {
                 <ArrowLeft className="h-4 w-4" />
                 <span>Voltar</span>
               </Button>
+              
               <div className="flex items-center space-x-3">
-                <div className="bg-blue-600 text-white p-2 rounded-lg">
-                  <Package className="h-6 w-6" />
+                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                  <Package className="h-4 w-4 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Contagem de Produtos</h1>
-                  <p className="text-sm text-gray-500">Turno: {turnoId}</p>
+                  <h1 className="text-lg font-semibold text-gray-900">Sistema Contagem Cadoz</h1>
+                  <p className="text-sm text-gray-500">Contagem de Produtos</p>
                 </div>
               </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              {contagemAtual && (
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                  Contagem Ativa
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -464,17 +573,29 @@ const ContagemPage = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {/* Filtros */}
-        <Card className="mb-6">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Filter className="h-5 w-5" />
-              <span>Filtros</span>
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center space-x-2">
+                <Package className="h-5 w-5" />
+                <span>Contagem de Produtos</span>
+              </CardTitle>
+              
+              <div className="flex items-center space-x-2">
+                <Badge variant="secondary">
+                  {produtosFiltrados.length} produtos
+                </Badge>
+                <Badge variant="outline">
+                  {Object.keys(contagens).length} contados
+                </Badge>
+              </div>
+            </div>
           </CardHeader>
+          
           <CardContent>
-            <div className="flex flex-wrap items-end gap-4">
-              <div className="flex-1 min-w-[200px]">
+            {/* Filtros */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Setor
                 </label>
@@ -492,233 +613,174 @@ const ContagemPage = () => {
                 </select>
               </div>
               
-              <div className="flex-1 min-w-[200px]">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Categoria
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    list="categorias-list"
-                    value={filtros.categoria ? getCategoriaNome(filtros.categoria) : ''}
-                    onChange={(e) => {
-                      const categoriaEncontrada = categorias.find(c => 
-                        c.nome.toLowerCase().includes(e.target.value.toLowerCase())
-                      );
-                      setFiltros(prev => ({ 
-                        ...prev, 
-                        categoria: categoriaEncontrada ? categoriaEncontrada.id : '' 
-                      }));
-                    }}
-                    placeholder="Digite ou selecione uma categoria..."
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                  />
-                  <datalist id="categorias-list">
-                    <option value="">Todas as categorias</option>
-                    {categorias.map((categoria) => (
-                      <option key={categoria.id} value={categoria.nome}>
-                        {categoria.nome}
-                      </option>
-                    ))}
-                  </datalist>
-                </div>
+                {renderFiltroCategoria()}
               </div>
               
-              <div className="flex-1 min-w-[250px]">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Produto
                 </label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    placeholder="Buscar produto..."
-                    value={filtros.produto}
-                    onChange={(e) => setFiltros(prev => ({ ...prev, produto: e.target.value }))}
-                    className="pl-10"
-                  />
-                </div>
+                <Input
+                  value={filtros.produto}
+                  onChange={(e) => setFiltros(prev => ({ ...prev, produto: e.target.value }))}
+                  placeholder="Buscar produto..."
+                  className="w-full"
+                />
+              </div>
+              
+              <div className="flex items-end">
+                <Button
+                  onClick={() => setFiltros({ setor: '', categoria: '', produto: '', categoriaInput: '' })}
+                  variant="outline"
+                  className="w-full"
+                >
+                  Limpar Filtros
+                </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Lista de Produtos por Setor/Categoria */}
-        <div className="space-y-6">
-          {Object.entries(produtosAgrupados).map(([setorNome, categorias]) => (
-            <div key={setorNome} className={`${coresSetores[setorNome] || 'bg-gray-50'} rounded-lg p-4`}>
-              <h2 className="text-lg font-bold text-gray-900 mb-4">{setorNome}</h2>
-              
-              {Object.entries(categorias).map(([categoriaKey, categoriaData]) => (
-                <div key={categoriaKey} className={`${coresCategorias[categoriaData.hierarquia[categoriaData.hierarquia.length - 1]?.nome] || 'bg-gray-100'} rounded-lg p-3 mb-4`}>
-                  <div className="mb-3">
-                    <h3 className="text-md font-semibold text-gray-800 font-mono leading-relaxed">
-                      {renderCategoriaComIndentacao(categoriaData.hierarquia)}
-                    </h3>
-                  </div>
+            {/* Lista de Produtos Agrupados */}
+            <div className="space-y-6">
+              {Object.entries(produtosAgrupados).map(([setorNome, categorias]) => (
+                <div key={setorNome} className="border rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <BarChart3 className="h-5 w-5 mr-2 text-blue-600" />
+                    {setorNome}
+                  </h3>
                   
-                  {/* Filtros da tabela */}
-                  <div className="bg-gray-50 p-3 border-b">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <Input
-                          placeholder="Filtrar produtos..."
-                          className="w-48 h-8 text-sm"
-                        />
-                        <select className="h-8 text-sm border border-gray-300 rounded-md">
-                          <option value="">Todos os status</option>
-                          <option value="ativo">Apenas ativos</option>
-                          <option value="inativo">Apenas inativos</option>
-                        </select>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs text-gray-500">Ordenar por:</span>
-                        <select className="h-8 text-sm border border-gray-300 rounded-md">
-                          <option value="nome">Nome</option>
-                          <option value="contagem">Contagem</option>
-                          <option value="variacoes">Nº Variações</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100">
-                            Produto ↕
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100">
-                            Variações ↕
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100">
-                            Status ↕
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100">
-                            Contagem ↕
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {categoriaData.produtos.map((produto) => {
-                          const produtoVariacoes = getVariacoesPorProduto(produto.id);
-                          const contagemAtual = contagens[produto.id] || 0;
-                          const usuarioAtivo = usuariosAtivos[produto.id];
+                  {Object.entries(categorias).map(([categoriaNome, produtosCategoria]) => (
+                    <div key={categoriaNome} className="mb-4 last:mb-0">
+                      <h4 className="text-md font-medium text-gray-700 mb-3 pl-4 border-l-2 border-blue-200">
+                        {categoriaNome}
+                      </h4>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pl-6">
+                        {produtosCategoria.map((produto) => {
+                          const quantidadeAtual = contagens[produto.id] || 0;
+                          const temContagem = quantidadeAtual > 0;
                           
                           return (
-                            <tr key={produto.id} className="hover:bg-gray-50">
-                              <td className="px-4 py-3">
-                                <div className="flex items-center space-x-3">
-                                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
-                                    {produto.imagem_principal_url ? (
-                                      <img 
-                                        src={produto.imagem_principal_url} 
-                                        alt={produto.nome}
-                                        className="w-full h-full object-cover"
-                                      />
-                                    ) : (
-                                      <Package className="h-4 w-4 text-gray-400" />
-                                    )}
-                                  </div>
-                                  <div>
-                                    <p className="font-medium text-gray-900">{produto.nome}</p>
-                                    {usuarioAtivo && (
-                                      <div className="flex items-center space-x-1 text-xs text-blue-600">
-                                        <Users className="h-3 w-3" />
-                                        <span>{usuarioAtivo} está contando</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3">
-                                <span className="text-sm text-gray-600">{produtoVariacoes.length} variação(ões)</span>
-                              </td>
-                              <td className="px-4 py-3">
-                                <Badge variant={produto.ativo ? "default" : "secondary"}>
-                                  {produto.ativo ? 'Ativo' : 'Inativo'}
-                                </Badge>
-                              </td>
-                              <td className="px-4 py-3">
+                            <div
+                              key={produto.id}
+                              className={`border rounded-lg p-3 ${
+                                temContagem ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <h5 className="font-medium text-gray-900 text-sm">
+                                  {produto.nome}
+                                </h5>
+                                {temContagem && (
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                )}
+                              </div>
+                              
+                              <div className="flex items-center space-x-2">
                                 <Input
                                   type="number"
-                                  value={contagemAtual}
+                                  step="0.001"
+                                  value={quantidadeAtual}
                                   onChange={(e) => handleContagemSimples(produto.id, e.target.value)}
-                                  className="w-20 text-center"
-                                  min="0"
+                                  placeholder="Quantidade"
+                                  className="flex-1 h-8 text-sm"
                                 />
-                              </td>
-                              <td className="px-4 py-3">
+                                
                                 <Button
+                                  onClick={() => abrirModalDetalhado(produto)}
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => abrirModalDetalhado(produto)}
-                                  className="flex items-center space-x-1"
+                                  className="h-8 px-2"
+                                  title="Contagem detalhada"
                                 >
-                                  <Edit3 className="h-3 w-3" />
-                                  <span>Detalhado</span>
+                                  <Eye className="h-3 w-3" />
                                 </Button>
-                              </td>
-                            </tr>
+                              </div>
+                              
+                              {usuariosAtivos[produto.id] && (
+                                <div className="mt-2 text-xs text-blue-600 flex items-center">
+                                  <Users className="h-3 w-3 mr-1" />
+                                  {usuariosAtivos[produto.id]} está contando
+                                </div>
+                              )}
+                            </div>
                           );
                         })}
-                      </tbody>
-                    </table>
-                  </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>
-          ))}
-        </div>
+
+            {produtosFiltrados.length === 0 && (
+              <div className="text-center py-8">
+                <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">Nenhum produto encontrado com os filtros aplicados</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </main>
 
       {/* Modal de Contagem Detalhada */}
       {modalAberto && produtoSelecionado && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold">Contagem Detalhada - {produtoSelecionado.nome}</h3>
+              <h3 className="text-lg font-semibold">
+                Contagem Detalhada - {produtoSelecionado.nome}
+              </h3>
               <Button
+                onClick={() => setModalAberto(false)}
                 variant="ghost"
                 size="sm"
-                onClick={() => setModalAberto(false)}
               >
-                <X className="h-4 w-4" />
+                ✕
               </Button>
             </div>
 
-            {/* Adicionar nova linha */}
+            {/* Adicionar Nova Linha */}
             <div className="border rounded-lg p-4 mb-4 bg-gray-50">
-              <h4 className="font-medium mb-3">Adicionar Contagem</h4>
-              <div className="grid grid-cols-3 gap-3">
+              <h4 className="font-medium text-gray-700 mb-3">Adicionar Item</h4>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Quantidade
-                  </label>
                   <Input
                     type="number"
+                    step="0.001"
                     value={novaLinha.quantidade}
-                    onChange={(e) => setNovaLinha(prev => ({ ...prev, quantidade: e.target.value }))}
-                    placeholder="Ex: 5"
+                    onChange={(e) => setNovaLinha(prev => ({ ...prev, quantidade: parseFloat(e.target.value) || 0 }))}
+                    placeholder="Quantidade"
+                    className="text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Unidade
-                  </label>
                   <select
                     value={novaLinha.unidade}
                     onChange={(e) => setNovaLinha(prev => ({ ...prev, unidade: e.target.value }))}
-                    className="w-full p-2 border border-gray-300 rounded-md"
+                    className="w-full p-2 border border-gray-300 rounded-md text-sm"
                   >
-                    <option value="">Selecione</option>
-                    <option value="unidade">Unidades</option>
-                    <option value="caixa">Caixas (24 un)</option>
-                    <option value="pacote">Pacotes (12 un)</option>
+                    {getUnidadesPorProduto(produtoSelecionado.id).map((unidade, index) => (
+                      <option key={unidade.id} value={unidade.sigla}>
+                        {unidade.nome} ({unidade.sigla})
+                        {index === 0 ? ' - PADRÃO' : ''}
+                        {unidade.quantidade && unidade.quantidade !== 1 ? ` - ${unidade.quantidade}` : ''}
+                      </option>
+                    ))}
                   </select>
                 </div>
-                <div className="flex items-end">
+                <div>
+                  <Input
+                    value={novaLinha.observacao}
+                    onChange={(e) => setNovaLinha(prev => ({ ...prev, observacao: e.target.value }))}
+                    placeholder="Observação"
+                    className="text-sm"
+                  />
+                </div>
+                <div>
                   <Button
                     onClick={adicionarLinhaDetalhada}
                     size="sm"
@@ -729,97 +791,89 @@ const ContagemPage = () => {
                   </Button>
                 </div>
               </div>
-              <div className="mt-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Observação (opcional)
-                </label>
-                <Input
-                  value={novaLinha.observacao}
-                  onChange={(e) => setNovaLinha(prev => ({ ...prev, observacao: e.target.value }))}
-                  placeholder="Ex: Produtos na prateleira superior"
-                />
-              </div>
             </div>
 
-            {/* Lista de contagens adicionadas */}
-            {contagemDetalhada.length > 0 && (
-              <div className="mb-4">
-                <h4 className="font-medium mb-3">Contagens Adicionadas</h4>
-                <div className="space-y-2">
-                  {contagemDetalhada.map((item) => (
-                    <div key={item.id} className="p-3 border rounded-lg">
-                      <div className="grid grid-cols-4 gap-3 items-center">
-                        <div>
-                          <Input
-                            type="number"
-                            value={item.quantidade}
-                            onChange={(e) => editarLinhaDetalhada(item.id, { quantidade: e.target.value })}
-                            className="text-sm"
-                            disabled={item.isExisting}
-                          />
-                        </div>
-                        <div>
-                          <select
-                            value={item.unidade}
-                            onChange={(e) => editarLinhaDetalhada(item.id, { unidade: e.target.value })}
-                            className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                            disabled={item.isExisting}
-                          >
-                            <option value="unidade">Unidades</option>
-                            <option value="caixa">Caixas (24 un)</option>
-                            <option value="pacote">Pacotes (12 un)</option>
-                          </select>
-                        </div>
-                        <div>
-                          <Input
-                            value={item.observacao}
-                            onChange={(e) => editarLinhaDetalhada(item.id, { observacao: e.target.value })}
-                            placeholder="Observação"
-                            className="text-sm"
-                            disabled={item.isExisting}
-                          />
-                        </div>
-                        <div className="flex justify-end">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => removerLinhaDetalhada(item.id)}
-                            className="text-red-600 border-red-600 hover:bg-red-50"
-                            disabled={item.isExisting}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                      {item.isExisting && (
-                        <p className="text-xs text-blue-600 mt-1">Contagem atual (não editável)</p>
-                      )}
-                    </div>
-                  ))}
+            {/* Lista de Itens */}
+            <div className="space-y-2 mb-4">
+              <h4 className="font-medium text-gray-700">Itens da Contagem</h4>
+              {contagemDetalhada.map((item) => (
+                <div key={item.id} className="grid grid-cols-1 md:grid-cols-5 gap-3 p-3 border rounded-lg">
+                  <div>
+                    <Input
+                      type="number"
+                      step="0.001"
+                      value={item.quantidade}
+                      onChange={(e) => editarLinhaDetalhada(item.id, { quantidade: parseFloat(e.target.value) || 0 })}
+                      className="text-sm"
+                      disabled={item.isExisting}
+                    />
+                  </div>
+                  <div>
+                    <select
+                      value={item.unidade}
+                      onChange={(e) => editarLinhaDetalhada(item.id, { unidade: e.target.value })}
+                      className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                      disabled={item.isExisting}
+                    >
+                      {getUnidadesPorProduto(produtoSelecionado?.id).map((unidade, index) => (
+                        <option key={unidade.id} value={unidade.sigla}>
+                          {unidade.nome} ({unidade.sigla})
+                          {index === 0 ? ' - PADRÃO' : ''}
+                          {unidade.quantidade && unidade.quantidade !== 1 ? ` - ${unidade.quantidade}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Input
+                      value={item.observacao}
+                      onChange={(e) => editarLinhaDetalhada(item.id, { observacao: e.target.value })}
+                      placeholder="Observação"
+                      className="text-sm"
+                      disabled={item.isExisting}
+                    />
+                  </div>
+                  <div className="text-sm text-gray-600 flex items-center">
+                    Convertido: {calcularQuantidadeConvertida(
+                      item.quantidade,
+                      unidadesMedida.find(u => u.sigla === item.unidade),
+                      unidadesMedida.find(u => u.id === getVariacoesPorProduto(produtoSelecionado.id)[0]?.id_unidade_controle)
+                    ).toFixed(3)}
+                  </div>
+                  <div>
+                    <Button
+                      onClick={() => removerLinhaDetalhada(item.id)}
+                      size="sm"
+                      variant="outline"
+                      className="text-red-600 border-red-600 hover:bg-red-50"
+                      disabled={item.isExisting}
+                    >
+                      <Minus className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                  <p className="text-sm font-medium text-blue-900">
-                    Total calculado: {calcularTotalDetalhado()} unidades
-                  </p>
-                </div>
-              </div>
-            )}
+              ))}
+            </div>
 
-            {/* Botões do modal */}
-            <div className="flex items-center justify-end space-x-3">
-              <Button
-                variant="outline"
-                onClick={() => setModalAberto(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={salvarContagemDetalhada}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                Salvar Contagem
-              </Button>
+            {/* Total e Ações */}
+            <div className="flex items-center justify-between pt-4 border-t">
+              <div className="text-lg font-semibold">
+                Total calculado: {calcularTotalDetalhado().toFixed(3)} unidades
+              </div>
+              <div className="flex space-x-3">
+                <Button
+                  onClick={() => setModalAberto(false)}
+                  variant="outline"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={salvarContagemDetalhada}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Salvar Contagem
+                </Button>
+              </div>
             </div>
           </div>
         </div>
