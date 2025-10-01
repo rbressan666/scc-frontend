@@ -27,13 +27,23 @@ const UnidadesTab = () => {
     try {
       setLoading(true);
       const response = await unidadeMedidaService.getAll(true); // Incluir inativos
-      setUnidades(response.data || []);
+      console.log('Unidades carregadas:', response);
+      
+      // Validação defensiva
+      const unidadesData = response?.data || response || [];
+      const unidadesValidadas = Array.isArray(unidadesData) 
+        ? unidadesData.filter(unidade => unidade && typeof unidade === 'object')
+        : [];
+      
+      setUnidades(unidadesValidadas);
     } catch (error) {
+      console.error('Erro ao carregar unidades:', error);
       toast({
         title: "Erro",
         description: "Erro ao carregar unidades de medida",
         variant: "destructive",
       });
+      setUnidades([]); // Garantir array vazio em caso de erro
     } finally {
       setLoading(false);
     }
@@ -63,6 +73,7 @@ const UnidadesTab = () => {
       resetForm();
       await loadUnidades();
     } catch (error) {
+      console.error('Erro ao salvar unidade:', error);
       toast({
         title: "Erro",
         description: "Erro ao salvar unidade de medida",
@@ -74,16 +85,20 @@ const UnidadesTab = () => {
   };
 
   const handleEdit = (unidade) => {
+    if (!unidade) return;
+    
     setEditingUnidade(unidade);
     setFormData({
-      nome: unidade.nome,
-      sigla: unidade.sigla,
+      nome: unidade.nome || '',
+      sigla: unidade.sigla || '',
       quantidade: unidade.quantidade || 1
     });
     setDialogOpen(true);
   };
 
   const handleToggleStatus = async (unidade) => {
+    if (!unidade || !unidade.id) return;
+    
     try {
       if (unidade.ativo) {
         await unidadeMedidaService.deactivate(unidade.id);
@@ -93,6 +108,7 @@ const UnidadesTab = () => {
       
       await loadUnidades();
     } catch (error) {
+      console.error('Erro ao alterar status:', error);
       toast({
         title: "Erro",
         description: "Erro ao alterar status da unidade de medida",
@@ -118,7 +134,9 @@ const UnidadesTab = () => {
       sortable: true,
       filterable: true,
       render: (unidade) => (
-        <div className="font-medium text-gray-900">{unidade.nome}</div>
+        <div className="font-medium text-gray-900">
+          {unidade?.nome || 'Nome não disponível'}
+        </div>
       )
     },
     {
@@ -127,7 +145,7 @@ const UnidadesTab = () => {
       sortable: true,
       filterable: true,
       render: (unidade) => (
-        <div className="text-gray-600">{unidade.sigla}</div>
+        <div className="text-gray-600">{unidade?.sigla || '-'}</div>
       )
     },
     {
@@ -136,7 +154,7 @@ const UnidadesTab = () => {
       sortable: true,
       filterable: true,
       render: (unidade) => (
-        <div className="text-gray-600">{unidade.quantidade || 1}</div>
+        <div className="text-gray-600">{unidade?.quantidade || 1}</div>
       )
     },
     {
@@ -149,39 +167,48 @@ const UnidadesTab = () => {
         { value: 'true', label: 'Ativo' },
         { value: 'false', label: 'Inativo' }
       ],
-      render: (unidade) => (
-        <Badge variant={unidade.ativo ? "success" : "secondary"}>
-          {unidade.ativo ? 'Ativo' : 'Inativo'}
-        </Badge>
-      )
+      render: (unidade) => {
+        const isAtivo = unidade?.ativo === true || unidade?.ativo === 'true';
+        return (
+          <Badge variant={isAtivo ? "success" : "secondary"}>
+            {isAtivo ? 'Ativo' : 'Inativo'}
+          </Badge>
+        );
+      }
     },
     {
       key: 'actions',
       label: 'Ações',
-      render: (unidade) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleEdit(unidade)}
-            className="text-blue-600 hover:text-blue-900"
-          >
-            <Edit className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleToggleStatus(unidade)}
-            className={unidade.ativo ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}
-          >
-            {unidade.ativo ? (
-              <ToggleRight className="w-4 h-4" />
-            ) : (
-              <ToggleLeft className="w-4 h-4" />
-            )}
-          </Button>
-        </div>
-      )
+      render: (unidade) => {
+        if (!unidade) return null;
+        
+        const isAtivo = unidade?.ativo === true || unidade?.ativo === 'true';
+        
+        return (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleEdit(unidade)}
+              className="text-blue-600 hover:text-blue-900"
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleToggleStatus(unidade)}
+              className={isAtivo ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}
+            >
+              {isAtivo ? (
+                <ToggleRight className="w-4 h-4" />
+              ) : (
+                <ToggleLeft className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+        );
+      }
     }
   ];
 

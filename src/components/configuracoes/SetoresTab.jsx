@@ -27,13 +27,23 @@ const SetoresTab = () => {
     try {
       setLoading(true);
       const response = await setorService.getAll(true); // Incluir inativos
-      setSetores(response.data || []);
+      console.log('Setores carregados:', response);
+      
+      // Validação defensiva
+      const setoresData = response?.data || response || [];
+      const setoresValidados = Array.isArray(setoresData) 
+        ? setoresData.filter(setor => setor && typeof setor === 'object')
+        : [];
+      
+      setSetores(setoresValidados);
     } catch (error) {
+      console.error('Erro ao carregar setores:', error);
       toast({
         title: "Erro",
         description: "Erro ao carregar setores",
         variant: "destructive",
       });
+      setSetores([]); // Garantir array vazio em caso de erro
     } finally {
       setLoading(false);
     }
@@ -63,6 +73,7 @@ const SetoresTab = () => {
       resetForm();
       await loadSetores();
     } catch (error) {
+      console.error('Erro ao salvar setor:', error);
       toast({
         title: "Erro",
         description: "Erro ao salvar setor",
@@ -74,14 +85,18 @@ const SetoresTab = () => {
   };
 
   const handleEdit = (setor) => {
+    if (!setor) return;
+    
     setEditingSetor(setor);
     setFormData({
-      nome: setor.nome
+      nome: setor.nome || ''
     });
     setDialogOpen(true);
   };
 
   const handleToggleStatus = async (setor) => {
+    if (!setor || !setor.id) return;
+    
     try {
       if (setor.ativo) {
         await setorService.deactivate(setor.id);
@@ -91,6 +106,7 @@ const SetoresTab = () => {
       
       await loadSetores();
     } catch (error) {
+      console.error('Erro ao alterar status:', error);
       toast({
         title: "Erro",
         description: "Erro ao alterar status do setor",
@@ -116,7 +132,9 @@ const SetoresTab = () => {
       sortable: true,
       filterable: true,
       render: (setor) => (
-        <div className="font-medium text-gray-900">{setor.nome}</div>
+        <div className="font-medium text-gray-900">
+          {setor?.nome || 'Nome não disponível'}
+        </div>
       )
     },
     {
@@ -129,39 +147,48 @@ const SetoresTab = () => {
         { value: 'true', label: 'Ativo' },
         { value: 'false', label: 'Inativo' }
       ],
-      render: (setor) => (
-        <Badge variant={setor.ativo ? "success" : "secondary"}>
-          {setor.ativo ? 'Ativo' : 'Inativo'}
-        </Badge>
-      )
+      render: (setor) => {
+        const isAtivo = setor?.ativo === true || setor?.ativo === 'true';
+        return (
+          <Badge variant={isAtivo ? "success" : "secondary"}>
+            {isAtivo ? 'Ativo' : 'Inativo'}
+          </Badge>
+        );
+      }
     },
     {
       key: 'actions',
       label: 'Ações',
-      render: (setor) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleEdit(setor)}
-            className="text-blue-600 hover:text-blue-900"
-          >
-            <Edit className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleToggleStatus(setor)}
-            className={setor.ativo ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}
-          >
-            {setor.ativo ? (
-              <ToggleRight className="w-4 h-4" />
-            ) : (
-              <ToggleLeft className="w-4 h-4" />
-            )}
-          </Button>
-        </div>
-      )
+      render: (setor) => {
+        if (!setor) return null;
+        
+        const isAtivo = setor?.ativo === true || setor?.ativo === 'true';
+        
+        return (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleEdit(setor)}
+              className="text-blue-600 hover:text-blue-900"
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleToggleStatus(setor)}
+              className={isAtivo ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}
+            >
+              {isAtivo ? (
+                <ToggleRight className="w-4 h-4" />
+              ) : (
+                <ToggleLeft className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+        );
+      }
     }
   ];
 

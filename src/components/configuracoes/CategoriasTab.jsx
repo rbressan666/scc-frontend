@@ -28,13 +28,23 @@ const CategoriasTab = () => {
     try {
       setLoading(true);
       const response = await categoriaService.getAll(true); // Incluir inativos
-      setCategorias(response.data || []);
+      console.log('Categorias carregadas:', response);
+      
+      // Validação defensiva
+      const categoriasData = response?.data || response || [];
+      const categoriasValidadas = Array.isArray(categoriasData) 
+        ? categoriasData.filter(categoria => categoria && typeof categoria === 'object')
+        : [];
+      
+      setCategorias(categoriasValidadas);
     } catch (error) {
+      console.error('Erro ao carregar categorias:', error);
       toast({
         title: "Erro",
         description: "Erro ao carregar categorias",
         variant: "destructive",
       });
+      setCategorias([]); // Garantir array vazio em caso de erro
     } finally {
       setLoading(false);
     }
@@ -69,6 +79,7 @@ const CategoriasTab = () => {
       resetForm();
       await loadCategorias();
     } catch (error) {
+      console.error('Erro ao salvar categoria:', error);
       toast({
         title: "Erro",
         description: "Erro ao salvar categoria",
@@ -80,15 +91,19 @@ const CategoriasTab = () => {
   };
 
   const handleEdit = (categoria) => {
+    if (!categoria) return;
+    
     setEditingCategoria(categoria);
     setFormData({
-      nome: categoria.nome,
+      nome: categoria.nome || '',
       id_categoria_pai: categoria.id_categoria_pai || 'none'
     });
     setDialogOpen(true);
   };
 
   const handleToggleStatus = async (categoria) => {
+    if (!categoria || !categoria.id) return;
+    
     try {
       if (categoria.ativo) {
         await categoriaService.deactivate(categoria.id);
@@ -98,6 +113,7 @@ const CategoriasTab = () => {
       
       await loadCategorias();
     } catch (error) {
+      console.error('Erro ao alterar status:', error);
       toast({
         title: "Erro",
         description: "Erro ao alterar status da categoria",
@@ -117,13 +133,14 @@ const CategoriasTab = () => {
   };
 
   const getCategoriaPaiNome = (categoria) => {
-    if (!categoria.id_categoria_pai) return '-';
-    const pai = categorias.find(c => c.id === categoria.id_categoria_pai);
+    if (!categoria || !categoria.id_categoria_pai) return '-';
+    const pai = categorias.find(c => c && c.id === categoria.id_categoria_pai);
     return pai ? pai.nome : 'Categoria não encontrada';
   };
 
   const getCategoriasDisponiveis = () => {
     return categorias.filter(c => 
+      c && 
       c.ativo && 
       (!editingCategoria || c.id !== editingCategoria.id)
     );
@@ -136,7 +153,9 @@ const CategoriasTab = () => {
       sortable: true,
       filterable: true,
       render: (categoria) => (
-        <div className="font-medium text-gray-900">{categoria.nome}</div>
+        <div className="font-medium text-gray-900">
+          {categoria?.nome || 'Nome não disponível'}
+        </div>
       )
     },
     {
@@ -158,39 +177,48 @@ const CategoriasTab = () => {
         { value: 'true', label: 'Ativo' },
         { value: 'false', label: 'Inativo' }
       ],
-      render: (categoria) => (
-        <Badge variant={categoria.ativo ? "success" : "secondary"}>
-          {categoria.ativo ? 'Ativo' : 'Inativo'}
-        </Badge>
-      )
+      render: (categoria) => {
+        const isAtivo = categoria?.ativo === true || categoria?.ativo === 'true';
+        return (
+          <Badge variant={isAtivo ? "success" : "secondary"}>
+            {isAtivo ? 'Ativo' : 'Inativo'}
+          </Badge>
+        );
+      }
     },
     {
       key: 'actions',
       label: 'Ações',
-      render: (categoria) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleEdit(categoria)}
-            className="text-blue-600 hover:text-blue-900"
-          >
-            <Edit className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleToggleStatus(categoria)}
-            className={categoria.ativo ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}
-          >
-            {categoria.ativo ? (
-              <ToggleRight className="w-4 h-4" />
-            ) : (
-              <ToggleLeft className="w-4 h-4" />
-            )}
-          </Button>
-        </div>
-      )
+      render: (categoria) => {
+        if (!categoria) return null;
+        
+        const isAtivo = categoria?.ativo === true || categoria?.ativo === 'true';
+        
+        return (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleEdit(categoria)}
+              className="text-blue-600 hover:text-blue-900"
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleToggleStatus(categoria)}
+              className={isAtivo ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}
+            >
+              {isAtivo ? (
+                <ToggleRight className="w-4 h-4" />
+              ) : (
+                <ToggleLeft className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+        );
+      }
     }
   ];
 
