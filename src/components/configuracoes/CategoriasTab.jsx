@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, RotateCcw } from 'lucide-react';
+import { Plus, Edit, ToggleLeft, ToggleRight } from 'lucide-react';
 import SortableTable from '../ui/sortable-table';
 import { categoriaService } from '../../services/api';
 import { useToast } from '@/hooks/use-toast';
@@ -17,7 +17,7 @@ const CategoriasTab = () => {
   const [submitting, setSubmitting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCategoria, setEditingCategoria] = useState(null);
-  const [formData, setFormData] = useState({ nome: '', id_categoria_pai: 'none', ativo: true });
+  const [formData, setFormData] = useState({ nome: '', id_categoria_pai: 'none' });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -50,7 +50,7 @@ const CategoriasTab = () => {
         ...formData,
         id_categoria_pai: formData.id_categoria_pai === 'none' ? null : formData.id_categoria_pai
       };
-
+      
       if (editingCategoria) {
         await categoriaService.update(editingCategoria.id, dataToSend);
         toast({
@@ -66,13 +66,12 @@ const CategoriasTab = () => {
       }
       
       setDialogOpen(false);
-      setEditingCategoria(null);
-      setFormData({ nome: '', id_categoria_pai: 'none', ativo: true });
-      loadCategorias();
+      resetForm();
+      await loadCategorias();
     } catch (error) {
       toast({
         title: "Erro",
-        description: error.message || "Erro ao salvar categoria",
+        description: "Erro ao salvar categoria",
         variant: "destructive",
       });
     } finally {
@@ -82,141 +81,135 @@ const CategoriasTab = () => {
 
   const handleEdit = (categoria) => {
     setEditingCategoria(categoria);
-    setFormData({ 
-      nome: categoria.nome, 
-      id_categoria_pai: categoria.id_categoria_pai || 'none',
-      ativo: categoria.ativo 
+    setFormData({
+      nome: categoria.nome,
+      id_categoria_pai: categoria.id_categoria_pai || 'none'
     });
     setDialogOpen(true);
   };
 
-  const handleDeactivate = async (categoria) => {
-    if (!confirm(`Tem certeza que deseja desativar a categoria "${categoria.nome}"?`)) {
-      return;
-    }
-
+  const handleToggleStatus = async (categoria) => {
     try {
-      await categoriaService.deactivate(categoria.id);
-      toast({
-        title: "Sucesso",
-        description: "Categoria desativada com sucesso",
-      });
-      loadCategorias();
+      if (categoria.ativo) {
+        await categoriaService.deactivate(categoria.id);
+      } else {
+        await categoriaService.reactivate(categoria.id);
+      }
+      
+      await loadCategorias();
     } catch (error) {
       toast({
         title: "Erro",
-        description: error.message || "Erro ao desativar categoria",
+        description: "Erro ao alterar status da categoria",
         variant: "destructive",
       });
     }
   };
 
-  const handleReactivate = async (categoria) => {
-    try {
-      await categoriaService.reactivate(categoria.id);
-      toast({
-        title: "Sucesso",
-        description: "Categoria reativada com sucesso",
-      });
-      loadCategorias();
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao reativar categoria",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const openCreateDialog = () => {
+  const resetForm = () => {
     setEditingCategoria(null);
-    setFormData({ nome: '', id_categoria_pai: 'none', ativo: true });
-    setDialogOpen(true);
+    setFormData({ nome: '', id_categoria_pai: 'none' });
   };
 
-  // Filtrar categorias ativas para o select de categoria pai
-  const categoriasAtivas = categorias.filter(cat => cat.ativo && cat.id !== editingCategoria?.id);
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    resetForm();
+  };
 
-  if (loading) {
-    return <div className="text-center py-4">Carregando categorias...</div>;
-  }
+  const getCategoriaPaiNome = (categoria) => {
+    if (!categoria.id_categoria_pai) return '-';
+    const pai = categorias.find(c => c.id === categoria.id_categoria_pai);
+    return pai ? pai.nome : 'Categoria não encontrada';
+  };
+
+  const getCategoriasDisponiveis = () => {
+    return categorias.filter(c => 
+      c.ativo && 
+      (!editingCategoria || c.id !== editingCategoria.id)
+    );
+  };
 
   const columns = [
     {
       key: 'nome',
       label: 'Nome',
+      sortable: true,
       filterable: true,
-      render: (value) => <span className="font-medium">{value}</span>
+      render: (categoria) => (
+        <div className="font-medium text-gray-900">{categoria.nome}</div>
+      )
     },
     {
-      key: 'categoria_pai_nome',
+      key: 'categoria_pai',
       label: 'Categoria Pai',
+      sortable: true,
       filterable: true,
-      render: (value) => value || '-'
+      render: (categoria) => (
+        <div className="text-gray-600">{getCategoriaPaiNome(categoria)}</div>
+      )
     },
     {
       key: 'ativo',
       label: 'Status',
+      sortable: true,
       filterable: true,
-      render: (value) => (
-        <Badge variant={value ? "default" : "secondary"}>
-          {value ? 'Ativo' : 'Inativo'}
+      filterOptions: [
+        { value: 'all', label: 'Todos' },
+        { value: 'true', label: 'Ativo' },
+        { value: 'false', label: 'Inativo' }
+      ],
+      render: (categoria) => (
+        <Badge variant={categoria.ativo ? "success" : "secondary"}>
+          {categoria.ativo ? 'Ativo' : 'Inativo'}
         </Badge>
       )
     },
     {
       key: 'actions',
       label: 'Ações',
-      sortable: false,
-      filterable: false,
-      className: 'text-right',
-      render: (_, categoria) => (
-        <div className="flex justify-end space-x-2">
-          {categoria.ativo ? (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleEdit(categoria)}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleDeactivate(categoria)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleReactivate(categoria)}
-            >
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-          )}
+      render: (categoria) => (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleEdit(categoria)}
+            className="text-blue-600 hover:text-blue-900"
+          >
+            <Edit className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleToggleStatus(categoria)}
+            className={categoria.ativo ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}
+          >
+            {categoria.ativo ? (
+              <ToggleRight className="w-4 h-4" />
+            ) : (
+              <ToggleLeft className="w-4 h-4" />
+            )}
+          </Button>
         </div>
       )
     }
   ];
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-gray-500">Carregando categorias...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-medium">Categorias</h3>
-          <p className="text-sm text-gray-500">
-            Gerencie as categorias e subcategorias de produtos
-          </p>
-        </div>
-        
+        <h2 className="text-2xl font-bold tracking-tight">Categorias</h2>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={openCreateDialog}>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="w-4 h-4 mr-2" />
               Nova Categoria
             </Button>
           </DialogTrigger>
@@ -227,37 +220,35 @@ const CategoriasTab = () => {
               </DialogTitle>
               <DialogDescription>
                 {editingCategoria 
-                  ? 'Edite as informações da categoria' 
-                  : 'Adicione uma nova categoria ao sistema'
+                  ? 'Edite as informações da categoria abaixo.'
+                  : 'Preencha as informações para criar uma nova categoria.'
                 }
               </DialogDescription>
             </DialogHeader>
-            
             <form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="nome">Nome da Categoria</Label>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="nome">Nome *</Label>
                   <Input
                     id="nome"
                     value={formData.nome}
                     onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                    placeholder="Ex: Bebidas, Cervejas, Destilados"
+                    placeholder="Ex: Cigarros"
                     required
                   />
                 </div>
-
-                <div>
-                  <Label htmlFor="categoria_pai">Categoria Pai (Opcional)</Label>
-                  <Select 
-                    value={formData.id_categoria_pai} 
+                <div className="grid gap-2">
+                  <Label htmlFor="categoria_pai">Categoria Pai</Label>
+                  <Select
+                    value={formData.id_categoria_pai}
                     onValueChange={(value) => setFormData({ ...formData, id_categoria_pai: value })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma categoria pai" />
+                      <SelectValue placeholder="Selecione uma categoria pai (opcional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Nenhuma (Categoria raiz)</SelectItem>
-                      {categoriasAtivas.map((categoria) => (
+                      <SelectItem value="none">Nenhuma (categoria raiz)</SelectItem>
+                      {getCategoriasDisponiveis().map((categoria) => (
                         <SelectItem key={categoria.id} value={categoria.id}>
                           {categoria.nome}
                         </SelectItem>
@@ -266,20 +257,12 @@ const CategoriasTab = () => {
                   </Select>
                 </div>
               </div>
-              
-              <DialogFooter className="mt-6">
-                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={handleDialogClose}>
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={submitting}>
-                  {submitting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Salvando...
-                    </>
-                  ) : (
-                    editingCategoria ? 'Atualizar' : 'Criar'
-                  )}
+                  {submitting ? 'Salvando...' : (editingCategoria ? 'Atualizar' : 'Criar')}
                 </Button>
               </DialogFooter>
             </form>
@@ -288,7 +271,7 @@ const CategoriasTab = () => {
       </div>
 
       <Card>
-        <CardContent className="p-0">
+        <CardContent className="p-6">
           <SortableTable
             data={categorias}
             columns={columns}
@@ -302,4 +285,3 @@ const CategoriasTab = () => {
 };
 
 export default CategoriasTab;
-

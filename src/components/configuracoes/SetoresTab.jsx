@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, RotateCcw } from 'lucide-react';
+import { Plus, Edit, ToggleLeft, ToggleRight } from 'lucide-react';
 import SortableTable from '../ui/sortable-table';
 import { setorService } from '../../services/api';
 import { useToast } from '@/hooks/use-toast';
@@ -16,7 +16,7 @@ const SetoresTab = () => {
   const [submitting, setSubmitting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSetor, setEditingSetor] = useState(null);
-  const [formData, setFormData] = useState({ nome: '', ativo: true });
+  const [formData, setFormData] = useState({ nome: '' });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -60,13 +60,12 @@ const SetoresTab = () => {
       }
       
       setDialogOpen(false);
-      setEditingSetor(null);
-      setFormData({ nome: '', ativo: true });
-      loadSetores();
+      resetForm();
+      await loadSetores();
     } catch (error) {
       toast({
         title: "Erro",
-        description: error.message || "Erro ao salvar setor",
+        description: "Erro ao salvar setor",
         variant: "destructive",
       });
     } finally {
@@ -76,127 +75,112 @@ const SetoresTab = () => {
 
   const handleEdit = (setor) => {
     setEditingSetor(setor);
-    setFormData({ nome: setor.nome, ativo: setor.ativo });
+    setFormData({
+      nome: setor.nome
+    });
     setDialogOpen(true);
   };
 
-  const handleDeactivate = async (setor) => {
-    if (!confirm(`Tem certeza que deseja desativar o setor "${setor.nome}"?`)) {
-      return;
-    }
-
+  const handleToggleStatus = async (setor) => {
     try {
-      await setorService.deactivate(setor.id);
-      toast({
-        title: "Sucesso",
-        description: "Setor desativado com sucesso",
-      });
-      loadSetores();
+      if (setor.ativo) {
+        await setorService.deactivate(setor.id);
+      } else {
+        await setorService.reactivate(setor.id);
+      }
+      
+      await loadSetores();
     } catch (error) {
       toast({
         title: "Erro",
-        description: error.message || "Erro ao desativar setor",
+        description: "Erro ao alterar status do setor",
         variant: "destructive",
       });
     }
   };
 
-  const handleReactivate = async (setor) => {
-    try {
-      await setorService.reactivate(setor.id);
-      toast({
-        title: "Sucesso",
-        description: "Setor reativado com sucesso",
-      });
-      loadSetores();
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao reativar setor",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const openCreateDialog = () => {
+  const resetForm = () => {
     setEditingSetor(null);
-    setFormData({ nome: '', ativo: true });
-    setDialogOpen(true);
+    setFormData({ nome: '' });
   };
 
-  if (loading) {
-    return <div className="text-center py-4">Carregando setores...</div>;
-  }
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    resetForm();
+  };
 
   const columns = [
     {
       key: 'nome',
       label: 'Nome',
+      sortable: true,
       filterable: true,
-      render: (value) => <span className="font-medium">{value}</span>
+      render: (setor) => (
+        <div className="font-medium text-gray-900">{setor.nome}</div>
+      )
     },
     {
       key: 'ativo',
       label: 'Status',
+      sortable: true,
       filterable: true,
-      render: (value) => (
-        <Badge variant={value ? "default" : "secondary"}>
-          {value ? 'Ativo' : 'Inativo'}
+      filterOptions: [
+        { value: 'all', label: 'Todos' },
+        { value: 'true', label: 'Ativo' },
+        { value: 'false', label: 'Inativo' }
+      ],
+      render: (setor) => (
+        <Badge variant={setor.ativo ? "success" : "secondary"}>
+          {setor.ativo ? 'Ativo' : 'Inativo'}
         </Badge>
       )
     },
     {
       key: 'actions',
       label: 'Ações',
-      sortable: false,
-      filterable: false,
-      className: 'text-right',
-      render: (_, setor) => (
-        <div className="flex justify-end space-x-2">
+      render: (setor) => (
+        <div className="flex items-center gap-2">
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => handleEdit(setor)}
+            className="text-blue-600 hover:text-blue-900"
           >
-            <Edit className="h-4 w-4" />
+            <Edit className="w-4 h-4" />
           </Button>
-          
-          {setor.ativo ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleDeactivate(setor)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleReactivate(setor)}
-            >
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleToggleStatus(setor)}
+            className={setor.ativo ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}
+          >
+            {setor.ativo ? (
+              <ToggleRight className="w-4 h-4" />
+            ) : (
+              <ToggleLeft className="w-4 h-4" />
+            )}
+          </Button>
         </div>
       )
     }
   ];
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-gray-500">Carregando setores...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-medium">Setores</h3>
-          <p className="text-sm text-gray-500">
-            Gerencie os setores do estabelecimento (Bar, Cozinha, etc.)
-          </p>
-        </div>
-        
+        <h2 className="text-2xl font-bold tracking-tight">Setores</h2>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={openCreateDialog}>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="w-4 h-4 mr-2" />
               Novo Setor
             </Button>
           </DialogTrigger>
@@ -207,39 +191,30 @@ const SetoresTab = () => {
               </DialogTitle>
               <DialogDescription>
                 {editingSetor 
-                  ? 'Edite as informações do setor' 
-                  : 'Adicione um novo setor ao sistema'
+                  ? 'Edite as informações do setor abaixo.'
+                  : 'Preencha as informações para criar um novo setor.'
                 }
               </DialogDescription>
             </DialogHeader>
-            
             <form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="nome">Nome do Setor</Label>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="nome">Nome *</Label>
                   <Input
                     id="nome"
                     value={formData.nome}
                     onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                    placeholder="Ex: Bar, Cozinha, Estoque"
+                    placeholder="Ex: Bebidas"
                     required
                   />
                 </div>
               </div>
-              
-              <DialogFooter className="mt-6">
-                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={handleDialogClose}>
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={submitting}>
-                  {submitting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Salvando...
-                    </>
-                  ) : (
-                    editingSetor ? 'Atualizar' : 'Criar'
-                  )}
+                  {submitting ? 'Salvando...' : (editingSetor ? 'Atualizar' : 'Criar')}
                 </Button>
               </DialogFooter>
             </form>
@@ -248,7 +223,7 @@ const SetoresTab = () => {
       </div>
 
       <Card>
-        <CardContent className="p-0">
+        <CardContent className="p-6">
           <SortableTable
             data={setores}
             columns={columns}
@@ -262,4 +237,3 @@ const SetoresTab = () => {
 };
 
 export default SetoresTab;
-
