@@ -27,15 +27,50 @@ const UnidadesTab = () => {
     try {
       setLoading(true);
       const response = await unidadeMedidaService.getAll(true); // Incluir inativos
-      console.log('Unidades carregadas:', response);
       
-      // Validação defensiva
-      const unidadesData = response?.data || response || [];
-      const unidadesValidadas = Array.isArray(unidadesData) 
-        ? unidadesData.filter(unidade => unidade && typeof unidade === 'object')
-        : [];
+      console.log('Response completa:', response);
+      console.log('Response.data:', response?.data);
+      console.log('Tipo da response:', typeof response);
+      console.log('É array?', Array.isArray(response));
+      console.log('É array response.data?', Array.isArray(response?.data));
       
+      // Tentar diferentes estruturas de resposta
+      let unidadesData = [];
+      
+      if (Array.isArray(response)) {
+        unidadesData = response;
+      } else if (Array.isArray(response?.data)) {
+        unidadesData = response.data;
+      } else if (response?.data && typeof response.data === 'object') {
+        // Se data é um objeto, pode ter uma propriedade com array
+        const keys = Object.keys(response.data);
+        console.log('Keys do response.data:', keys);
+        
+        for (const key of keys) {
+          if (Array.isArray(response.data[key])) {
+            unidadesData = response.data[key];
+            break;
+          }
+        }
+      }
+      
+      console.log('Dados extraídos:', unidadesData);
+      console.log('Primeiro item:', unidadesData[0]);
+      
+      // Validar e limpar dados
+      const unidadesValidadas = unidadesData
+        .filter(unidade => unidade && typeof unidade === 'object' && unidade.id)
+        .map(unidade => ({
+          id: unidade.id,
+          nome: unidade.nome || 'Nome não informado',
+          sigla: unidade.sigla || 'N/A',
+          quantidade: unidade.quantidade || 1,
+          ativo: unidade.ativo === true || unidade.ativo === 'true' || unidade.ativo === 1
+        }));
+      
+      console.log('Unidades validadas:', unidadesValidadas);
       setUnidades(unidadesValidadas);
+      
     } catch (error) {
       console.error('Erro ao carregar unidades:', error);
       toast({
@@ -43,7 +78,7 @@ const UnidadesTab = () => {
         description: "Erro ao carregar unidades de medida",
         variant: "destructive",
       });
-      setUnidades([]); // Garantir array vazio em caso de erro
+      setUnidades([]);
     } finally {
       setLoading(false);
     }
@@ -85,7 +120,11 @@ const UnidadesTab = () => {
   };
 
   const handleEdit = (unidade) => {
-    if (!unidade) return;
+    console.log('Editando unidade:', unidade);
+    if (!unidade || !unidade.id) {
+      console.error('Unidade inválida para edição:', unidade);
+      return;
+    }
     
     setEditingUnidade(unidade);
     setFormData({
@@ -97,7 +136,11 @@ const UnidadesTab = () => {
   };
 
   const handleToggleStatus = async (unidade) => {
-    if (!unidade || !unidade.id) return;
+    console.log('Alterando status da unidade:', unidade);
+    if (!unidade || !unidade.id) {
+      console.error('Unidade inválida para toggle:', unidade);
+      return;
+    }
     
     try {
       if (unidade.ativo) {
@@ -133,11 +176,14 @@ const UnidadesTab = () => {
       label: 'Nome',
       sortable: true,
       filterable: true,
-      render: (unidade) => (
-        <div className="font-medium text-gray-900">
-          {unidade?.nome || 'Nome não disponível'}
-        </div>
-      )
+      render: (unidade) => {
+        console.log('Renderizando nome para:', unidade);
+        return (
+          <div className="font-medium text-gray-900">
+            {unidade?.nome || 'Nome não disponível'}
+          </div>
+        );
+      }
     },
     {
       key: 'sigla',
@@ -168,7 +214,7 @@ const UnidadesTab = () => {
         { value: 'false', label: 'Inativo' }
       ],
       render: (unidade) => {
-        const isAtivo = unidade?.ativo === true || unidade?.ativo === 'true';
+        const isAtivo = unidade?.ativo === true;
         return (
           <Badge variant={isAtivo ? "success" : "secondary"}>
             {isAtivo ? 'Ativo' : 'Inativo'}
@@ -179,10 +225,17 @@ const UnidadesTab = () => {
     {
       key: 'actions',
       label: 'Ações',
+      sortable: false,
+      filterable: false,
       render: (unidade) => {
-        if (!unidade) return null;
+        console.log('Renderizando ações para:', unidade);
         
-        const isAtivo = unidade?.ativo === true || unidade?.ativo === 'true';
+        if (!unidade || !unidade.id) {
+          console.log('Unidade inválida, não renderizando ações');
+          return <div className="text-gray-400">-</div>;
+        }
+        
+        const isAtivo = unidade.ativo === true;
         
         return (
           <div className="flex items-center gap-2">
@@ -191,6 +244,7 @@ const UnidadesTab = () => {
               size="sm"
               onClick={() => handleEdit(unidade)}
               className="text-blue-600 hover:text-blue-900"
+              title="Editar"
             >
               <Edit className="w-4 h-4" />
             </Button>
@@ -199,6 +253,7 @@ const UnidadesTab = () => {
               size="sm"
               onClick={() => handleToggleStatus(unidade)}
               className={isAtivo ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}
+              title={isAtivo ? 'Desativar' : 'Ativar'}
             >
               {isAtivo ? (
                 <ToggleRight className="w-4 h-4" />
@@ -298,6 +353,13 @@ const UnidadesTab = () => {
 
       <Card>
         <CardContent className="p-6">
+          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
+            <p className="text-sm text-yellow-800">
+              <strong>Debug:</strong> {unidades.length} unidades carregadas. 
+              Verifique o console do navegador para mais detalhes.
+            </p>
+          </div>
+          
           <SortableTable
             data={unidades}
             columns={columns}
