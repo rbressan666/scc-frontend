@@ -27,15 +27,21 @@ const SetoresTab = () => {
     try {
       setLoading(true);
       const response = await setorService.getAll(true); // Incluir inativos
-      console.log('Setores carregados:', response);
       
-      // Validação defensiva
-      const setoresData = response?.data || response || [];
-      const setoresValidados = Array.isArray(setoresData) 
-        ? setoresData.filter(setor => setor && typeof setor === 'object')
-        : [];
+      // Extrair dados da resposta
+      const setoresData = response?.data || [];
+      
+      // Validar e limpar dados
+      const setoresValidados = setoresData
+        .filter(setor => setor && typeof setor === 'object' && setor.id)
+        .map(setor => ({
+          id: setor.id,
+          nome: setor.nome || 'Nome não informado',
+          ativo: setor.ativo === true || setor.ativo === 'true' || setor.ativo === 1
+        }));
       
       setSetores(setoresValidados);
+      
     } catch (error) {
       console.error('Erro ao carregar setores:', error);
       toast({
@@ -43,7 +49,7 @@ const SetoresTab = () => {
         description: "Erro ao carregar setores",
         variant: "destructive",
       });
-      setSetores([]); // Garantir array vazio em caso de erro
+      setSetores([]);
     } finally {
       setLoading(false);
     }
@@ -85,7 +91,7 @@ const SetoresTab = () => {
   };
 
   const handleEdit = (setor) => {
-    if (!setor) return;
+    if (!setor || !setor.id) return;
     
     setEditingSetor(setor);
     setFormData({
@@ -131,9 +137,9 @@ const SetoresTab = () => {
       label: 'Nome',
       sortable: true,
       filterable: true,
-      render: (setor) => (
+      render: (value, setor) => (
         <div className="font-medium text-gray-900">
-          {setor?.nome || 'Nome não disponível'}
+          {setor?.nome || value || 'Nome não disponível'}
         </div>
       )
     },
@@ -147,8 +153,8 @@ const SetoresTab = () => {
         { value: 'true', label: 'Ativo' },
         { value: 'false', label: 'Inativo' }
       ],
-      render: (setor) => {
-        const isAtivo = setor?.ativo === true || setor?.ativo === 'true';
+      render: (value, setor) => {
+        const isAtivo = setor?.ativo === true || value === true;
         return (
           <Badge variant={isAtivo ? "success" : "secondary"}>
             {isAtivo ? 'Ativo' : 'Inativo'}
@@ -159,10 +165,14 @@ const SetoresTab = () => {
     {
       key: 'actions',
       label: 'Ações',
-      render: (setor) => {
-        if (!setor) return null;
+      sortable: false,
+      filterable: false,
+      render: (value, setor) => {
+        if (!setor || !setor.id) {
+          return <div className="text-gray-400">-</div>;
+        }
         
-        const isAtivo = setor?.ativo === true || setor?.ativo === 'true';
+        const isAtivo = setor.ativo === true;
         
         return (
           <div className="flex items-center gap-2">
@@ -171,6 +181,7 @@ const SetoresTab = () => {
               size="sm"
               onClick={() => handleEdit(setor)}
               className="text-blue-600 hover:text-blue-900"
+              title="Editar"
             >
               <Edit className="w-4 h-4" />
             </Button>
@@ -179,6 +190,7 @@ const SetoresTab = () => {
               size="sm"
               onClick={() => handleToggleStatus(setor)}
               className={isAtivo ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}
+              title={isAtivo ? 'Desativar' : 'Ativar'}
             >
               {isAtivo ? (
                 <ToggleRight className="w-4 h-4" />

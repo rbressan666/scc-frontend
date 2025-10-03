@@ -28,15 +28,22 @@ const CategoriasTab = () => {
     try {
       setLoading(true);
       const response = await categoriaService.getAll(true); // Incluir inativos
-      console.log('Categorias carregadas:', response);
       
-      // Validação defensiva
-      const categoriasData = response?.data || response || [];
-      const categoriasValidadas = Array.isArray(categoriasData) 
-        ? categoriasData.filter(categoria => categoria && typeof categoria === 'object')
-        : [];
+      // Extrair dados da resposta
+      const categoriasData = response?.data || [];
+      
+      // Validar e limpar dados
+      const categoriasValidadas = categoriasData
+        .filter(categoria => categoria && typeof categoria === 'object' && categoria.id)
+        .map(categoria => ({
+          id: categoria.id,
+          nome: categoria.nome || 'Nome não informado',
+          id_categoria_pai: categoria.id_categoria_pai || null,
+          ativo: categoria.ativo === true || categoria.ativo === 'true' || categoria.ativo === 1
+        }));
       
       setCategorias(categoriasValidadas);
+      
     } catch (error) {
       console.error('Erro ao carregar categorias:', error);
       toast({
@@ -44,7 +51,7 @@ const CategoriasTab = () => {
         description: "Erro ao carregar categorias",
         variant: "destructive",
       });
-      setCategorias([]); // Garantir array vazio em caso de erro
+      setCategorias([]);
     } finally {
       setLoading(false);
     }
@@ -91,7 +98,7 @@ const CategoriasTab = () => {
   };
 
   const handleEdit = (categoria) => {
-    if (!categoria) return;
+    if (!categoria || !categoria.id) return;
     
     setEditingCategoria(categoria);
     setFormData({
@@ -152,9 +159,9 @@ const CategoriasTab = () => {
       label: 'Nome',
       sortable: true,
       filterable: true,
-      render: (categoria) => (
+      render: (value, categoria) => (
         <div className="font-medium text-gray-900">
-          {categoria?.nome || 'Nome não disponível'}
+          {categoria?.nome || value || 'Nome não disponível'}
         </div>
       )
     },
@@ -163,7 +170,7 @@ const CategoriasTab = () => {
       label: 'Categoria Pai',
       sortable: true,
       filterable: true,
-      render: (categoria) => (
+      render: (value, categoria) => (
         <div className="text-gray-600">{getCategoriaPaiNome(categoria)}</div>
       )
     },
@@ -177,8 +184,8 @@ const CategoriasTab = () => {
         { value: 'true', label: 'Ativo' },
         { value: 'false', label: 'Inativo' }
       ],
-      render: (categoria) => {
-        const isAtivo = categoria?.ativo === true || categoria?.ativo === 'true';
+      render: (value, categoria) => {
+        const isAtivo = categoria?.ativo === true || value === true;
         return (
           <Badge variant={isAtivo ? "success" : "secondary"}>
             {isAtivo ? 'Ativo' : 'Inativo'}
@@ -189,10 +196,14 @@ const CategoriasTab = () => {
     {
       key: 'actions',
       label: 'Ações',
-      render: (categoria) => {
-        if (!categoria) return null;
+      sortable: false,
+      filterable: false,
+      render: (value, categoria) => {
+        if (!categoria || !categoria.id) {
+          return <div className="text-gray-400">-</div>;
+        }
         
-        const isAtivo = categoria?.ativo === true || categoria?.ativo === 'true';
+        const isAtivo = categoria.ativo === true;
         
         return (
           <div className="flex items-center gap-2">
@@ -201,6 +212,7 @@ const CategoriasTab = () => {
               size="sm"
               onClick={() => handleEdit(categoria)}
               className="text-blue-600 hover:text-blue-900"
+              title="Editar"
             >
               <Edit className="w-4 h-4" />
             </Button>
@@ -209,6 +221,7 @@ const CategoriasTab = () => {
               size="sm"
               onClick={() => handleToggleStatus(categoria)}
               className={isAtivo ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}
+              title={isAtivo ? 'Desativar' : 'Ativar'}
             >
               {isAtivo ? (
                 <ToggleRight className="w-4 h-4" />
