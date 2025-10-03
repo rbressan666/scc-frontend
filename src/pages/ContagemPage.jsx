@@ -56,6 +56,21 @@ const ContagemPage = () => {
     observacao: ''
   });
 
+  // Cores para setores e categorias (layout original)
+  const coresSetores = {
+    'Alimentação': 'bg-blue-50',
+    'Limpeza': 'bg-green-50',
+    'Higiene': 'bg-purple-50',
+    'Bebidas': 'bg-yellow-50'
+  };
+
+  const coresCategorias = {
+    'Bebidas': 'bg-blue-100',
+    'Laticínios': 'bg-green-100',
+    'Produtos de Limpeza': 'bg-purple-100',
+    'Higiene Pessoal': 'bg-yellow-100'
+  };
+
   useEffect(() => {
     if (turnoId) {
       carregarDados();
@@ -276,6 +291,18 @@ const ContagemPage = () => {
       const quantidade = Number(valor) || 0;
       console.log('📊 Processando quantidade:', quantidade);
       
+      // Atualizar estado local imediatamente para feedback visual
+      setContagens(prev => ({
+        ...prev,
+        [produtoId]: quantidade
+      }));
+      
+      // Se contagem é local, salvar apenas no estado
+      if (contagemAtual._isLocal) {
+        console.log('💾 Contagem salva localmente');
+        return;
+      }
+      
       // Buscar primeira variação do produto para usar como referência
       const produtoVariacoes = getVariacoesPorProduto(produtoId);
       if (produtoVariacoes.length === 0) {
@@ -289,17 +316,6 @@ const ContagemPage = () => {
       
       const variacaoPrincipal = produtoVariacoes[0];
       console.log('🎯 Variação principal:', variacaoPrincipal.id);
-      
-      // Se contagem é local, salvar apenas no estado
-      if (contagemAtual._isLocal) {
-        setContagens(prev => ({
-          ...prev,
-          [produtoId]: quantidade
-        }));
-        
-        console.log('💾 Contagem salva localmente');
-        return;
-      }
       
       // Verificar se já existe item para este produto na contagem
       const itemExistente = itensContagem.find(item => {
@@ -327,12 +343,6 @@ const ContagemPage = () => {
         });
       }
       
-      // Atualizar estado local
-      setContagens(prev => ({
-        ...prev,
-        [produtoId]: quantidade
-      }));
-      
       // Recarregar itens da contagem
       await carregarItensContagem(contagemAtual.id);
       
@@ -341,9 +351,119 @@ const ContagemPage = () => {
     } catch (error) {
       console.error('❌ Erro na contagem simples:', error);
       
+      // Reverter estado local em caso de erro
+      setContagens(prev => {
+        const newContagens = { ...prev };
+        delete newContagens[produtoId];
+        return newContagens;
+      });
+      
       toast({
         title: "Erro",
         description: "Erro ao salvar contagem. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const abrirModalDetalhado = (produto) => {
+    console.log('🔍 Abrindo modal detalhado para produto:', produto.nome);
+    
+    setProdutoSelecionado(produto);
+    setModalAberto(true);
+    
+    // Obter unidade principal do produto (primeira variação)
+    const produtoVariacoes = getVariacoesPorProduto(produto.id);
+    const unidadePrincipal = produtoVariacoes.length > 0 ? 'unidade' : 'unidade';
+    
+    // Carregar contagem atual se existir
+    const contagemAtualProduto = contagens[produto.id] || 0;
+    if (contagemAtualProduto > 0) {
+      // Mostrar valor atual como primeira linha (unidade principal)
+      setContagemDetalhada([{
+        id: 'atual',
+        quantidade: contagemAtualProduto,
+        unidade: unidadePrincipal,
+        observacao: 'Contagem atual',
+        isExisting: true
+      }]);
+    } else {
+      setContagemDetalhada([]);
+    }
+    
+    // Definir unidade principal como default para nova linha
+    setNovaLinha({
+      quantidade: 0,
+      unidade: unidadePrincipal,
+      observacao: ''
+    });
+  };
+
+  const adicionarLinhaDetalhada = () => {
+    if (novaLinha.quantidade > 0) {
+      setContagemDetalhada(prev => [...prev, { 
+        ...novaLinha, 
+        id: Date.now(),
+        quantidade: Number(novaLinha.quantidade)
+      }]);
+      
+      // Resetar nova linha
+      const produtoVariacoes = getVariacoesPorProduto(produtoSelecionado?.id);
+      const unidadeDefault = produtoVariacoes.length > 0 ? 'unidade' : 'unidade';
+      
+      setNovaLinha({ 
+        quantidade: 0, 
+        unidade: unidadeDefault, 
+        observacao: '' 
+      });
+    }
+  };
+
+  const removerLinhaDetalhada = (id) => {
+    setContagemDetalhada(prev => prev.filter(item => item.id !== id));
+  };
+
+  const calcularTotalDetalhado = () => {
+    return contagemDetalhada.reduce((total, item) => {
+      if (item.isExisting) return total; // Não contar a linha "atual"
+      return total + (Number(item.quantidade) || 0);
+    }, 0);
+  };
+
+  const salvarContagemDetalhada = async () => {
+    console.log('💾 Salvando contagem detalhada');
+    
+    if (!contagemAtual || !produtoSelecionado) {
+      toast({
+        title: "Erro",
+        description: "Dados insuficientes para salvar contagem detalhada",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const total = calcularTotalDetalhado();
+      
+      // Salvar como contagem simples com o total calculado
+      await handleContagemSimples(produtoSelecionado.id, total);
+      
+      // Fechar modal
+      setModalAberto(false);
+      setProdutoSelecionado(null);
+      setContagemDetalhada([]);
+      
+      toast({
+        title: "Sucesso",
+        description: "Contagem detalhada salva com sucesso",
+      });
+      
+    } catch (error) {
+      console.error('❌ Erro ao salvar contagem detalhada:', error);
+      
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar contagem detalhada",
         variant: "destructive",
       });
     }
@@ -361,26 +481,6 @@ const ContagemPage = () => {
     return variacoes.filter(variacao => variacao.id_produto === produtoId);
   };
 
-  const getUnidadesPorProduto = (produtoId) => {
-    if (!produtoId) return [];
-    
-    // Buscar variações do produto
-    const produtoVariacoes = getVariacoesPorProduto(produtoId);
-    if (produtoVariacoes.length === 0) return [];
-    
-    // Buscar unidades de medida usadas nas variações
-    const unidadesIds = [...new Set(produtoVariacoes.map(v => v.id_unidade_controle))];
-    const unidadesRelacionadas = unidadesMedida.filter(u => unidadesIds.includes(u.id));
-    
-    // Ordenar: primeira variação (default) primeiro, depois alfabético
-    const variacaoDefault = produtoVariacoes[0];
-    return unidadesRelacionadas.sort((a, b) => {
-      if (a.id === variacaoDefault.id_unidade_controle) return -1;
-      if (b.id === variacaoDefault.id_unidade_controle) return 1;
-      return a.nome.localeCompare(b.nome);
-    });
-  };
-
   const getSetorNome = (setorId) => {
     const setor = setores.find(s => s.id === setorId);
     return setor?.nome || '';
@@ -390,6 +490,55 @@ const ContagemPage = () => {
     const categoria = categorias.find(c => c.id === categoriaId);
     return categoria?.nome || '';
   };
+
+  const getCategoriaHierarquia = (categoriaId) => {
+    const categoria = categorias.find(c => c.id === categoriaId);
+    if (!categoria) return [];
+    
+    const hierarquia = [categoria];
+    let categoriaAtual = categoria;
+    
+    while (categoriaAtual.id_categoria_pai) {
+      const categoriaPai = categorias.find(c => c.id === categoriaAtual.id_categoria_pai);
+      if (categoriaPai) {
+        hierarquia.unshift(categoriaPai);
+        categoriaAtual = categoriaPai;
+      } else {
+        break;
+      }
+    }
+    
+    return hierarquia;
+  };
+
+  const renderCategoriaComIndentacao = (hierarquia) => {
+    return hierarquia.map((categoria, index) => (
+      <span key={categoria.id}>
+        {index > 0 && ' → '}
+        {categoria.nome}
+      </span>
+    ));
+  };
+
+  // Agrupar produtos por setor e categoria (layout original)
+  const produtosAgrupados = produtosFiltrados.reduce((acc, produto) => {
+    const setorNome = getSetorNome(produto.id_setor);
+    const hierarquiaCategoria = getCategoriaHierarquia(produto.id_categoria);
+    const categoriaKey = hierarquiaCategoria.map(c => c.nome).join(' → ');
+    
+    if (!acc[setorNome]) {
+      acc[setorNome] = {};
+    }
+    if (!acc[setorNome][categoriaKey]) {
+      acc[setorNome][categoriaKey] = {
+        produtos: [],
+        hierarquia: hierarquiaCategoria
+      };
+    }
+    
+    acc[setorNome][categoriaKey].produtos.push(produto);
+    return acc;
+  }, {});
 
   // Componente de status da contagem
   const StatusContagem = () => {
@@ -433,8 +582,8 @@ const ContagemPage = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600">Carregando dados da contagem...</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando contagem...</p>
         </div>
       </div>
     );
@@ -443,18 +592,18 @@ const ContagemPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/dashboard')}
-                className="flex items-center gap-2"
+                className="flex items-center space-x-2"
               >
-                <ArrowLeft className="w-4 h-4" />
-                Voltar
+                <ArrowLeft className="h-4 w-4" />
+                <span>Voltar</span>
               </Button>
               <div>
                 <h1 className="text-xl font-semibold text-gray-900">
@@ -467,15 +616,15 @@ const ContagemPage = () => {
             <StatusContagem />
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Filtros */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Filtros */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Filter className="w-5 h-5" />
-              Filtros
+            <CardTitle className="flex items-center space-x-2">
+              <Filter className="h-5 w-5" />
+              <span>Filtros</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -535,80 +684,245 @@ const ContagemPage = () => {
           </CardContent>
         </Card>
 
-        {/* Lista de Produtos */}
-        <div className="grid gap-4">
-          {produtosFiltrados.length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-12">
-                <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">Nenhum produto encontrado com os filtros aplicados</p>
-              </CardContent>
-            </Card>
-          ) : (
-            produtosFiltrados.map(produto => (
-              <Card key={produto.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-medium text-gray-900">
-                          {produto.nome}
-                        </h3>
-                        <Badge variant="outline" className="text-xs">
-                          {getSetorNome(produto.id_setor)}
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs">
-                          {getCategoriaNome(produto.id_categoria)}
-                        </Badge>
+        {/* Lista de Produtos por Setor/Categoria (Layout Original) */}
+        <div className="space-y-6">
+          {Object.entries(produtosAgrupados).map(([setorNome, categorias]) => (
+            <div key={setorNome} className={`${coresSetores[setorNome] || 'bg-gray-50'} rounded-lg p-4`}>
+              <h2 className="text-lg font-bold text-gray-900 mb-4">{setorNome}</h2>
+              
+              {Object.entries(categorias).map(([categoriaKey, categoriaData]) => (
+                <div key={categoriaKey} className={`${coresCategorias[categoriaData.hierarquia[categoriaData.hierarquia.length - 1]?.nome] || 'bg-gray-100'} rounded-lg p-3 mb-4`}>
+                  <div className="mb-3">
+                    <h3 className="text-md font-semibold text-gray-800 font-mono leading-relaxed">
+                      {renderCategoriaComIndentacao(categoriaData.hierarquia)}
+                    </h3>
+                  </div>
+                  
+                  <div className="bg-white rounded-lg overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            Produto
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            Variações
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            Status
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            Contagem
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            Ações
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {categoriaData.produtos.map((produto) => {
+                          const produtoVariacoes = getVariacoesPorProduto(produto.id);
+                          const contagemAtualProduto = contagens[produto.id] || 0;
+                          const usuarioAtivo = usuariosAtivos[produto.id];
+                          
+                          return (
+                            <tr key={produto.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                                    {produto.imagem_principal_url ? (
+                                      <img 
+                                        src={produto.imagem_principal_url} 
+                                        alt={produto.nome}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <Package className="h-4 w-4 text-gray-400" />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-gray-900">{produto.nome}</p>
+                                    {usuarioAtivo && (
+                                      <div className="flex items-center space-x-1 text-xs text-blue-600">
+                                        <Users className="h-3 w-3" />
+                                        <span>{usuarioAtivo} está contando</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className="text-sm text-gray-600">{produtoVariacoes.length} variação(ões)</span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <Badge variant={produto.ativo ? "default" : "secondary"}>
+                                  {produto.ativo ? 'Ativo' : 'Inativo'}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-3">
+                                <Input
+                                  type="number"
+                                  value={contagemAtualProduto}
+                                  onChange={(e) => handleContagemSimples(produto.id, e.target.value)}
+                                  className="w-20 text-center"
+                                  min="0"
+                                  step="0.01"
+                                  disabled={!contagemAtual || inicializandoContagem}
+                                />
+                              </td>
+                              <td className="px-4 py-3">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => abrirModalDetalhado(produto)}
+                                  className="flex items-center space-x-1"
+                                  disabled={!contagemAtual || inicializandoContagem}
+                                >
+                                  <Edit3 className="h-3 w-3" />
+                                  <span>Detalhado</span>
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </main>
+
+      {/* Modal de Contagem Detalhada */}
+      {modalAberto && produtoSelecionado && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold">Contagem Detalhada - {produtoSelecionado.nome}</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setModalAberto(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Adicionar nova linha */}
+            <div className="border rounded-lg p-4 mb-4 bg-gray-50">
+              <h4 className="font-medium mb-3">Adicionar Contagem</h4>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Quantidade
+                  </label>
+                  <Input
+                    type="number"
+                    value={novaLinha.quantidade}
+                    onChange={(e) => setNovaLinha(prev => ({ ...prev, quantidade: e.target.value }))}
+                    placeholder="Ex: 5"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Unidade
+                  </label>
+                  <select
+                    value={novaLinha.unidade}
+                    onChange={(e) => setNovaLinha(prev => ({ ...prev, unidade: e.target.value }))}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="">Selecione</option>
+                    <option value="unidade">Unidades</option>
+                    <option value="caixa">Caixas (24 un)</option>
+                    <option value="pacote">Pacotes (12 un)</option>
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    onClick={adicionarLinhaDetalhada}
+                    size="sm"
+                    className="w-full"
+                    disabled={!novaLinha.quantidade || novaLinha.quantidade <= 0}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Adicionar
+                  </Button>
+                </div>
+              </div>
+              <div className="mt-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Observação (opcional)
+                </label>
+                <Input
+                  value={novaLinha.observacao}
+                  onChange={(e) => setNovaLinha(prev => ({ ...prev, observacao: e.target.value }))}
+                  placeholder="Ex: Produtos na prateleira superior"
+                />
+              </div>
+            </div>
+
+            {/* Lista de contagens adicionadas */}
+            {contagemDetalhada.length > 0 && (
+              <div className="border rounded-lg p-4 mb-4">
+                <h4 className="font-medium mb-3">Contagens Registradas</h4>
+                <div className="space-y-2">
+                  {contagemDetalhada.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                      <div className="flex-1">
+                        <span className="font-medium">{item.quantidade} {item.unidade}</span>
+                        {item.observacao && (
+                          <span className="text-sm text-gray-600 ml-2">- {item.observacao}</span>
+                        )}
+                        {item.isExisting && (
+                          <Badge variant="secondary" className="ml-2 text-xs">Atual</Badge>
+                        )}
                       </div>
-                      
-                      {produto.descricao && (
-                        <p className="text-sm text-gray-600 mb-3">
-                          {produto.descricao}
-                        </p>
+                      {!item.isExisting && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removerLinhaDetalhada(item.id)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
                       )}
                     </div>
-                    
-                    <div className="flex items-center gap-4">
-                      {/* Input de contagem simples */}
-                      <div className="flex items-center gap-2">
-                        <label className="text-sm font-medium text-gray-700">
-                          Quantidade:
-                        </label>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={contagens[produto.id] || ''}
-                          onChange={(e) => handleContagemSimples(produto.id, e.target.value)}
-                          className="w-24 text-center"
-                          placeholder="0"
-                          disabled={!contagemAtual || inicializandoContagem}
-                        />
-                      </div>
-                      
-                      {/* Botão de contagem detalhada */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setProdutoSelecionado(produto);
-                          setModalAberto(true);
-                        }}
-                        className="flex items-center gap-2"
-                        disabled={!contagemAtual || inicializandoContagem}
-                      >
-                        <Edit3 className="w-4 h-4" />
-                        Detalhada
-                      </Button>
-                    </div>
+                  ))}
+                </div>
+                
+                <div className="mt-3 pt-3 border-t">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">Total:</span>
+                    <span className="font-bold text-lg">{calcularTotalDetalhado()} unidades</span>
                   </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
+                </div>
+              </div>
+            )}
+
+            {/* Botões do modal */}
+            <div className="flex justify-end space-x-3">
+              <Button
+                variant="outline"
+                onClick={() => setModalAberto(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={salvarContagemDetalhada}
+                disabled={contagemDetalhada.filter(item => !item.isExisting).length === 0}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Salvar Contagem
+              </Button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
