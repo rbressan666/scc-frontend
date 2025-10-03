@@ -28,34 +28,8 @@ const UnidadesTab = () => {
       setLoading(true);
       const response = await unidadeMedidaService.getAll(true); // Incluir inativos
       
-      console.log('Response completa:', response);
-      console.log('Response.data:', response?.data);
-      console.log('Tipo da response:', typeof response);
-      console.log('É array?', Array.isArray(response));
-      console.log('É array response.data?', Array.isArray(response?.data));
-      
-      // Tentar diferentes estruturas de resposta
-      let unidadesData = [];
-      
-      if (Array.isArray(response)) {
-        unidadesData = response;
-      } else if (Array.isArray(response?.data)) {
-        unidadesData = response.data;
-      } else if (response?.data && typeof response.data === 'object') {
-        // Se data é um objeto, pode ter uma propriedade com array
-        const keys = Object.keys(response.data);
-        console.log('Keys do response.data:', keys);
-        
-        for (const key of keys) {
-          if (Array.isArray(response.data[key])) {
-            unidadesData = response.data[key];
-            break;
-          }
-        }
-      }
-      
-      console.log('Dados extraídos:', unidadesData);
-      console.log('Primeiro item:', unidadesData[0]);
+      // Extrair dados da resposta
+      const unidadesData = response?.data || [];
       
       // Validar e limpar dados
       const unidadesValidadas = unidadesData
@@ -68,7 +42,6 @@ const UnidadesTab = () => {
           ativo: unidade.ativo === true || unidade.ativo === 'true' || unidade.ativo === 1
         }));
       
-      console.log('Unidades validadas:', unidadesValidadas);
       setUnidades(unidadesValidadas);
       
     } catch (error) {
@@ -120,11 +93,7 @@ const UnidadesTab = () => {
   };
 
   const handleEdit = (unidade) => {
-    console.log('Editando unidade:', unidade);
-    if (!unidade || !unidade.id) {
-      console.error('Unidade inválida para edição:', unidade);
-      return;
-    }
+    if (!unidade || !unidade.id) return;
     
     setEditingUnidade(unidade);
     setFormData({
@@ -136,11 +105,7 @@ const UnidadesTab = () => {
   };
 
   const handleToggleStatus = async (unidade) => {
-    console.log('Alterando status da unidade:', unidade);
-    if (!unidade || !unidade.id) {
-      console.error('Unidade inválida para toggle:', unidade);
-      return;
-    }
+    if (!unidade || !unidade.id) return;
     
     try {
       if (unidade.ativo) {
@@ -176,22 +141,19 @@ const UnidadesTab = () => {
       label: 'Nome',
       sortable: true,
       filterable: true,
-      render: (unidade) => {
-        console.log('Renderizando nome para:', unidade);
-        return (
-          <div className="font-medium text-gray-900">
-            {unidade?.nome || 'Nome não disponível'}
-          </div>
-        );
-      }
+      render: (value, unidade) => (
+        <div className="font-medium text-gray-900">
+          {unidade?.nome || value || 'Nome não disponível'}
+        </div>
+      )
     },
     {
       key: 'sigla',
       label: 'Sigla',
       sortable: true,
       filterable: true,
-      render: (unidade) => (
-        <div className="text-gray-600">{unidade?.sigla || '-'}</div>
+      render: (value, unidade) => (
+        <div className="text-gray-600">{unidade?.sigla || value || '-'}</div>
       )
     },
     {
@@ -199,8 +161,8 @@ const UnidadesTab = () => {
       label: 'Quantidade',
       sortable: true,
       filterable: true,
-      render: (unidade) => (
-        <div className="text-gray-600">{unidade?.quantidade || 1}</div>
+      render: (value, unidade) => (
+        <div className="text-gray-600">{unidade?.quantidade || value || 1}</div>
       )
     },
     {
@@ -213,8 +175,8 @@ const UnidadesTab = () => {
         { value: 'true', label: 'Ativo' },
         { value: 'false', label: 'Inativo' }
       ],
-      render: (unidade) => {
-        const isAtivo = unidade?.ativo === true;
+      render: (value, unidade) => {
+        const isAtivo = unidade?.ativo === true || value === true;
         return (
           <Badge variant={isAtivo ? "success" : "secondary"}>
             {isAtivo ? 'Ativo' : 'Inativo'}
@@ -227,11 +189,8 @@ const UnidadesTab = () => {
       label: 'Ações',
       sortable: false,
       filterable: false,
-      render: (unidade) => {
-        console.log('Renderizando ações para:', unidade);
-        
+      render: (value, unidade) => {
         if (!unidade || !unidade.id) {
-          console.log('Unidade inválida, não renderizando ações');
           return <div className="text-gray-400">-</div>;
         }
         
@@ -353,13 +312,6 @@ const UnidadesTab = () => {
 
       <Card>
         <CardContent className="p-6">
-          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
-            <p className="text-sm text-yellow-800">
-              <strong>Debug:</strong> {unidades.length} unidades carregadas. 
-              Verifique o console do navegador para mais detalhes.
-            </p>
-          </div>
-          
           <SortableTable
             data={unidades}
             columns={columns}
