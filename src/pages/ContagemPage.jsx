@@ -16,7 +16,8 @@ import {
   Save,
   X,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Calculator
 } from 'lucide-react';
 import { produtoService, variacaoService, setorService, categoriaService, contagensService } from '../services/api';
 import { useToast } from '@/hooks/use-toast';
@@ -52,7 +53,7 @@ const ContagemPage = () => {
   const [contagemDetalhada, setContagemDetalhada] = useState([]);
   const [novaLinha, setNovaLinha] = useState({
     quantidade: 0,
-    unidade: '',
+    unidade_id: '',
     observacao: ''
   });
 
@@ -87,7 +88,7 @@ const ContagemPage = () => {
         variacaoService.getAll(),
         setorService.getAll(),
         categoriaService.getAll(),
-        // Assumindo que existe um serviço de unidades de medida
+        // Carregar unidades de medida
         fetch('/api/unidades-medida').then(r => r.json()).catch(() => ({ data: [] }))
       ]);
 
@@ -366,26 +367,110 @@ const ContagemPage = () => {
     }
   };
 
+  // Função para obter unidades de medida relacionadas ao produto
+  const getUnidadesPorProduto = (produtoId) => {
+    console.log('🔍 Buscando unidades para produto:', produtoId);
+    
+    // Buscar variações do produto
+    const produtoVariacoes = getVariacoesPorProduto(produtoId);
+    console.log('📦 Variações encontradas:', produtoVariacoes.length);
+    
+    // Extrair IDs únicos das unidades de controle
+    const unidadeIds = [...new Set(produtoVariacoes.map(v => v.id_unidade_controle).filter(Boolean))];
+    console.log('🎯 IDs de unidades únicas:', unidadeIds);
+    
+    // Buscar unidades de medida correspondentes
+    const unidadesRelacionadas = unidadesMedida.filter(unidade => 
+      unidadeIds.includes(unidade.id) && unidade.ativo !== false
+    );
+    
+    console.log('✅ Unidades relacionadas encontradas:', unidadesRelacionadas.length);
+    
+    // Ordenar por prioridade (primeira variação = unidade principal)
+    if (produtoVariacoes.length > 0) {
+      const unidadePrincipalId = produtoVariacoes[0].id_unidade_controle;
+      unidadesRelacionadas.sort((a, b) => {
+        if (a.id === unidadePrincipalId) return -1;
+        if (b.id === unidadePrincipalId) return 1;
+        return a.nome.localeCompare(b.nome);
+      });
+    }
+    
+    return unidadesRelacionadas;
+  };
+
+  // Função para calcular quantidade convertida baseada na unidade de medida
+  const calcularQuantidadeConvertida = (quantidade, unidadeUsadaId, produtoId) => {
+    console.log('🧮 Calculando conversão:', { quantidade, unidadeUsadaId, produtoId });
+    
+    // Buscar unidades do produto
+    const unidadesProduto = getUnidadesPorProduto(produtoId);
+    if (unidadesProduto.length === 0) {
+      console.log('⚠️ Nenhuma unidade encontrada para o produto');
+      return quantidade;
+    }
+    
+    // Unidade principal (primeira da lista)
+    const unidadePrincipal = unidadesProduto[0];
+    console.log('🎯 Unidade principal:', unidadePrincipal.nome);
+    
+    // Se está usando a unidade principal, não precisa converter
+    if (unidadeUsadaId === unidadePrincipal.id) {
+      console.log('✅ Usando unidade principal, sem conversão');
+      return quantidade;
+    }
+    
+    // Buscar unidade usada
+    const unidadeUsada = unidadesMedida.find(u => u.id === unidadeUsadaId);
+    if (!unidadeUsada) {
+      console.log('⚠️ Unidade usada não encontrada');
+      return quantidade;
+    }
+    
+    console.log('🔄 Unidade usada:', unidadeUsada.nome);
+    
+    // Calcular conversão baseada na quantidade da unidade
+    const quantidadeUnidadeUsada = unidadeUsada.quantidade || 1;
+    const quantidadeUnidadePrincipal = unidadePrincipal.quantidade || 1;
+    
+    // Fórmula: quantidade × (unidadeUsada/unidadePrincipal)
+    const quantidadeConvertida = quantidade * (quantidadeUnidadeUsada / quantidadeUnidadePrincipal);
+    
+    console.log('📊 Conversão calculada:', {
+      quantidade,
+      quantidadeUnidadeUsada,
+      quantidadeUnidadePrincipal,
+      resultado: quantidadeConvertida
+    });
+    
+    return quantidadeConvertida;
+  };
+
   const abrirModalDetalhado = (produto) => {
     console.log('🔍 Abrindo modal detalhado para produto:', produto.nome);
     
     setProdutoSelecionado(produto);
     setModalAberto(true);
     
-    // Obter unidade principal do produto (primeira variação)
-    const produtoVariacoes = getVariacoesPorProduto(produto.id);
-    const unidadePrincipal = produtoVariacoes.length > 0 ? 'unidade' : 'unidade';
+    // Obter unidades relacionadas ao produto
+    const unidadesProduto = getUnidadesPorProduto(produto.id);
+    console.log('📦 Unidades do produto:', unidadesProduto.map(u => u.nome));
+    
+    // Definir unidade principal como default (primeira da lista)
+    const unidadePrincipal = unidadesProduto.length > 0 ? unidadesProduto[0] : null;
     
     // Carregar contagem atual se existir
     const contagemAtualProduto = contagens[produto.id] || 0;
-    if (contagemAtualProduto > 0) {
+    if (contagemAtualProduto > 0 && unidadePrincipal) {
       // Mostrar valor atual como primeira linha (unidade principal)
       setContagemDetalhada([{
         id: 'atual',
         quantidade: contagemAtualProduto,
-        unidade: unidadePrincipal,
+        unidade_id: unidadePrincipal.id,
+        unidade_nome: unidadePrincipal.nome,
         observacao: 'Contagem atual',
-        isExisting: true
+        isExisting: true,
+        quantidade_convertida: contagemAtualProduto
       }]);
     } else {
       setContagemDetalhada([]);
@@ -394,26 +479,42 @@ const ContagemPage = () => {
     // Definir unidade principal como default para nova linha
     setNovaLinha({
       quantidade: 0,
-      unidade: unidadePrincipal,
+      unidade_id: unidadePrincipal?.id || '',
       observacao: ''
     });
   };
 
   const adicionarLinhaDetalhada = () => {
-    if (novaLinha.quantidade > 0) {
-      setContagemDetalhada(prev => [...prev, { 
-        ...novaLinha, 
-        id: Date.now(),
-        quantidade: Number(novaLinha.quantidade)
-      }]);
+    if (novaLinha.quantidade > 0 && novaLinha.unidade_id) {
+      // Buscar dados da unidade selecionada
+      const unidadeSelecionada = unidadesMedida.find(u => u.id === novaLinha.unidade_id);
       
-      // Resetar nova linha
-      const produtoVariacoes = getVariacoesPorProduto(produtoSelecionado?.id);
-      const unidadeDefault = produtoVariacoes.length > 0 ? 'unidade' : 'unidade';
+      // Calcular quantidade convertida
+      const quantidadeConvertida = calcularQuantidadeConvertida(
+        Number(novaLinha.quantidade),
+        novaLinha.unidade_id,
+        produtoSelecionado.id
+      );
+      
+      const novaLinhaCompleta = {
+        ...novaLinha,
+        id: Date.now(),
+        quantidade: Number(novaLinha.quantidade),
+        unidade_nome: unidadeSelecionada?.nome || 'Unidade',
+        quantidade_convertida: quantidadeConvertida
+      };
+      
+      console.log('➕ Adicionando linha detalhada:', novaLinhaCompleta);
+      
+      setContagemDetalhada(prev => [...prev, novaLinhaCompleta]);
+      
+      // Resetar nova linha mantendo unidade principal
+      const unidadesProduto = getUnidadesPorProduto(produtoSelecionado?.id);
+      const unidadePrincipal = unidadesProduto.length > 0 ? unidadesProduto[0] : null;
       
       setNovaLinha({ 
         quantidade: 0, 
-        unidade: unidadeDefault, 
+        unidade_id: unidadePrincipal?.id || '', 
         observacao: '' 
       });
     }
@@ -424,10 +525,14 @@ const ContagemPage = () => {
   };
 
   const calcularTotalDetalhado = () => {
-    return contagemDetalhada.reduce((total, item) => {
+    // Somar apenas as quantidades convertidas das linhas não existentes
+    const total = contagemDetalhada.reduce((total, item) => {
       if (item.isExisting) return total; // Não contar a linha "atual"
-      return total + (Number(item.quantidade) || 0);
+      return total + (Number(item.quantidade_convertida) || 0);
     }, 0);
+    
+    console.log('🧮 Total detalhado calculado:', total);
+    return total;
   };
 
   const salvarContagemDetalhada = async () => {
@@ -444,6 +549,7 @@ const ContagemPage = () => {
 
     try {
       const total = calcularTotalDetalhado();
+      console.log('📊 Total a ser salvo:', total);
       
       // Salvar como contagem simples com o total calculado
       await handleContagemSimples(produtoSelecionado.id, total);
@@ -455,7 +561,7 @@ const ContagemPage = () => {
       
       toast({
         title: "Sucesso",
-        description: "Contagem detalhada salva com sucesso",
+        description: `Contagem detalhada salva: ${total} unidades`,
       });
       
     } catch (error) {
@@ -778,7 +884,7 @@ const ContagemPage = () => {
                                   className="flex items-center space-x-1"
                                   disabled={!contagemAtual || inicializandoContagem}
                                 >
-                                  <Edit3 className="h-3 w-3" />
+                                  <Calculator className="h-3 w-3" />
                                   <span>Detalhado</span>
                                 </Button>
                               </td>
@@ -798,7 +904,7 @@ const ContagemPage = () => {
       {/* Modal de Contagem Detalhada */}
       {modalAberto && produtoSelecionado && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold">Contagem Detalhada - {produtoSelecionado.nome}</h3>
               <Button
@@ -829,17 +935,20 @@ const ContagemPage = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Unidade
+                    Unidade de Medida
                   </label>
                   <select
-                    value={novaLinha.unidade}
-                    onChange={(e) => setNovaLinha(prev => ({ ...prev, unidade: e.target.value }))}
+                    value={novaLinha.unidade_id}
+                    onChange={(e) => setNovaLinha(prev => ({ ...prev, unidade_id: e.target.value }))}
                     className="w-full p-2 border border-gray-300 rounded-md"
                   >
                     <option value="">Selecione</option>
-                    <option value="unidade">Unidades</option>
-                    <option value="caixa">Caixas (24 un)</option>
-                    <option value="pacote">Pacotes (12 un)</option>
+                    {getUnidadesPorProduto(produtoSelecionado.id).map((unidade, index) => (
+                      <option key={unidade.id} value={unidade.id}>
+                        {unidade.nome} {index === 0 && '(Principal)'}
+                        {unidade.quantidade && unidade.quantidade !== 1 && ` - ${unidade.quantidade}`}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="flex items-end">
@@ -847,7 +956,7 @@ const ContagemPage = () => {
                     onClick={adicionarLinhaDetalhada}
                     size="sm"
                     className="w-full"
-                    disabled={!novaLinha.quantidade || novaLinha.quantidade <= 0}
+                    disabled={!novaLinha.quantidade || novaLinha.quantidade <= 0 || !novaLinha.unidade_id}
                   >
                     <Plus className="h-3 w-3 mr-1" />
                     Adicionar
@@ -872,14 +981,19 @@ const ContagemPage = () => {
                 <h4 className="font-medium mb-3">Contagens Registradas</h4>
                 <div className="space-y-2">
                   {contagemDetalhada.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
                       <div className="flex-1">
-                        <span className="font-medium">{item.quantidade} {item.unidade}</span>
+                        <div className="flex items-center gap-4">
+                          <span className="font-medium">{item.quantidade} {item.unidade_nome}</span>
+                          <span className="text-sm text-blue-600">
+                            = {item.quantidade_convertida?.toFixed(2)} unidades principais
+                          </span>
+                          {item.isExisting && (
+                            <Badge variant="secondary" className="text-xs">Atual</Badge>
+                          )}
+                        </div>
                         {item.observacao && (
-                          <span className="text-sm text-gray-600 ml-2">- {item.observacao}</span>
-                        )}
-                        {item.isExisting && (
-                          <Badge variant="secondary" className="ml-2 text-xs">Atual</Badge>
+                          <div className="text-sm text-gray-600 mt-1">{item.observacao}</div>
                         )}
                       </div>
                       {!item.isExisting && (
@@ -895,10 +1009,15 @@ const ContagemPage = () => {
                   ))}
                 </div>
                 
-                <div className="mt-3 pt-3 border-t">
+                <div className="mt-4 pt-3 border-t bg-blue-50 p-3 rounded">
                   <div className="flex justify-between items-center">
-                    <span className="font-medium">Total:</span>
-                    <span className="font-bold text-lg">{calcularTotalDetalhado()} unidades</span>
+                    <span className="font-medium">Total Convertido:</span>
+                    <span className="font-bold text-lg text-blue-600">
+                      {calcularTotalDetalhado().toFixed(2)} unidades principais
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1">
+                    Este valor será salvo como contagem do produto
                   </div>
                 </div>
               </div>
