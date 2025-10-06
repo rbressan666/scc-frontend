@@ -19,7 +19,7 @@ import {
   RefreshCw,
   Calculator
 } from 'lucide-react';
-import { produtoService, variacaoService, setorService, categoriaService, contagensService } from '../services/api';
+import { produtoService, variacaoService, setorService, categoriaService, contagensService, unidadeMedidaService } from '../services/api';
 import { useToast } from '@/hooks/use-toast';
 
 const ContagemPage = () => {
@@ -89,7 +89,7 @@ const ContagemPage = () => {
         setorService.getAll(),
         categoriaService.getAll(),
         // Carregar unidades de medida
-        fetch('/api/unidades-medida').then(r => r.json()).catch(() => ({ data: [] }))
+        unidadeMedidaService.getAll()
       ]);
 
       if (produtosRes.status === 'fulfilled') {

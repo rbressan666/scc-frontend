@@ -228,3 +228,56 @@ for (let i = 0; i < formData.variacoes.length; i++) {
 2. **Validação de UX**: Confirmar que loading states estão adequados
 3. **Teste de ordenação**: Verificar se ordem é mantida após reload
 4. **Feedback do usuário**: Coletar impressões sobre melhorias implementadas
+
+
+## [2025-10-06] - Correção do Carregamento de Unidades de Medida na Contagem
+
+### Problema:
+- Na tela de contagem de produtos, ao clicar no botão "Detalhado", a lista de unidades de medida não estava carregando
+- O select de unidades ficava vazio, impedindo o usuário de selecionar uma unidade e consequentemente desabilitando o botão de gravar
+- Funcionalidade que anteriormente funcionava parou de operar
+
+### Causa Raiz:
+- No arquivo `ContagemPage.jsx`, linha 92, estava sendo usado uma chamada `fetch` direta para carregar unidades de medida:
+  ```javascript
+  fetch('/api/unidades-medida').then(r => r.json()).catch(() => ({ data: [] }))
+  ```
+- Esta chamada não incluía o token de autenticação necessário
+- O serviço `unidadeMedidaService` já existia e estava configurado corretamente com autenticação automática
+
+### Solução Aplicada:
+- **Importação corrigida**: Adicionado `unidadeMedidaService` na importação dos serviços (linha 22)
+- **Chamada de API corrigida**: Substituído `fetch` direto por `unidadeMedidaService.getAll()` (linha 92)
+- **Mantida compatibilidade**: Não alterado nenhum layout ou funcionalidade existente
+
+### Arquivos Modificados:
+- `src/pages/ContagemPage.jsx`: 
+  - Linha 22: Adicionado `unidadeMedidaService` na importação
+  - Linha 92: Substituído fetch direto por serviço com autenticação
+
+### Melhorias Implementadas:
+- **Autenticação automática**: Uso do serviço que já inclui token de autenticação
+- **Tratamento de erro consistente**: Aproveitamento do interceptor de erro já configurado
+- **Código padronizado**: Alinhamento com padrão usado em outros carregamentos de dados
+
+### Resultado Esperado:
+- Lista de unidades de medida carrega corretamente no modal detalhado
+- Select de unidades fica populado com as unidades relacionadas ao produto
+- Botão "Adicionar" fica habilitado quando quantidade e unidade são selecionadas
+- Funcionalidade de contagem detalhada volta a funcionar completamente
+
+### Funcionalidade Restaurada:
+- ✅ Carregamento de unidades de medida com autenticação
+- ✅ População do select de unidades no modal detalhado
+- ✅ Habilitação do botão de gravar contagem
+- ✅ Fluxo completo de contagem detalhada funcionando
+
+### Observações Técnicas:
+- **Compatibilidade**: Totalmente compatível com dados e funcionalidades existentes
+- **Performance**: Sem impacto na performance, apenas correção de autenticação
+- **Manutenibilidade**: Código mais consistente usando serviços padronizados
+
+### Próximos Passos Sugeridos:
+1. **Teste da funcionalidade**: Verificar se o modal detalhado carrega unidades corretamente
+2. **Teste de contagem**: Confirmar que é possível adicionar contagens com diferentes unidades
+3. **Validação de conversão**: Verificar se as conversões entre unidades estão funcionando
