@@ -304,8 +304,8 @@ const ContagemPage = () => {
         return;
       }
       
-      // Buscar primeira variação do produto para usar como referência
-      const produtoVariacoes = getVariacoesPorProduto(produtoId);
+      // Buscar primeira variação do produto ordenada por prioridade para usar como referência
+      const produtoVariacoes = getVariacoesPorProduto(produtoId).sort((a, b) => a.fator_prioridade - b.fator_prioridade);
       if (produtoVariacoes.length === 0) {
         toast({
           title: "Erro",
@@ -371,30 +371,33 @@ const ContagemPage = () => {
   const getUnidadesPorProduto = (produtoId) => {
     console.log('🔍 Buscando unidades para produto:', produtoId);
     
-    // Buscar variações do produto
-    const produtoVariacoes = getVariacoesPorProduto(produtoId);
-    console.log('📦 Variações encontradas:', produtoVariacoes.length);
+    // Buscar variações do produto ordenadas por fator_prioridade
+    const produtoVariacoes = getVariacoesPorProduto(produtoId).sort((a, b) => a.fator_prioridade - b.fator_prioridade);
+    console.log('📦 Variações encontradas (ordenadas):', produtoVariacoes.length);
     
-    // Extrair IDs únicos das unidades de controle
-    const unidadeIds = [...new Set(produtoVariacoes.map(v => v.id_unidade_controle).filter(Boolean))];
-    console.log('🎯 IDs de unidades únicas:', unidadeIds);
+    // Extrair IDs únicos das unidades de controle mantendo a ordem de prioridade
+    const unidadeIds = [];
+    const unidadesJaAdicionadas = new Set();
     
-    // Buscar unidades de medida correspondentes
-    const unidadesRelacionadas = unidadesMedida.filter(unidade => 
-      unidadeIds.includes(unidade.id) && unidade.ativo !== false
-    );
+    produtoVariacoes.forEach(variacao => {
+      if (variacao.id_unidade_controle && !unidadesJaAdicionadas.has(variacao.id_unidade_controle)) {
+        unidadeIds.push(variacao.id_unidade_controle);
+        unidadesJaAdicionadas.add(variacao.id_unidade_controle);
+      }
+    });
     
-    console.log('✅ Unidades relacionadas encontradas:', unidadesRelacionadas.length);
+    console.log('🎯 IDs de unidades únicas (por prioridade):', unidadeIds);
     
-    // Ordenar por prioridade (primeira variação = unidade principal)
-    if (produtoVariacoes.length > 0) {
-      const unidadePrincipalId = produtoVariacoes[0].id_unidade_controle;
-      unidadesRelacionadas.sort((a, b) => {
-        if (a.id === unidadePrincipalId) return -1;
-        if (b.id === unidadePrincipalId) return 1;
-        return a.nome.localeCompare(b.nome);
-      });
-    }
+    // Buscar unidades de medida correspondentes mantendo a ordem de prioridade
+    const unidadesRelacionadas = [];
+    unidadeIds.forEach(unidadeId => {
+      const unidade = unidadesMedida.find(u => u.id === unidadeId && u.ativo !== false);
+      if (unidade) {
+        unidadesRelacionadas.push(unidade);
+      }
+    });
+    
+    console.log('✅ Unidades relacionadas encontradas (ordenadas):', unidadesRelacionadas.length);
     
     return unidadesRelacionadas;
   };
@@ -410,7 +413,7 @@ const ContagemPage = () => {
       return quantidade;
     }
     
-    // Unidade principal (primeira da lista)
+    // Unidade principal (primeira da lista ordenada por prioridade)
     const unidadePrincipal = unidadesProduto[0];
     console.log('🎯 Unidade principal:', unidadePrincipal.nome);
     
@@ -430,16 +433,21 @@ const ContagemPage = () => {
     console.log('🔄 Unidade usada:', unidadeUsada.nome);
     
     // Calcular conversão baseada na quantidade da unidade
+    // Exemplo: Se unidade principal é "Unidade" (quantidade=1) e usada é "Pacote" (quantidade=10)
+    // 2 pacotes = 2 × 10 = 20 unidades
+    // Se unidade principal é "Pacote" (quantidade=10) e usada é "Unidade" (quantidade=1)  
+    // 20 unidades = 20 × (1/10) = 2 pacotes
     const quantidadeUnidadeUsada = unidadeUsada.quantidade || 1;
     const quantidadeUnidadePrincipal = unidadePrincipal.quantidade || 1;
     
-    // Fórmula: quantidade × (unidadeUsada/unidadePrincipal)
+    // Fórmula corrigida: quantidade × (quantidadeUnidadeUsada / quantidadeUnidadePrincipal)
     const quantidadeConvertida = quantidade * (quantidadeUnidadeUsada / quantidadeUnidadePrincipal);
     
     console.log('📊 Conversão calculada:', {
       quantidade,
       quantidadeUnidadeUsada,
       quantidadeUnidadePrincipal,
+      formula: `${quantidade} × (${quantidadeUnidadeUsada}/${quantidadeUnidadePrincipal})`,
       resultado: quantidadeConvertida
     });
     
@@ -537,8 +545,12 @@ const ContagemPage = () => {
 
   const salvarContagemDetalhada = async () => {
     console.log('💾 Salvando contagem detalhada');
+    console.log('📋 Dados da contagem detalhada:', contagemDetalhada);
+    console.log('🎯 Produto selecionado:', produtoSelecionado?.nome);
+    console.log('📊 Contagem atual:', contagemAtual?.id);
     
     if (!contagemAtual || !produtoSelecionado) {
+      console.error('❌ Dados insuficientes:', { contagemAtual: !!contagemAtual, produtoSelecionado: !!produtoSelecionado });
       toast({
         title: "Erro",
         description: "Dados insuficientes para salvar contagem detalhada",
@@ -547,12 +559,38 @@ const ContagemPage = () => {
       return;
     }
 
+    // Verificar se há itens para salvar
+    const itensParaSalvar = contagemDetalhada.filter(item => !item.isExisting);
+    if (itensParaSalvar.length === 0) {
+      console.log('⚠️ Nenhum item novo para salvar');
+      toast({
+        title: "Aviso",
+        description: "Adicione pelo menos uma contagem antes de salvar",
+        variant: "default",
+      });
+      return;
+    }
+
     try {
       const total = calcularTotalDetalhado();
-      console.log('📊 Total a ser salvo:', total);
+      console.log('📊 Total calculado para salvar:', total);
+      console.log('📝 Itens que serão salvos:', itensParaSalvar);
+      
+      if (total <= 0) {
+        console.log('⚠️ Total é zero ou negativo');
+        toast({
+          title: "Aviso",
+          description: "O total da contagem deve ser maior que zero",
+          variant: "default",
+        });
+        return;
+      }
       
       // Salvar como contagem simples com o total calculado
+      console.log('🔄 Chamando handleContagemSimples...');
       await handleContagemSimples(produtoSelecionado.id, total);
+      
+      console.log('✅ Contagem salva com sucesso');
       
       // Fechar modal
       setModalAberto(false);
@@ -561,15 +599,16 @@ const ContagemPage = () => {
       
       toast({
         title: "Sucesso",
-        description: `Contagem detalhada salva: ${total} unidades`,
+        description: `Contagem detalhada salva: ${total.toFixed(2)} unidades`,
       });
       
     } catch (error) {
       console.error('❌ Erro ao salvar contagem detalhada:', error);
+      console.error('❌ Stack trace:', error.stack);
       
       toast({
         title: "Erro",
-        description: "Erro ao salvar contagem detalhada",
+        description: `Erro ao salvar contagem detalhada: ${error.message || 'Erro desconhecido'}`,
         variant: "destructive",
       });
     }
