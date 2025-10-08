@@ -1,3 +1,42 @@
+# [2025-10-08  — 22:45] - Botão voltar retorna ao detalhe do turno
+
+**Problema:** O botão "Voltar" da lista de produtos da contagem levava para o dashboard, dificultando o fluxo de navegação do usuário.
+
+**Ajuste realizado:**
+- O botão "Voltar" agora redireciona para a tela de detalhe do turno correspondente (`/turnos/{turnoId}`), mantendo o contexto do usuário.
+
+**Resultado:** A navegação ficou mais intuitiva e o usuário retorna diretamente ao detalhe do turno após visualizar ou editar a contagem.
+# [2025-10-08  — 22:35] - Tela travada e ícone de processamento ao salvar contagem detalhada
+
+**Problema:** Ao salvar a contagem detalhada, não havia feedback visual claro de processamento, permitindo múltiplos cliques e gerando incerteza para o usuário.
+
+**Ajuste realizado:**
+- Adicionado estado de processamento ao salvar contagem detalhada.
+- Enquanto salva, o botão exibe spinner animado e texto "Salvando...".
+- Uma sobreposição escurecida com spinner impede interação até o fim do processamento.
+
+**Resultado:** O usuário visualiza claramente que o sistema está processando e não pode interagir até a conclusão do salvamento.
+# [2025-10-08  — 22:20] - Adição do ícone de check para salvar contagem manualmente
+
+**Problema:** O campo de contagem salvava automaticamente a cada alteração, dificultando correção de erros e revisões antes do envio.
+
+**Ajuste realizado:**
+- Removido salvamento automático ao digitar ou usar as setas.
+- Adicionado ícone de check ao lado do campo de contagem na lista de produtos.
+- O check só fica habilitado se o valor editado for diferente do valor salvo atual.
+- Ao clicar no check, a contagem é salva e o campo volta ao valor persistido.
+
+**Resultado:** O usuário pode revisar e só salvar a contagem quando desejar, com maior controle e segurança.
+# [2025-10-08  — 22:00] - Correção do incremento/decremento das setas na lista de produtos
+
+**Problema:** As setas do campo de contagem permitiam incremento/decremento de 0,01 ou -0,01.
+
+**Ajuste realizado:**
+- Corrigido o atributo `step` do input para `1` (antes era `0.01`), tanto na lista de produtos quanto no modal detalhado.
+- Garantido via código que o valor salvo ao usar as setas é sempre inteiro, mesmo se o usuário digitar decimal.
+- Adicionado log de aviso caso algum valor não inteiro seja detectado.
+
+**Resultado:** Agora, ao pressionar as setas para cima ou para baixo, o valor da contagem é sempre incrementado/decrementado em 1 unidade inteira, nunca em frações.
 # Diário de Ajustes - Frontend SCC
 
 ## [2025-10-06] - Correções na Tela de Detalhamento da Contagem

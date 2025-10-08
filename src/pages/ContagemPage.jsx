@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
+  const [processandoDetalhada, setProcessandoDetalhada] = useState(false);
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -673,6 +675,10 @@ const ContagemPage = () => {
         const contagemAtualNum = typeof contagemAtualProduto === 'string' ? 
           parseFloat(contagemAtualProduto) : contagemAtualProduto;
         const novaContagem = Math.max(0, Math.round(contagemAtualNum + incremento));
+        // Forçar valor inteiro ao atualizar
+        if (!Number.isInteger(novaContagem)) {
+          console.warn('⚠️ Valor não inteiro detectado, ajustando para inteiro:', novaContagem);
+        }
         
         console.log('🔄 Atualizando contagem via setas nativas:', {
           anterior: contagemAtualProduto,
@@ -721,6 +727,7 @@ const ContagemPage = () => {
   };
 
   const salvarContagemDetalhada = async () => {
+    setProcessandoDetalhada(true);
     console.log('💾 Salvando contagem detalhada');
     console.log('📋 Dados da contagem detalhada:', contagemDetalhada);
     console.log('🎯 Produto selecionado:', produtoSelecionado?.nome);
@@ -750,7 +757,7 @@ const ContagemPage = () => {
       return;
     }
 
-    try {
+  try {
       const total = calcularTotalDetalhado();
       console.log('📊 Total calculado para salvar:', total);
       console.log('📝 Itens que serão salvos:', itensParaSalvar);
@@ -781,9 +788,10 @@ const ContagemPage = () => {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Fechar modal
-      setModalAberto(false);
-      setProdutoSelecionado(null);
-      setContagemDetalhada([]);
+  setModalAberto(false);
+  setProdutoSelecionado(null);
+  setContagemDetalhada([]);
+  setProcessandoDetalhada(false);
       
       toast({
         title: "Sucesso",
@@ -791,6 +799,7 @@ const ContagemPage = () => {
       });
       
     } catch (error) {
+      setProcessandoDetalhada(false);
       console.error('❌ Erro ao salvar contagem detalhada:', error);
       console.error('❌ Stack trace:', error.stack);
       
@@ -932,7 +941,7 @@ const ContagemPage = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate(`/turnos/${turnoId}`)}
                 className="flex items-center space-x-2"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -1055,7 +1064,11 @@ const ContagemPage = () => {
                       <tbody className="divide-y divide-gray-200">
                         {categoriaData.produtos.map((produto) => {
                           const produtoVariacoes = getVariacoesPorProduto(produto.id);
+                          // Estado local para edição da contagem
+                          const [valorEditado, setValorEditado] = useState({});
                           const contagemAtualProduto = contagens[produto.id] || 0;
+                          const valorInput = valorEditado[produto.id] !== undefined ? valorEditado[produto.id] : contagemAtualProduto;
+                          const valorAlterado = Number(valorInput) !== Number(contagemAtualProduto);
                           const usuarioAtivo = usuariosAtivos[produto.id];
                           
                           return (
@@ -1092,17 +1105,36 @@ const ContagemPage = () => {
                                   {produto.ativo ? 'Ativo' : 'Inativo'}
                                 </Badge>
                               </td>
-                              <td className="px-4 py-3">
+                              <td className="px-4 py-3 flex items-center gap-2">
                                 <Input
                                   type="number"
-                                  value={contagemAtualProduto}
-                                  onChange={(e) => handleContagemSimples(produto.id, e.target.value)}
-                                  onKeyDown={(e) => handleSetasNativas(e, produto.id)}
+                                  value={valorInput}
+                                  onChange={e => setValorEditado(prev => ({ ...prev, [produto.id]: e.target.value }))}
+                                  onKeyDown={e => {
+                                    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                                      e.preventDefault();
+                                      const direcao = e.key === 'ArrowUp' ? 1 : -1;
+                                      const novoValor = Math.max(0, Math.round(Number(valorInput) + direcao));
+                                      setValorEditado(prev => ({ ...prev, [produto.id]: novoValor }));
+                                    }
+                                  }}
                                   className="w-20 text-center"
                                   min="0"
-                                  step="0.01"
+                                  step="1"
                                   disabled={!contagemAtual || inicializandoContagem}
                                 />
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  disabled={!valorAlterado || !contagemAtual || inicializandoContagem}
+                                  onClick={async () => {
+                                    await handleContagemSimples(produto.id, valorInput);
+                                    setValorEditado(prev => ({ ...prev, [produto.id]: undefined }));
+                                  }}
+                                  title="Salvar contagem"
+                                >
+                                  <Save className="h-4 w-4 text-green-600" />
+                                </Button>
                               </td>
                               <td className="px-4 py-3">
                                 <Button
@@ -1158,7 +1190,7 @@ const ContagemPage = () => {
                     onChange={(e) => setNovaLinha(prev => ({ ...prev, quantidade: e.target.value }))}
                     placeholder="Ex: 5"
                     min="0"
-                    step="0.01"
+                    step="1"
                   />
                 </div>
                 <div>
@@ -1271,11 +1303,20 @@ const ContagemPage = () => {
               </Button>
               <Button
                 onClick={salvarContagemDetalhada}
-                disabled={contagemDetalhada.filter(item => !item.isExisting).length === 0}
+                disabled={contagemDetalhada.filter(item => !item.isExisting).length === 0 || processandoDetalhada}
               >
-                <Save className="h-4 w-4 mr-2" />
-                Salvar Contagem
+                {processandoDetalhada ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                {processandoDetalhada ? 'Salvando...' : 'Salvar Contagem'}
               </Button>
+              {processandoDetalhada && (
+                <div className="fixed inset-0 bg-black bg-opacity-30 z-50 flex items-center justify-center">
+                  <Loader2 className="h-10 w-10 text-white animate-spin" />
+                </div>
+              )}
             </div>
           </div>
         </div>
