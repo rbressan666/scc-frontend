@@ -206,7 +206,11 @@ const ContagemPage = () => {
         
         // Carregar itens da contagem se não for local
         if (!contagemAtiva._isLocal) {
+          console.log('🔄 Chamando carregarItensContagem na inicialização...');
           await carregarItensContagem(contagemAtiva.id);
+          console.log('✅ carregarItensContagem concluído na inicialização');
+        } else {
+          console.log('⚠️ Contagem é local, não carregando itens do backend');
         }
       } else {
         throw new Error('Não foi possível inicializar contagem');
@@ -338,6 +342,10 @@ const ContagemPage = () => {
       
       const variacaoPrincipal = produtoVariacoes[0];
       console.log('🎯 Variação principal:', variacaoPrincipal.id);
+      
+      // FORÇAR recarregamento dos itens antes da verificação
+      console.log('🔄 Forçando recarregamento dos itens antes da verificação...');
+      await carregarItensContagem(contagemAtual.id);
       
       // Verificar se já existe item para este produto na contagem
       console.log('🔍 Verificando item existente para produto:', produtoId);
