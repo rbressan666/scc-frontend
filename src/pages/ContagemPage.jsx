@@ -207,7 +207,23 @@ const ContagemPage = () => {
         // Carregar itens da contagem se não for local
         if (!contagemAtiva._isLocal) {
           console.log('🔄 Chamando carregarItensContagem na inicialização...');
-          await carregarItensContagem(contagemAtiva.id);
+          
+          // AGUARDAR variações serem carregadas antes de processar itens
+          console.log('⏳ Aguardando variações serem carregadas...');
+          let tentativas = 0;
+          while (variacoes.length === 0 && tentativas < 10) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            tentativas++;
+          }
+          
+          if (variacoes.length > 0) {
+            console.log('✅ Variações carregadas, processando itens...');
+            await carregarItensContagem(contagemAtiva.id);
+          } else {
+            console.log('⚠️ Timeout aguardando variações, tentando carregar itens mesmo assim...');
+            await carregarItensContagem(contagemAtiva.id);
+          }
+          
           console.log('✅ carregarItensContagem concluído na inicialização');
         } else {
           console.log('⚠️ Contagem é local, não carregando itens do backend');
@@ -762,7 +778,7 @@ const ContagemPage = () => {
       
       toast({
         title: "Sucesso",
-        description: `Contagem detalhada salva: ${total.toFixed(2)} unidades`,
+        description: `Contagem detalhada salva: ${(typeof total === 'number' ? total : parseFloat(total) || 0).toFixed(2)} unidades`,
       });
       
     } catch (error) {
@@ -1189,7 +1205,7 @@ const ContagemPage = () => {
                         <div className="flex items-center gap-4">
                           <span className="font-medium">{item.quantidade} {item.unidade_nome}</span>
                           <span className="text-sm text-blue-600">
-                            = {item.quantidade_convertida?.toFixed(2)} unidades principais
+                            = {(typeof item.quantidade_convertida === 'number' ? item.quantidade_convertida : parseFloat(item.quantidade_convertida) || 0).toFixed(2)} unidades principais
                           </span>
                           {item.isExisting && (
                             <Badge variant="secondary" className="text-xs">Atual</Badge>
@@ -1226,7 +1242,7 @@ const ContagemPage = () => {
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Total Convertido:</span>
                     <span className="font-bold text-lg text-blue-600">
-                      {calcularTotalDetalhado().toFixed(2)} unidades principais
+                      {(typeof calcularTotalDetalhado() === 'number' ? calcularTotalDetalhado() : parseFloat(calcularTotalDetalhado()) || 0).toFixed(2)} unidades principais
                     </span>
                   </div>
                   <div className="text-xs text-gray-600 mt-1">
