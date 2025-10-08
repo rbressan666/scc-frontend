@@ -300,9 +300,16 @@ const ContagemPage = () => {
       
       // Se contagem é local, salvar apenas no estado
       if (contagemAtual._isLocal) {
-        console.log('💾 Contagem salva localmente');
+        console.log('💾 Contagem salva localmente (não persistida no backend)');
+        console.log('⚠️ ATENÇÃO: Contagem local não será persistida!');
         return;
       }
+      
+      console.log('🔄 Contagem será persistida no backend:', {
+        contagemId: contagemAtual.id,
+        produtoId,
+        quantidade
+      });
       
       // Buscar primeira variação do produto ordenada por prioridade para usar como referência
       const produtoVariacoes = getVariacoesPorProduto(produtoId).sort((a, b) => a.fator_prioridade - b.fator_prioridade);
@@ -565,48 +572,54 @@ const ContagemPage = () => {
     }
   };
 
-  // Função para incrementar/decrementar contagem baseada na unidade padrão
-  const incrementarContagem = async (produtoId, direcao) => {
-    console.log('🔢 Incrementando contagem:', { produtoId, direcao });
-    
-    try {
-      // Obter unidade principal do produto
-      const unidadesProduto = getUnidadesPorProduto(produtoId);
-      if (unidadesProduto.length === 0) {
-        console.log('⚠️ Nenhuma unidade encontrada para o produto');
-        return;
+  // Função para capturar setas nativas do campo de input
+  const handleSetasNativas = async (e, produtoId) => {
+    // Capturar teclas de seta para cima (ArrowUp) e para baixo (ArrowDown)
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault(); // Prevenir comportamento padrão do input number
+      
+      const direcao = e.key === 'ArrowUp' ? 1 : -1;
+      console.log('🔢 Seta nativa pressionada:', { produtoId, direcao, tecla: e.key });
+      
+      try {
+        // Obter unidade principal do produto
+        const unidadesProduto = getUnidadesPorProduto(produtoId);
+        if (unidadesProduto.length === 0) {
+          console.log('⚠️ Nenhuma unidade encontrada para o produto');
+          return;
+        }
+        
+        const unidadePrincipal = unidadesProduto[0];
+        const incremento = (unidadePrincipal.quantidade || 1) * direcao;
+        
+        console.log('📊 Incremento calculado:', {
+          unidadePrincipal: unidadePrincipal.nome,
+          quantidade: unidadePrincipal.quantidade,
+          incremento
+        });
+        
+        // Obter contagem atual
+        const contagemAtualProduto = contagens[produtoId] || 0;
+        const novaContagem = Math.max(0, contagemAtualProduto + incremento);
+        
+        console.log('🔄 Atualizando contagem via setas nativas:', {
+          anterior: contagemAtualProduto,
+          incremento,
+          nova: novaContagem
+        });
+        
+        // Salvar nova contagem
+        await handleContagemSimples(produtoId, novaContagem);
+        
+      } catch (error) {
+        console.error('❌ Erro ao processar setas nativas:', error);
+        
+        toast({
+          title: "Erro",
+          description: "Erro ao atualizar contagem",
+          variant: "destructive",
+        });
       }
-      
-      const unidadePrincipal = unidadesProduto[0];
-      const incremento = (unidadePrincipal.quantidade || 1) * direcao;
-      
-      console.log('📊 Incremento calculado:', {
-        unidadePrincipal: unidadePrincipal.nome,
-        quantidade: unidadePrincipal.quantidade,
-        incremento
-      });
-      
-      // Obter contagem atual
-      const contagemAtual = contagens[produtoId] || 0;
-      const novaContagem = Math.max(0, contagemAtual + incremento);
-      
-      console.log('🔄 Atualizando contagem:', {
-        anterior: contagemAtual,
-        incremento,
-        nova: novaContagem
-      });
-      
-      // Salvar nova contagem
-      await handleContagemSimples(produtoId, novaContagem);
-      
-    } catch (error) {
-      console.error('❌ Erro ao incrementar contagem:', error);
-      
-      toast({
-        title: "Erro",
-        description: "Erro ao atualizar contagem",
-        variant: "destructive",
-      });
     }
   };
 
@@ -645,10 +658,12 @@ const ContagemPage = () => {
       return;
     }
 
-    // Verificar se há itens para salvar
+    // Verificar se há itens para salvar (permitir salvar mesmo sem itens novos)
     const itensParaSalvar = contagemDetalhada.filter(item => !item.isExisting);
-    if (itensParaSalvar.length === 0) {
-      console.log('⚠️ Nenhum item novo para salvar');
+    const temContagemAtual = contagemDetalhada.some(item => item.isExisting);
+    
+    if (itensParaSalvar.length === 0 && !temContagemAtual) {
+      console.log('⚠️ Nenhum item para salvar');
       toast({
         title: "Aviso",
         description: "Adicione pelo menos uma contagem antes de salvar",
@@ -673,10 +688,19 @@ const ContagemPage = () => {
       }
       
       // Salvar como contagem simples com o total calculado
-      console.log('🔄 Chamando handleContagemSimples...');
+      console.log('🔄 Chamando handleContagemSimples...', {
+        produtoId: produtoSelecionado.id,
+        total,
+        contagemAtualId: contagemAtual?.id,
+        isLocal: contagemAtual?._isLocal
+      });
+      
       await handleContagemSimples(produtoSelecionado.id, total);
       
-      console.log('✅ Contagem salva com sucesso');
+      console.log('✅ Contagem detalhada processada com sucesso');
+      
+      // Aguardar um pouco para garantir que a persistência foi concluída
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Fechar modal
       setModalAberto(false);
@@ -991,33 +1015,16 @@ const ContagemPage = () => {
                                 </Badge>
                               </td>
                               <td className="px-4 py-3">
-                                <div className="flex items-center">
-                                  <div className="flex flex-col">
-                                    <button
-                                      onClick={() => incrementarContagem(produto.id, 1)}
-                                      disabled={!contagemAtual || inicializandoContagem}
-                                      className="px-1 py-0.5 text-xs bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-t border border-gray-300"
-                                    >
-                                      ▲
-                                    </button>
-                                    <button
-                                      onClick={() => incrementarContagem(produto.id, -1)}
-                                      disabled={!contagemAtual || inicializandoContagem}
-                                      className="px-1 py-0.5 text-xs bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-b border border-gray-300 border-t-0"
-                                    >
-                                      ▼
-                                    </button>
-                                  </div>
-                                  <Input
-                                    type="number"
-                                    value={contagemAtualProduto}
-                                    onChange={(e) => handleContagemSimples(produto.id, e.target.value)}
-                                    className="w-16 text-center ml-1"
-                                    min="0"
-                                    step="0.01"
-                                    disabled={!contagemAtual || inicializandoContagem}
-                                  />
-                                </div>
+                                <Input
+                                  type="number"
+                                  value={contagemAtualProduto}
+                                  onChange={(e) => handleContagemSimples(produto.id, e.target.value)}
+                                  onKeyDown={(e) => handleSetasNativas(e, produto.id)}
+                                  className="w-20 text-center"
+                                  min="0"
+                                  step="0.01"
+                                  disabled={!contagemAtual || inicializandoContagem}
+                                />
                               </td>
                               <td className="px-4 py-3">
                                 <Button
