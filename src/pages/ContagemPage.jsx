@@ -233,20 +233,34 @@ const ContagemPage = () => {
       const itensRes = await contagensService.getItens(contagemId);
       const itens = itensRes?.data || [];
       
+      console.log('📋 Resposta do serviço getItens:', itensRes);
+      console.log('📋 Itens extraídos:', itens);
+      
       setItensContagem(itens);
-      console.log('✅ Itens carregados:', itens.length);
+      console.log('✅ Itens carregados no estado:', itens.length);
       
       // Converter itens para formato de contagens por produto
       const contagensPorProduto = {};
-      itens.forEach(item => {
+      itens.forEach((item, index) => {
+        console.log(`📝 Processando item ${index + 1}:`, item);
+        
         if (item.variacao_id) {
           const variacao = variacoes.find(v => v.id === item.variacao_id);
+          console.log(`🔍 Variação encontrada para ${item.variacao_id}:`, variacao);
+          
           if (variacao) {
-            contagensPorProduto[variacao.id_produto] = item.quantidade_convertida || item.quantidade_contada;
+            const quantidade = item.quantidade_convertida || item.quantidade_contada;
+            contagensPorProduto[variacao.id_produto] = quantidade;
+            console.log(`📊 Produto ${variacao.id_produto} = ${quantidade}`);
+          } else {
+            console.log(`⚠️ Variação não encontrada para ID: ${item.variacao_id}`);
           }
+        } else {
+          console.log('⚠️ Item sem variacao_id:', item);
         }
       });
       
+      console.log('📊 Contagens por produto final:', contagensPorProduto);
       setContagens(contagensPorProduto);
       console.log('📊 Contagens por produto atualizadas:', Object.keys(contagensPorProduto).length);
       
@@ -326,10 +340,20 @@ const ContagemPage = () => {
       console.log('🎯 Variação principal:', variacaoPrincipal.id);
       
       // Verificar se já existe item para este produto na contagem
+      console.log('🔍 Verificando item existente para produto:', produtoId);
+      console.log('📋 Itens da contagem disponíveis:', itensContagem.length);
+      console.log('📋 Variações disponíveis:', variacoes.length);
+      
       const itemExistente = itensContagem.find(item => {
+        console.log(`🔍 Verificando item:`, item);
         const variacao = variacoes.find(v => v.id === item.variacao_id);
-        return variacao && variacao.id_produto === produtoId;
+        console.log(`🔍 Variação do item:`, variacao);
+        const match = variacao && variacao.id_produto === produtoId;
+        console.log(`🔍 Match para produto ${produtoId}:`, match);
+        return match;
       });
+      
+      console.log('🔍 Item existente encontrado:', itemExistente);
       
       if (itemExistente) {
         console.log('🔄 Atualizando item existente:', itemExistente.id);
