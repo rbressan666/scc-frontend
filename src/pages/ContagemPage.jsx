@@ -211,8 +211,8 @@ const ContagemPage = () => {
           // AGUARDAR variações serem carregadas antes de processar itens
           console.log('⏳ Aguardando variações serem carregadas...');
           let tentativas = 0;
-          while (variacoes.length === 0 && tentativas < 10) {
-            await new Promise(resolve => setTimeout(resolve, 100));
+          while (variacoes.length === 0 && tentativas < 50) {
+            await new Promise(resolve => setTimeout(resolve, 200));
             tentativas++;
           }
           
@@ -659,17 +659,20 @@ const ContagemPage = () => {
         }
         
         const unidadePrincipal = unidadesProduto[0];
-        const incremento = (unidadePrincipal.quantidade || 1) * direcao;
+        // SEMPRE incrementar/decrementar 1, independente da unidade principal
+        const incremento = 1 * direcao;
         
         console.log('📊 Incremento calculado:', {
           unidadePrincipal: unidadePrincipal.nome,
-          quantidade: unidadePrincipal.quantidade,
-          incremento
+          incrementoFixo: incremento,
+          direcao
         });
         
         // Obter contagem atual
         const contagemAtualProduto = contagens[produtoId] || 0;
-        const novaContagem = Math.max(0, contagemAtualProduto + incremento);
+        const contagemAtualNum = typeof contagemAtualProduto === 'string' ? 
+          parseFloat(contagemAtualProduto) : contagemAtualProduto;
+        const novaContagem = Math.max(0, Math.round(contagemAtualNum + incremento));
         
         console.log('🔄 Atualizando contagem via setas nativas:', {
           anterior: contagemAtualProduto,
@@ -693,8 +696,12 @@ const ContagemPage = () => {
   };
 
   const calcularTotalDetalhado = () => {
-    // Somar contagem atual + novos itens adicionados
-    const contagemAtual = contagemDetalhada.find(item => item.isExisting)?.quantidade_convertida || 0;
+    // Buscar contagem atual do estado contagens (valor real do banco)
+    const contagemAtualProduto = contagens[produtoSelecionado?.id] || 0;
+    const contagemAtual = typeof contagemAtualProduto === 'string' ? 
+      parseFloat(contagemAtualProduto) : contagemAtualProduto;
+    
+    // Somar apenas novos itens (não existentes)
     const novosItens = contagemDetalhada.reduce((total, item) => {
       if (item.isExisting) return total; // Não contar a linha "atual" aqui
       return total + (Number(item.quantidade_convertida) || 0);
@@ -705,7 +712,9 @@ const ContagemPage = () => {
     console.log('🧮 Total detalhado calculado:', {
       contagemAtual,
       novosItens,
-      total
+      total,
+      produtoId: produtoSelecionado?.id,
+      contagemOriginal: contagens[produtoSelecionado?.id]
     });
     
     return total;
