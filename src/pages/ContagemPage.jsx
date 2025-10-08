@@ -532,14 +532,100 @@ const ContagemPage = () => {
     setContagemDetalhada(prev => prev.filter(item => item.id !== id));
   };
 
+  const zerarContagemAtual = async () => {
+    console.log('🗑️ Zerando contagem atual');
+    
+    if (!produtoSelecionado) {
+      console.error('❌ Produto não selecionado');
+      return;
+    }
+
+    try {
+      // Zerar contagem no sistema
+      await handleContagemSimples(produtoSelecionado.id, 0);
+      
+      // Remover item "atual" da lista detalhada
+      setContagemDetalhada(prev => prev.filter(item => !item.isExisting));
+      
+      console.log('✅ Contagem atual zerada');
+      
+      toast({
+        title: "Sucesso",
+        description: "Contagem atual zerada",
+      });
+      
+    } catch (error) {
+      console.error('❌ Erro ao zerar contagem:', error);
+      
+      toast({
+        title: "Erro",
+        description: "Erro ao zerar contagem atual",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Função para incrementar/decrementar contagem baseada na unidade padrão
+  const incrementarContagem = async (produtoId, direcao) => {
+    console.log('🔢 Incrementando contagem:', { produtoId, direcao });
+    
+    try {
+      // Obter unidade principal do produto
+      const unidadesProduto = getUnidadesPorProduto(produtoId);
+      if (unidadesProduto.length === 0) {
+        console.log('⚠️ Nenhuma unidade encontrada para o produto');
+        return;
+      }
+      
+      const unidadePrincipal = unidadesProduto[0];
+      const incremento = (unidadePrincipal.quantidade || 1) * direcao;
+      
+      console.log('📊 Incremento calculado:', {
+        unidadePrincipal: unidadePrincipal.nome,
+        quantidade: unidadePrincipal.quantidade,
+        incremento
+      });
+      
+      // Obter contagem atual
+      const contagemAtual = contagens[produtoId] || 0;
+      const novaContagem = Math.max(0, contagemAtual + incremento);
+      
+      console.log('🔄 Atualizando contagem:', {
+        anterior: contagemAtual,
+        incremento,
+        nova: novaContagem
+      });
+      
+      // Salvar nova contagem
+      await handleContagemSimples(produtoId, novaContagem);
+      
+    } catch (error) {
+      console.error('❌ Erro ao incrementar contagem:', error);
+      
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar contagem",
+        variant: "destructive",
+      });
+    }
+  };
+
   const calcularTotalDetalhado = () => {
-    // Somar apenas as quantidades convertidas das linhas não existentes
-    const total = contagemDetalhada.reduce((total, item) => {
-      if (item.isExisting) return total; // Não contar a linha "atual"
+    // Somar contagem atual + novos itens adicionados
+    const contagemAtual = contagemDetalhada.find(item => item.isExisting)?.quantidade_convertida || 0;
+    const novosItens = contagemDetalhada.reduce((total, item) => {
+      if (item.isExisting) return total; // Não contar a linha "atual" aqui
       return total + (Number(item.quantidade_convertida) || 0);
     }, 0);
     
-    console.log('🧮 Total detalhado calculado:', total);
+    const total = contagemAtual + novosItens;
+    
+    console.log('🧮 Total detalhado calculado:', {
+      contagemAtual,
+      novosItens,
+      total
+    });
+    
     return total;
   };
 
@@ -905,15 +991,33 @@ const ContagemPage = () => {
                                 </Badge>
                               </td>
                               <td className="px-4 py-3">
-                                <Input
-                                  type="number"
-                                  value={contagemAtualProduto}
-                                  onChange={(e) => handleContagemSimples(produto.id, e.target.value)}
-                                  className="w-20 text-center"
-                                  min="0"
-                                  step="0.01"
-                                  disabled={!contagemAtual || inicializandoContagem}
-                                />
+                                <div className="flex items-center">
+                                  <div className="flex flex-col">
+                                    <button
+                                      onClick={() => incrementarContagem(produto.id, 1)}
+                                      disabled={!contagemAtual || inicializandoContagem}
+                                      className="px-1 py-0.5 text-xs bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-t border border-gray-300"
+                                    >
+                                      ▲
+                                    </button>
+                                    <button
+                                      onClick={() => incrementarContagem(produto.id, -1)}
+                                      disabled={!contagemAtual || inicializandoContagem}
+                                      className="px-1 py-0.5 text-xs bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-b border border-gray-300 border-t-0"
+                                    >
+                                      ▼
+                                    </button>
+                                  </div>
+                                  <Input
+                                    type="number"
+                                    value={contagemAtualProduto}
+                                    onChange={(e) => handleContagemSimples(produto.id, e.target.value)}
+                                    className="w-16 text-center ml-1"
+                                    min="0"
+                                    step="0.01"
+                                    disabled={!contagemAtual || inicializandoContagem}
+                                  />
+                                </div>
                               </td>
                               <td className="px-4 py-3">
                                 <Button
@@ -1035,11 +1139,21 @@ const ContagemPage = () => {
                           <div className="text-sm text-gray-600 mt-1">{item.observacao}</div>
                         )}
                       </div>
-                      {!item.isExisting && (
+                      {!item.isExisting ? (
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => removerLinhaDetalhada(item.id)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => zerarContagemAtual()}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          title="Zerar contagem atual"
                         >
                           <X className="h-3 w-3" />
                         </Button>
