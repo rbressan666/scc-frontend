@@ -235,10 +235,31 @@ const ContagemPage = () => {
       console.log('📦 Carregando itens da contagem:', contagemId);
       
       const itensRes = await contagensService.getItens(contagemId);
-      const itens = itensRes?.data || [];
       
       console.log('📋 Resposta do serviço getItens:', itensRes);
+      console.log('📋 Estrutura da resposta:', typeof itensRes, Object.keys(itensRes || {}));
+      
+      // Tentar diferentes formas de extrair os dados
+      let itens = [];
+      if (Array.isArray(itensRes)) {
+        // Se a resposta já é um array
+        itens = itensRes;
+        console.log('📋 Resposta é array direto');
+      } else if (itensRes?.data && Array.isArray(itensRes.data)) {
+        // Se os dados estão em .data
+        itens = itensRes.data;
+        console.log('📋 Dados extraídos de .data');
+      } else if (itensRes?.rows && Array.isArray(itensRes.rows)) {
+        // Se os dados estão em .rows (formato PostgreSQL)
+        itens = itensRes.rows;
+        console.log('📋 Dados extraídos de .rows');
+      } else {
+        console.log('⚠️ Formato de resposta não reconhecido:', itensRes);
+        itens = [];
+      }
+      
       console.log('📋 Itens extraídos:', itens);
+      console.log('📋 Quantidade de itens:', itens.length);
       
       setItensContagem(itens);
       console.log('✅ Itens carregados no estado:', itens.length);
