@@ -170,7 +170,7 @@ const ContagemPage = () => {
         try {
           const novaContagemRes = await contagensService.create({
             turno_id: turnoId,
-            tipo_contagem: 'geral',
+            tipo_contagem: 'inicial',
             status: 'em_andamento'
           });
           
@@ -184,7 +184,7 @@ const ContagemPage = () => {
           contagemAtiva = {
             id: `temp-${turnoId}-${Date.now()}`,
             turno_id: turnoId,
-            tipo_contagem: 'geral',
+            tipo_contagem: 'inicial',
             status: 'em_andamento',
             _isLocal: true
           };
