@@ -634,3 +634,24 @@ console.log('📊 Incremento calculado:', {
 
 **Sistema Completamente Funcional:**
 O sistema de contagem está agora totalmente operacional, com todas as funcionalidades solicitadas implementadas, todos os bugs corrigidos, e comportamento consistente e confiável em todos os cenários de uso.
+
+## [2025-10-08 — 23:05] - Sourcemaps de produção habilitados (Vite)
+
+Problema: Erros em produção (Render) vinham minificados, dificultando identificar a linha/arquivo real no código fonte.
+
+Ajuste realizado:
+- Ativado `build.sourcemap: true` no `vite.config.js` para gerar sourcemaps em produção.
+- Efeito: Stack traces e logs em runtime agora apontam para arquivos/linhas do código fonte (App.jsx, ContagemPage.jsx, etc.) em vez de bundles minificados.
+
+Impacto/Observações:
+- Útil para diagnosticar erros como violação de regras de Hooks (React #310) com precisão.
+- Pequeno aumento no tamanho do build e exposição de mapeamentos no ambiente de produção. Ao finalizar o debug, recomenda-se voltar para `sourcemap: false`.
+
+Como reverter depois do diagnóstico:
+- No arquivo `scc-frontend/vite.config.js`, definir `build.sourcemap` para `false` e redeployar.
+
+Arquivos alterados:
+- `scc-frontend/vite.config.js`
+
+Resultado esperado:
+- Próximos logs de erro em produção virão com caminhos/letras legíveis. Envie o novo stack trace para darmos o diagnóstico final do erro remanescente.

@@ -19,7 +19,8 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: false,
+    // Enable production source maps for better error diagnostics in Render
+    sourcemap: true,
     rollupOptions: {
       output: {
         manualChunks: {
