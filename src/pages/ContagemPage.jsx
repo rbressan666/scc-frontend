@@ -41,6 +41,8 @@ const ContagemPage = () => {
   const [loading, setLoading] = useState(true);
   const [inicializandoContagem, setInicializandoContagem] = useState(false);
   const [processandoDetalhada, setProcessandoDetalhada] = useState(false);
+  // Estado centralizado para edição de contagens por produto (evitar hook dentro de loops)
+  const [valorEditado, setValorEditado] = useState({});
   
   // Estados de filtros
   const [filtros, setFiltros] = useState({
@@ -1064,8 +1066,6 @@ const ContagemPage = () => {
                       <tbody className="divide-y divide-gray-200">
                         {categoriaData.produtos.map((produto) => {
                           const produtoVariacoes = getVariacoesPorProduto(produto.id);
-                          // Estado local para edição da contagem
-                          const [valorEditado, setValorEditado] = useState({});
                           const contagemAtualProduto = contagens[produto.id] || 0;
                           const valorInput = valorEditado[produto.id] !== undefined ? valorEditado[produto.id] : contagemAtualProduto;
                           const valorAlterado = Number(valorInput) !== Number(contagemAtualProduto);
