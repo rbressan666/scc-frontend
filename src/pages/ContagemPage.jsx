@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-  const [processandoDetalhada, setProcessandoDetalhada] = useState(false);
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -41,6 +40,7 @@ const ContagemPage = () => {
   const [usuariosAtivos, setUsuariosAtivos] = useState({});
   const [loading, setLoading] = useState(true);
   const [inicializandoContagem, setInicializandoContagem] = useState(false);
+  const [processandoDetalhada, setProcessandoDetalhada] = useState(false);
   
   // Estados de filtros
   const [filtros, setFiltros] = useState({
