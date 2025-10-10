@@ -164,7 +164,7 @@ const DashboardPage = () => {
           </div>
 
           {/* Menu Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {availableItems.map((item) => {
               const IconComponent = item.icon;
               const isClickable = item.path && !item.disabled;
@@ -172,7 +172,7 @@ const DashboardPage = () => {
               return (
                 <Card
                   key={item.id}
-                  className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                  className={`cursor-pointer transition-all duration-200 hover:shadow-lg py-4 aspect-square gap-3 justify-between ${
                     isClickable ? 'hover:scale-105' : 'opacity-75 cursor-not-allowed'
                   }`}
                   onClick={() => {

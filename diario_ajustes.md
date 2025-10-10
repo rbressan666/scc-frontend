@@ -1,3 +1,21 @@
+## 2025-10-10 - Dashboard: ajustes de layout dos cards e cabeçalho
+
+- O que foi alterado:
+  - Mantido o cabeçalho como referência (sem mudanças visuais).
+  - Reversão: retornado o estilo global do `Card` para os valores originais (py-6 e pb-6) para não impactar outras telas.
+  - `src/pages/DashboardPage.jsx`:
+    - Grid de cards mais responsiva (1/2/3/4 colunas em breakpoints sm/lg/xl) para colocar mais cards lado a lado.
+    - Cada card do Dashboard passou a usar `aspect-square` e espaçamento interno mais compacto no próprio card (`py-4 gap-3 justify-between`) para aproximar de um formato quase quadrado sem afetar globalmente.
+
+- Motivo: os cards estavam com aparência de retângulos alongados e o cabeçalho ocupando espaço excessivo.
+
+- Impacto:
+  - Mudança local ao Dashboard evita efeitos colaterais nas demais telas.
+  - Em telas muito estreitas (1 coluna), a proporção pode ser limitada pelo conteúdo interno do card. Caso necessário, aplicar `overflow-hidden` e clamps de texto pontuais.
+
+- Como desfazer rapidamente:
+  - Em `src/pages/DashboardPage.jsx`, remover `aspect-square` e voltar a grid para `md:grid-cols-2` para o comportamento anterior.
+
 # [2025-10-08  — 22:45] - Botão voltar retorna ao detalhe do turno
 
 **Problema:** O botão "Voltar" da lista de produtos da contagem levava para o dashboard, dificultando o fluxo de navegação do usuário.

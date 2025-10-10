@@ -37,6 +37,7 @@
     "tailwind-merge": "^3.3.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.26.0",
     "@tailwindcss/postcss": "^4.1.13",
     "@tailwindcss/vite": "^4.1.12",
     "@types/react": "^19.1.2",
@@ -46,17 +47,16 @@
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^15.15.0",
     "husky": "^9.1.6",
     "lint-staged": "^15.2.10",
     "tailwindcss": "^4.1.7",
     "tw-animate-css": "^1.3.7",
     "vite": "^6.3.5"
-  }
-  ,
+  },
   "lint-staged": {
     "**/*.{js,jsx}": [
-      "eslint --fix",
-      "git add"
+      "eslint --fix"
     ]
   }
 }
