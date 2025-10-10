@@ -23,6 +23,9 @@ export default [
     rules: {
       ...js.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
+      // Regras explícitas para evitar erros de Hooks
+      'react-hooks/rules-of-hooks': 'error', // hooks apenas no topo do componente/hook
+      'react-hooks/exhaustive-deps': 'warn', // dependências de useEffect
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
       'react-refresh/only-export-components': [
         'warn',

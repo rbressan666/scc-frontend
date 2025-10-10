@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -31,6 +31,11 @@ const ContagemPage = () => {
   // Estados principais
   const [produtos, setProdutos] = useState([]);
   const [variacoes, setVariacoes] = useState([]);
+  // Ref para sempre ter acesso à versão mais recente de 'variacoes' dentro de fluxos assíncronos
+  const variacoesRef = useRef([]);
+  useEffect(() => {
+    variacoesRef.current = variacoes;
+  }, [variacoes]);
   const [setores, setSetores] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [unidadesMedida, setUnidadesMedida] = useState([]);
@@ -215,12 +220,12 @@ const ContagemPage = () => {
           // AGUARDAR variações serem carregadas antes de processar itens
           console.log('⏳ Aguardando variações serem carregadas...');
           let tentativas = 0;
-          while (variacoes.length === 0 && tentativas < 50) {
+          while (variacoesRef.current.length === 0 && tentativas < 50) {
             await new Promise(resolve => setTimeout(resolve, 200));
             tentativas++;
           }
           
-          if (variacoes.length > 0) {
+          if (variacoesRef.current.length > 0) {
             console.log('✅ Variações carregadas, processando itens...');
             await carregarItensContagem(contagemAtiva.id);
           } else {
@@ -285,17 +290,18 @@ const ContagemPage = () => {
       console.log('✅ Itens carregados no estado:', itens.length);
       
       // Converter itens para formato de contagens por produto
-      const contagensPorProduto = {};
+  const contagensPorProduto = {};
       itens.forEach((item, index) => {
         console.log(`📝 Processando item ${index + 1}:`, item);
         
         if (item.variacao_id) {
-          const variacao = variacoes.find(v => v.id === item.variacao_id);
+          const variacao = variacoesRef.current.find(v => v.id === item.variacao_id);
           console.log(`🔍 Variação encontrada para ${item.variacao_id}:`, variacao);
           
           if (variacao) {
-            const quantidade = item.quantidade_convertida || item.quantidade_contada;
-            contagensPorProduto[variacao.id_produto] = quantidade;
+            const quantidade = Number(item.quantidade_convertida ?? item.quantidade_contada ?? 0) || 0;
+            const prodId = variacao.id_produto;
+            contagensPorProduto[prodId] = (contagensPorProduto[prodId] || 0) + quantidade;
             console.log(`📊 Produto ${variacao.id_produto} = ${quantidade}`);
           } else {
             console.log(`⚠️ Variação não encontrada para ID: ${item.variacao_id}`);
@@ -1066,7 +1072,7 @@ const ContagemPage = () => {
                       <tbody className="divide-y divide-gray-200">
                         {categoriaData.produtos.map((produto) => {
                           const produtoVariacoes = getVariacoesPorProduto(produto.id);
-                          const contagemAtualProduto = contagens[produto.id] || 0;
+                          const contagemAtualProduto = Number(contagens[produto.id] ?? 0);
                           const valorInput = valorEditado[produto.id] !== undefined ? valorEditado[produto.id] : contagemAtualProduto;
                           const valorAlterado = Number(valorInput) !== Number(contagemAtualProduto);
                           const usuarioAtivo = usuariosAtivos[produto.id];
