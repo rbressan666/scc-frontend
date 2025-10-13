@@ -164,7 +164,7 @@ const DashboardPage = () => {
           </div>
 
           {/* Menu Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {availableItems.map((item) => {
               const IconComponent = item.icon;
               const isClickable = item.path && !item.disabled;
@@ -172,7 +172,7 @@ const DashboardPage = () => {
               return (
                 <Card
                   key={item.id}
-                  className={`cursor-pointer transition-all duration-200 hover:shadow-lg py-4 aspect-square gap-3 justify-between ${
+                  className={`cursor-pointer transition-all duration-200 hover:shadow-lg py-3 gap-3 ${
                     isClickable ? 'hover:scale-105' : 'opacity-75 cursor-not-allowed'
                   }`}
                   onClick={() => {
@@ -181,28 +181,28 @@ const DashboardPage = () => {
                     }
                   }}
                 >
-                  <CardHeader className="pb-3">
+                  <CardHeader className="pb-2">
                     <div className="flex items-center space-x-3">
-                      <div className={`p-2 rounded-lg ${item.color}`}>
-                        <IconComponent className="h-6 w-6 text-white" />
+                      <div className={`p-1.5 rounded-lg ${item.color}`}>
+                        <IconComponent className="h-5 w-5 text-white" />
                       </div>
                       <div>
-                        <CardTitle className="text-lg">{item.title}</CardTitle>
+                        <CardTitle className="text-base">{item.title}</CardTitle>
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <CardDescription className="text-sm mb-3">
+                  <CardContent className="pt-0 pb-3">
+                    <CardDescription className="text-sm mb-2 line-clamp-2">
                       {item.description}
                     </CardDescription>
                     
                     {item.showProgress && (
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <div className="flex justify-between text-xs text-gray-500">
                           <span>Uso do armazenamento</span>
                           <span>12%</span>
                         </div>
-                        <Progress value={12} className="h-2" />
+                        <Progress value={12} className="h-1.5" />
                       </div>
                     )}
                   </CardContent>

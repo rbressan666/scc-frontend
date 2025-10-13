@@ -16,6 +16,22 @@
 - Como desfazer rapidamente:
   - Em `src/pages/DashboardPage.jsx`, remover `aspect-square` e voltar a grid para `md:grid-cols-2` para o comportamento anterior.
 
+## 2025-10-13 - Dashboard: reduzir altura dos cards (remover quadrados)
+
+- O que foi alterado:
+  - Removido `aspect-square` dos cards do dashboard e limitadas as colunas a até 3 (`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`).
+  - Compactado o conteúdo do card: `py-3`, `gap-3`, `CardHeader pb-2`, ícone reduzido (`h-5 w-5`, `p-1.5`), `CardTitle text-base`, descrição com `line-clamp-2`.
+  - Barra de progresso mais fina (`h-1.5`) e menor espaçamento (`space-y-1.5`).
+
+- Motivo:
+  - Os cards haviam se tornado quadrados grandes; objetivo é ter tiles compactos que caibam 2–3 por linha, sem ocupar altura excessiva.
+
+- Impacto:
+  - Visual mais compacto e equilibrado; não afeta o componente `Card` globalmente (apenas estilos locais no Dashboard).
+
+- Como desfazer:
+  - Em `src/pages/DashboardPage.jsx`, restaurar classes removidas e/ou aumentar paddings.
+
 # [2025-10-08  — 22:45] - Botão voltar retorna ao detalhe do turno
 
 **Problema:** O botão "Voltar" da lista de produtos da contagem levava para o dashboard, dificultando o fluxo de navegação do usuário.
