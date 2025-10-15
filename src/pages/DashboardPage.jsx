@@ -26,6 +26,24 @@ const DashboardPage = () => {
       color: 'bg-blue-600'
     },
     {
+      id: 'diagnostics',
+      title: 'Diagnósticos',
+      description: 'Status da fila e últimos envios de notificações',
+      icon: BarChart3,
+      path: '/admin/diagnosticos',
+      adminOnly: true,
+      color: 'bg-teal-600'
+    },
+    {
+      id: 'planning',
+      title: 'Planejamento',
+      description: 'Regras semanais de escala e geração de lembretes',
+      icon: Cog,
+      path: '/planejamento',
+      adminOnly: true,
+      color: 'bg-emerald-600'
+    },
+    {
       id: 'alertas',
       title: 'Alertas do Sistema',
       description: 'Visualizar e gerenciar alertas de contagem',
