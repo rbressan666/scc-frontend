@@ -19,7 +19,7 @@ import AnaliseVariacaoPage from './pages/AnaliseVariacaoPage';
 import ChecklistEntradaPage from './pages/ChecklistEntradaPage';
 import ChecklistSaidaPage from './pages/ChecklistSaidaPage';
 import AdminDiagnosticsPage from './pages/AdminDiagnosticsPage';
-import PlanningPage from './pages/PlanningPage';
+import PlanningPageV2 from './pages/PlanningPageV2';
 import ProfilePage from './pages/ProfilePage';
 import './App.css';
 
@@ -128,7 +128,7 @@ function App() {
               path="/planejamento"
               element={
                 <ProtectedRoute requireAdmin={true}>
-                  <PlanningPage />
+                  <PlanningPageV2 />
                 </ProtectedRoute>
               }
             />
