@@ -14,11 +14,6 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Verificar autenticação ao carregar a aplicação
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
-
   // Função para verificar se o usuário está autenticado
   const checkAuth = useCallback(async () => {
     try {
@@ -60,6 +55,11 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   }, []);
+
+  // Verificar autenticação ao carregar a aplicação (depois que checkAuth foi definido)
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   // Função de login
   const login = async (email, senha, token = null) => {
