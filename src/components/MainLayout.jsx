@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sidebar, SidebarContent, SidebarHeader, SidebarTrigger, SidebarInset, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from './ui/sidebar';
+import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarTrigger, SidebarInset, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from './ui/sidebar';
 import { Button } from './ui/button';
 import { PanelLeftIcon, Home, Package, Users, Settings, User } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -66,8 +66,9 @@ const MainLayout = ({ children }) => {
   );
 
   return (
-    <div className="flex h-screen w-full">
-      <Sidebar>
+    <SidebarProvider>
+      <div className="flex h-screen w-full">
+        <Sidebar>
         <SidebarHeader>
           <div className="flex items-center gap-2 px-2 py-2">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -102,8 +103,8 @@ const MainLayout = ({ children }) => {
             Sair
           </Button>
         </div>
-      </Sidebar>
-      <SidebarInset>
+        </Sidebar>
+        <SidebarInset>
         <div className="flex flex-col h-full w-full">
           <header className="flex items-center justify-between p-4 border-b bg-white">
             <div className="flex items-center gap-2">
@@ -115,8 +116,9 @@ const MainLayout = ({ children }) => {
             {children}
           </main>
         </div>
-      </SidebarInset>
-    </div>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 };
 
