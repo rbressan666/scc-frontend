@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { PanelLeftIcon, Home, Package, Users, Settings, User } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 
 const MainLayout = ({ children }) => {
   const navigate = useNavigate();

@@ -6,7 +6,7 @@ import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { ArrowLeft, AlertTriangle, CheckCircle, Eye, X, Package } from 'lucide-react';
 import { alertasService } from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 
 const AlertasPage = () => {
   const navigate = useNavigate();

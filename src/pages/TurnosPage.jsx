@@ -5,11 +5,11 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { ArrowLeft, Plus, Clock, User, Calendar, AlertCircle, Package } from 'lucide-react';
 import { turnosService } from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 
 const TurnosPage = () => {
   const navigate = useNavigate();
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const [turnos, setTurnos] = useState([]);
   const [turnoAtual, setTurnoAtual] = useState(null);
   const [loading, setLoading] = useState(true);
