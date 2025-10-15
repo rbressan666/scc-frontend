@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { userService } from '../services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,16 +26,8 @@ const UserViewPage = () => {
   const [error, setError] = useState('');
 
   // Verificar permissões
-  useEffect(() => {
-    if (!isAdmin()) {
-      navigate('/dashboard');
-      return;
-    }
-    loadUser();
-  }, [id, isAdmin, navigate]);
-
   // Carregar dados do usuário
-  const loadUser = async () => {
+  const loadUser = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -51,7 +43,15 @@ const UserViewPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (!isAdmin()) {
+      navigate('/dashboard');
+      return;
+    }
+    loadUser();
+  }, [id, isAdmin, navigate, loadUser]);
 
   if (loading) {
     return (

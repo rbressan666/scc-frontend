@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -6,7 +6,7 @@ import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
 import { ArrowLeft, Clock, Package, AlertTriangle, Users, CheckCircle, X, Play, Square } from 'lucide-react';
 import { turnosService, contagensService, alertasService, userService, produtoService } from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 
 const DashboardContagemPage = () => {
   const navigate = useNavigate();
@@ -16,7 +16,7 @@ const DashboardContagemPage = () => {
   const [contagens, setContagens] = useState([]);
   const [alertas, setAlertas] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
-  const [produtos, setProdutos] = useState([]);
+  // Removido estado 'produtos' não utilizado diretamente
   const [estatisticas, setEstatisticas] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,9 +25,9 @@ const DashboardContagemPage = () => {
     if (turnoId) {
       fetchDashboardData();
     }
-  }, [turnoId]);
+  }, [turnoId, fetchDashboardData]);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setError(null);
       
@@ -63,12 +63,10 @@ const DashboardContagemPage = () => {
       }
 
       // Processar produtos
-      if (produtosRes.status === 'fulfilled') {
-        setProdutos(produtosRes.value.data || []);
-      }
+      // produtos são usados apenas para cálculo; não manter em estado
 
       // Calcular estatísticas
-      calcularEstatisticas(contagensRes.value?.data || [], produtosRes.value?.data || []);
+  calcularEstatisticas(contagensRes.value?.data || [], produtosRes.value?.data || []);
 
     } catch (error) {
       console.error('Erro ao buscar dados do dashboard:', error);
@@ -76,9 +74,9 @@ const DashboardContagemPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [turnoId, calcularEstatisticas]);
 
-  const calcularEstatisticas = (contagens, produtos) => {
+  const calcularEstatisticas = useCallback((contagens, produtos) => {
     const totalProdutos = produtos.length;
     let produtosContados = 0;
     
@@ -98,7 +96,7 @@ const DashboardContagemPage = () => {
       operadoresAtivos: usuarios.filter(u => u.ativo).length,
       alertasAtivos: alertas.length
     });
-  };
+  }, [usuarios, alertas]);
 
   const handleFecharTurno = async () => {
     if (!window.confirm('Tem certeza que deseja fechar este turno?')) {

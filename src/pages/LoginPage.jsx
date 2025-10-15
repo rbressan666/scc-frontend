@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,7 +25,7 @@ const LoginPage = () => {
 
   // Estados do QR Code
   const [showQRCode, setShowQRCode] = useState(false);
-  const [qrCodeData, setQrCodeData] = useState('');
+  // const [qrCodeData, setQrCodeData] = useState(''); // removed (unused)
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [qrStatus, setQrStatus] = useState(''); // 'generating', 'waiting', 'scanned', 'expired'
 
@@ -68,7 +68,7 @@ const LoginPage = () => {
           if (result.success) {
             navigate('/dashboard');
           }
-        } catch (error) {
+        } catch {
           setError('Erro ao processar login via QR Code');
         }
       });
@@ -126,7 +126,7 @@ const LoginPage = () => {
       } else {
         setError(result.message || 'Erro no login');
       }
-    } catch (error) {
+    } catch {
       setError('Erro de conexão. Tente novamente.');
     } finally {
       setLoading(false);
@@ -139,9 +139,7 @@ const LoginPage = () => {
       setQrStatus('generating');
       setError('');
       
-      const qrResult = await qrCodeSocket.generateQRCode();
-      
-      setQrCodeData(qrResult.qrCodeData);
+  const qrResult = await qrCodeSocket.generateQRCode();
       setQrCodeUrl(qrResult.qrCodeImage); // Usar a imagem base64 diretamente
       setQrStatus('waiting');
       setShowQRCode(true);
@@ -157,7 +155,6 @@ const LoginPage = () => {
     qrCodeSocket.cancelQRSession();
     setShowQRCode(false);
     setQrStatus('');
-    setQrCodeData('');
     setQrCodeUrl('');
   };
 
