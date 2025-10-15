@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '../components/ui/button';
+import { ArrowLeft, Calendar as CalendarIcon } from 'lucide-react';
 import api from '../services/api';
 import MainLayout from '../components/MainLayout';
 
@@ -34,7 +36,9 @@ export default function PlanningPageV2(){
       setLoading(true); setError('');
       // Sempre carregar todos os usuários da semana; o usuário selecionado é apenas para salvar/lançar
       const q = new URLSearchParams(); if(start) q.set('start', start);
-      const res = await api.get(`/api/planning/week?${q.toString()}`);
+      const qs = q.toString();
+      const url = `/api/planning/week${qs ? `?${qs}` : ''}`;
+      const res = await api.get(url);
       setWeek(res);
     }catch(e){ setError(e?.message||'Erro ao carregar semana'); }
     finally{ setLoading(false); }
@@ -107,70 +111,54 @@ export default function PlanningPageV2(){
   return (
     <MainLayout>
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <button onClick={()=>navigate('/dashboard')} className="px-2 py-1 border rounded">Voltar</button>
-            <h1 className="text-2xl font-semibold">Planejamento Semanal</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={()=>navigateWeek(-7)} className="px-2 py-1 border rounded">◀ Semana anterior</button>
-            <div className="text-sm text-gray-700">
-              {week.days?.length ? `Semana de ${fmtDayHeader(week.days[0])} a ${fmtDayHeader(week.days[6])}` : ''}
+        {/* Header no estilo Gestão de Turnos */}
+        <header className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-4">
+              <div className="flex items-center space-x-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/dashboard')}
+                  className="flex items-center space-x-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span>Voltar</span>
+                </Button>
+                <div className="flex items-center space-x-3">
+                  <div className="bg-blue-600 text-white p-2 rounded-lg">
+                    <CalendarIcon className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Planejamento Semanal</h1>
+                    <p className="text-sm text-gray-500">Defina regras e turnos pontuais</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button onClick={()=>navigateWeek(-7)} variant="outline" size="sm">◀ Semana anterior</Button>
+                <div className="text-sm text-gray-700">
+                  {week.days?.length ? `Semana de ${fmtDayHeader(week.days[0])} a ${fmtDayHeader(week.days[6])}` : ''}
+                </div>
+                <Button onClick={()=>navigateWeek(+7)} variant="outline" size="sm">Próxima semana ▶</Button>
+              </div>
             </div>
-            <button onClick={()=>navigateWeek(+7)} className="px-2 py-1 border rounded">Próxima semana ▶</button>
           </div>
-        </div>
+        </header>
 
   {error && <div className="text-red-600">{error}</div>}
   {loading && <div>Carregando...</div>}
 
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-3">
-            <label className="text-sm">Usuário (para salvar):</label>
-            <select value={selectedUser} onChange={e=>setSelectedUser(e.target.value)} className="border p-1 rounded">
-              {users.map(u=> <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
-            <label className="ml-4 text-sm">Contínuo:</label>
-            <input type="checkbox" checked={continuous} onChange={e=>setContinuous(e.target.checked)} />
-          </div>
-          {/* Legenda por usuário */}
-          <div className="flex items-center gap-3 flex-wrap">
-            {users.map(u=> (
-              <div key={u.id} className="flex items-center gap-1 text-sm">
-                <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: userColorMap.get(u.id) }}></span>
-                <span>{u.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Day pickers with time ranges */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {dayLabels.map((lab, dow)=> (
-            <div key={dow} className="p-3 bg-white rounded shadow">
-              <div className="font-medium mb-2">{lab}</div>
-              <div className="flex items-center gap-2 text-sm">
-                <label>Entrada</label>
-                <input type="time" value={dayTimes[dow]?.start||''} onChange={e=>onTimeChange(dow,'start', e.target.value)} className="border p-1 rounded" />
-                <label>Saída</label>
-                <input type="time" value={dayTimes[dow]?.end||''} onChange={e=>onTimeChange(dow,'end', e.target.value)} className="border p-1 rounded" />
-              </div>
-              {/* salvar regra recorrente para este dia */}
-              <div className="mt-2 flex gap-2">
-                <button onClick={()=>saveRule(dow)} className="px-2 py-1 border rounded">Salvar regra</button>
-                {/* adicionar shift pontual na semana atual para este dia */}
-                {week.days[dow] && <button onClick={()=>addShift(week.days[dow], dow)} className="px-2 py-1 border rounded">Adicionar nesta semana</button>}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Week calendar grid: columns per day (Wed..Tue), rows hourly from 12:00 */}
+        {/* Calendário semanal (primeiro bloco) */}
         <div className="overflow-auto">
           <div className="min-w-[900px]">
             <div className="grid" style={{ gridTemplateColumns: `100px repeat(7, 1fr)` }}>
               <div></div>
-              {week.days.map((d,i)=> <div key={i} className="text-center font-medium">{d}</div>)}
+              {week.days.map((d,i)=> {
+                const dt = new Date(d+'T00:00:00Z');
+                const header = dt.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', timeZone: 'UTC' });
+                return <div key={i} className="text-center font-medium capitalize">{header}</div>;
+              })}
               {hours.map((h,ri)=> (
                 <React.Fragment key={ri}>
                   <div className="text-xs text-right pr-2 border-b">{String(h).padStart(2,'0')}:00</div>
@@ -204,6 +192,54 @@ export default function PlanningPageV2(){
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Legenda por usuário próxima do calendário */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {users.map(u=> (
+            <div key={u.id} className="flex items-center gap-1 text-sm">
+              <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: userColorMap.get(u.id) }}></span>
+              <span>{u.name}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Controles: seleção de usuário e horários por dia */}
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-3">
+            <label className="text-sm">Usuário (para salvar):</label>
+            <select value={selectedUser} onChange={e=>setSelectedUser(e.target.value)} className="border p-1 rounded">
+              {users.map(u=> <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+            <label className="ml-4 text-sm">Contínuo:</label>
+            <input type="checkbox" checked={continuous} onChange={e=>setContinuous(e.target.checked)} />
+          </div>
+        </div>
+
+        {/* Seções de horários por dia, ordenadas conforme a semana (Qua→Ter) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {(week.days.length ? week.days : Array(7).fill('')).map((dayIso, dow)=> {
+            const lab = week.days.length
+              ? new Date(dayIso+'T00:00:00Z').toLocaleDateString('pt-BR', { weekday: 'short', timeZone: 'UTC' })
+              : dayLabels[dow];
+            return (
+            <div key={dow} className="p-3 bg-white rounded shadow">
+              <div className="font-medium mb-2">{lab}</div>
+              <div className="flex items-center gap-2 text-sm">
+                <label>Entrada</label>
+                <input type="time" value={dayTimes[dow]?.start||''} onChange={e=>onTimeChange(dow,'start', e.target.value)} className="border p-1 rounded" />
+                <label>Saída</label>
+                <input type="time" value={dayTimes[dow]?.end||''} onChange={e=>onTimeChange(dow,'end', e.target.value)} className="border p-1 rounded" />
+              </div>
+              {/* salvar regra recorrente para este dia */}
+              <div className="mt-2 flex gap-2">
+                <button onClick={()=>saveRule(dow)} className="px-2 py-1 border rounded">Salvar regra</button>
+                {/* adicionar shift pontual na semana atual para este dia */}
+                {week.days[dow] && <button onClick={()=>addShift(week.days[dow], dow)} className="px-2 py-1 border rounded">Adicionar nesta semana</button>}
+              </div>
+            </div>
+            );
+          })}
         </div>
       </div>
     </MainLayout>
