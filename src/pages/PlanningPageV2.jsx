@@ -90,7 +90,21 @@ export default function PlanningPageV2(){
   };
 
   // Build hourly grid from 12:00 to next-day 12:00 (24h window)
+  const ROW_H = 32; // px per hour
   const hours = useMemo(()=> Array.from({length:25}, (_,i)=> (12+i)%24 ),[]);
+  const totalHeight = useMemo(()=> 24 * ROW_H, [ROW_H]);
+
+  const dayHeaderLabels = ['Quarta','Quinta','Sexta','Sábado','Domingo','Segunda','Terça'];
+
+  const toMinutes = (t)=>{ const [h,m] = t.split(':').map(Number); return h*60+m; };
+  const minutesFromNoon = (m)=>{ // map minutes-of-day (0..1439) to offset from 12:00 within 0..1440
+    const ref = 12*60;
+    const diff = m - ref;
+    return (diff < 0 ? diff + 1440 : diff);
+  };
+  const prevIso = (iso)=>{
+    const d = new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()-1); return d.toISOString().slice(0,10);
+  };
 
   // Mapa de cores por usuário (legenda e barras)
   const colorPalette = useMemo(()=>['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#84cc16','#a855f7','#fb7185'],[]);
@@ -153,42 +167,53 @@ export default function PlanningPageV2(){
         <div className="overflow-auto">
           <div className="min-w-[900px]">
             <div className="grid" style={{ gridTemplateColumns: `100px repeat(7, 1fr)` }}>
+              {/* cabeçalhos */}
               <div></div>
-              {week.days.map((d,i)=> {
-                const dt = new Date(d+'T00:00:00Z');
-                const header = dt.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', timeZone: 'UTC' });
-                return <div key={i} className="text-center font-medium capitalize">{header}</div>;
-              })}
-              {hours.map((h,ri)=> (
-                <React.Fragment key={ri}>
-                  <div className="text-xs text-right pr-2 border-b">{String(h).padStart(2,'0')}:00</div>
-                  {week.days.map((d,ci)=> (
-                    <div key={ci} className="relative h-8 border-b border-l">
-                      {/* render shifts that overlap this day/hour */}
-                      {week.shifts.filter(s=> s.date===d).map(s=>{
-                        const startM = timeToMinutes(fmtTime(s.start_time));
-                        const endM = timeToMinutes(fmtTime(s.end_time));
-                        const spans = s.spans_next_day;
-                        // we render as positioned block once per day
-                        if(ri===0){
-                          const top = ((startM - 12*60 + (startM<12*60? 24*60:0)) / (24*60)) * (hours.length*32);
-                          const durMin = spans
-                            ? (24*60 - startM + endM)
-                            : (endM - startM);
-                          const height = Math.max(8, (durMin/(24*60)) * (hours.length*32));
-                          const color = userColorMap.get(s.user_id) || '#3b82f6';
-                          return (
-                            <div key={s.id} className="absolute left-1 right-1 rounded" style={{ top, height, backgroundColor: color, opacity: 0.8 }} title={`${s.user_name} ${fmtTime(s.start_time)}-${fmtTime(s.end_time)}`}>
-                              <span className="text-[10px] text-white pl-1">{s.user_name}</span>
-                              <button onClick={()=>removeShift(s.id)} className="absolute right-1 top-1 text-[10px] text-white">x</button>
-                            </div>
-                          );
-                        }
-                        return null;
-                      })}
-                    </div>
-                  ))}
-                </React.Fragment>
+              {week.days.map((_,i)=> (
+                <div key={i} className="text-center font-medium border-l py-2">{dayHeaderLabels[i] || ''}</div>
+              ))}
+              {/* coluna de horários (12:00 -> 12:00) */}
+              <div className="relative border-t" style={{ height: totalHeight }}>
+                {hours.slice(0,24).map((h,idx)=> (
+                  <div key={idx} className="text-xs text-right pr-2 border-b" style={{ height: ROW_H }}>
+                    {String(h).padStart(2,'0')}:00
+                  </div>
+                ))}
+              </div>
+              {/* colunas dos dias */}
+              {week.days.map((d,ci)=> (
+                <div key={ci} className="relative border-l border-t" style={{ height: totalHeight, backgroundImage: `repeating-linear-gradient(to bottom, #e5e7eb 0, #e5e7eb 1px, transparent 1px, transparent ${ROW_H}px)` }}>
+                  {/* Blocos do próprio dia */}
+                  {week.shifts.filter(s=> s.date===d).map(s=>{
+                    const startM = toMinutes(fmtTime(s.start_time));
+                    const endM = toMinutes(fmtTime(s.end_time));
+                    const spans = s.spans_next_day;
+                    const top = (minutesFromNoon(startM)/1440) * totalHeight;
+                    const durMin = spans ? (1440 - startM) : Math.max(0, endM - startM);
+                    const height = Math.max(8, (durMin/1440) * totalHeight);
+                    const color = userColorMap.get(s.user_id) || '#3b82f6';
+                    return (
+                      <div key={`${s.id}-a`} className="absolute left-1 right-1 rounded" style={{ top, height, backgroundColor: color, opacity: 0.8 }} title={`${s.user_name} ${fmtTime(s.start_time)}-${fmtTime(s.end_time)}`}>
+                        <span className="text-[10px] text-white pl-1">{s.user_name}</span>
+                        <button onClick={()=>removeShift(s.id)} className="absolute right-1 top-1 text-[10px] text-white">x</button>
+                      </div>
+                    );
+                  })}
+                  {/* Blocos que vêm do dia anterior e atravessam a meia-noite */}
+                  {week.shifts.filter(s=> s.spans_next_day && s.date===prevIso(d)).map(s=>{
+                    const endM = toMinutes(fmtTime(s.end_time));
+                    const top = (minutesFromNoon(0)/1440) * totalHeight; // início às 00:00
+                    const durMin = endM; // até end
+                    const height = Math.max(8, (durMin/1440) * totalHeight);
+                    const color = userColorMap.get(s.user_id) || '#3b82f6';
+                    return (
+                      <div key={`${s.id}-b`} className="absolute left-1 right-1 rounded" style={{ top, height, backgroundColor: color, opacity: 0.8 }} title={`${s.user_name} 00:00-${fmtTime(s.end_time)}`}>
+                        <span className="text-[10px] text-white pl-1">{s.user_name}</span>
+                        <button onClick={()=>removeShift(s.id)} className="absolute right-1 top-1 text-[10px] text-white">x</button>
+                      </div>
+                    );
+                  })}
+                </div>
               ))}
             </div>
           </div>
