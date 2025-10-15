@@ -6,7 +6,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../services/api';
 import { useAuth } from '../context/useAuth';
 
-const MainLayout = ({ children }) => {
+const MainLayout = ({ children, customHeader }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAdmin } = useAuth();
@@ -106,11 +106,17 @@ const MainLayout = ({ children }) => {
         </Sidebar>
         <SidebarInset>
         <div className="flex flex-col h-full w-full">
-          <header className="flex items-center justify-between p-4 border-b bg-white">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger />
-              <h1 className="text-xl font-semibold">Sistema de Controle de Custos</h1>
-            </div>
+          <header className="p-0 m-0">
+            {customHeader ? (
+              customHeader
+            ) : (
+              <div className="flex items-center justify-between p-4 border-b bg-white">
+                <div className="flex items-center gap-2">
+                  <SidebarTrigger />
+                  <h1 className="text-xl font-semibold">Sistema de Controle de Custos</h1>
+                </div>
+              </div>
+            )}
           </header>
           <main className="flex-1 p-6 overflow-auto bg-gray-50 w-full">
             {children}

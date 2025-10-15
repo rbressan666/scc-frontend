@@ -75,8 +75,9 @@ export default function PlanningPageV2(){
         const spanHrs = endM > startM ? (endM-startM)/60 : ((24*60 - startM + endM)/60);
         if(spanHrs > 9){ alert(`Atenção: duração longa (${spanHrs.toFixed(1)}h).`); }
       }
-      await api.post('/api/planning/rules', { userId: selectedUser, dayOfWeek: dow, startTime: start, endTime: end, continuous });
-      alert('Regra salva');
+  await api.post('/api/planning/rules', { userId: selectedUser, dayOfWeek: dow, startTime: start, endTime: end, continuous });
+  await loadWeek(week.weekStart);
+  alert('Regra salva');
     }catch(e){ setError(e?.message||'Falha ao salvar regra'); }
   };
 
@@ -85,8 +86,8 @@ export default function PlanningPageV2(){
       setError('');
       if(!selectedUser) throw new Error('Selecione um usuário');
       const t = dayTimes[dow]||{}; if(!t.start || !t.end) throw new Error('Defina horários para este dia');
-      await api.post('/api/planning/shifts', { userId: selectedUser, date, startTime: t.start, endTime: t.end });
-      await loadWeek(week.weekStart);
+  await api.post('/api/planning/shifts', { userId: selectedUser, date, startTime: t.start, endTime: t.end });
+  await loadWeek(week.weekStart);
     }catch(e){ setError(e?.message||'Falha ao adicionar planejamento'); }
   };
 
@@ -135,13 +136,10 @@ export default function PlanningPageV2(){
     }catch{ return iso; }
   };
 
-  return (
-    <MainLayout>
-      <div className="space-y-4">
-        {/* Header no estilo Gestão de Turnos */}
-        <header className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-4">
+  const headerEl = (
+    <div className="bg-white shadow-sm border-b">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center py-4">
               <div className="flex items-center space-x-4">
                 <Button
                   variant="ghost"
@@ -169,9 +167,14 @@ export default function PlanningPageV2(){
                 </div>
                 <Button onClick={()=>navigateWeek(+7)} variant="outline" size="sm">Próxima semana ▶</Button>
               </div>
-            </div>
-          </div>
-        </header>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <MainLayout customHeader={headerEl}>
+      <div className="space-y-4">
 
   {error && <div className="text-red-600">{error}</div>}
   {loading && <div>Carregando...</div>}
@@ -271,9 +274,9 @@ export default function PlanningPageV2(){
               </div>
               {/* salvar regra recorrente para este dia */}
               <div className="mt-2 flex gap-2">
-                <button onClick={()=>saveRule(dow)} className="px-2 py-1 border rounded">Salvar regra</button>
+                <button onClick={()=>saveRule(dow)} className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700">Salvar regra</button>
                 {/* adicionar shift pontual na semana atual para este dia */}
-                {week.days[dow] && <button onClick={()=>addShift(week.days[dow], dow)} className="px-2 py-1 border rounded">Adicionar nesta semana</button>}
+                {week.days[dow] && <button onClick={()=>addShift(week.days[dow], dow)} className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700">Adicionar nesta semana</button>}
               </div>
             </div>
             );
