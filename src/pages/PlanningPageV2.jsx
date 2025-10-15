@@ -44,6 +44,19 @@ export default function PlanningPageV2(){
     finally{ setLoading(false); }
   },[]);
 
+  // Tentar bootstrap se houve erro 500 ao carregar a semana
+  useEffect(()=>{
+    if(error && error.includes('500')){
+      (async()=>{
+        try{
+          await api.post('/api/planning/_bootstrap', {});
+          await loadWeek();
+          setError('');
+  }catch{ /* se falhar, mantém o erro exibido */ }
+      })();
+    }
+  },[error, loadWeek]);
+
   useEffect(()=>{ loadUsers(); },[loadUsers]);
   useEffect(()=>{ loadWeek(); },[loadWeek]);
 
