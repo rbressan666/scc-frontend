@@ -215,6 +215,16 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            {/* Perfil do usuário */}
+            <Route
+              path="/perfil"
+              element={
+                <ProtectedRoute>
+                  <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
             
             {/* Rota padrão - redirecionar para dashboard */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
