@@ -1,18 +1,12 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useCallback } from 'react';
 import Cookies from 'js-cookie';
 import { authService } from '../services/api';
+import { initPush, unsubscribePush } from '../services/pushClient';
 
 // Criar contexto
 const AuthContext = createContext();
 
-// Hook para usar o contexto
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
-  }
-  return context;
-};
+// Hook useAuth movido para arquivo separado (useAuth.js) para evitar conflito com Fast Refresh
 
 // Provider do contexto
 export const AuthProvider = ({ children }) => {
@@ -23,10 +17,10 @@ export const AuthProvider = ({ children }) => {
   // Verificar autenticação ao carregar a aplicação
   useEffect(() => {
     checkAuth();
-  }, []);
+  }, [checkAuth]);
 
   // Função para verificar se o usuário está autenticado
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -50,7 +44,7 @@ export const AuthProvider = ({ children }) => {
           } else {
             throw new Error('Token inválido');
           }
-        } catch (error) {
+        } catch {
           // Token inválido, limpar dados
           await logout();
         }
@@ -58,14 +52,14 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         setIsAuthenticated(false);
       }
-    } catch (error) {
-      console.error('Erro ao verificar autenticação:', error);
+    } catch (err) {
+      console.error('Erro ao verificar autenticação:', err);
       setUser(null);
       setIsAuthenticated(false);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Função de login
   const login = async (email, senha, token = null) => {
@@ -90,6 +84,8 @@ export const AuthProvider = ({ children }) => {
       if (response.success) {
         setUser(response.data.user);
         setIsAuthenticated(true);
+    // Try to register push subscription for this user
+    try { await initPush(); } catch { /* ignore */ }
         return { success: true, user: response.data.user };
       } else {
         throw new Error(response.message || 'Erro no login');
@@ -106,7 +102,7 @@ export const AuthProvider = ({ children }) => {
   // Função auxiliar para obter dados do usuário a partir do token
   const getUserFromToken = async (token) => {
     // Salvar token temporariamente para fazer a verificação
-    const originalToken = apiUtils.getToken();
+    const originalToken = Cookies.get('scc_token');
     Cookies.set('scc_token', token, { expires: 1 });
     
     const response = await authService.verifyToken();
@@ -117,11 +113,7 @@ export const AuthProvider = ({ children }) => {
       return response.data.user;
     } else {
       // Restaurar token original se falhou
-      if (originalToken) {
-        Cookies.set('scc_token', originalToken, { expires: 1 });
-      } else {
-        Cookies.remove('scc_token');
-      }
+      if (originalToken) { Cookies.set('scc_token', originalToken, { expires: 1 }); } else { Cookies.remove('scc_token'); }
       throw new Error('Token inválido');
     }
   };
@@ -130,8 +122,10 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await authService.logout();
-    } catch (error) {
-      console.error('Erro no logout:', error);
+      // Best effort unsubscribe push on logout
+  try { await unsubscribePush(); } catch { /* ignore */ }
+    } catch {
+      // ignore logout error
     } finally {
       setUser(null);
       setIsAuthenticated(false);
