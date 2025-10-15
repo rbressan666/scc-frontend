@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import Cookies from 'js-cookie';
 import { authService } from '../services/api';
-import { initPush, unsubscribePush } from '../services/pushClient';
+import { initPush } from '../services/pushClient';
 
 // Criar contexto
 const AuthContext = createContext();
@@ -13,6 +13,32 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Função de logout (definida antes para evitar TDZ em checkAuth)
+  const logout = async () => {
+    try {
+      await authService.logout();
+    } catch {
+      // ignore logout error
+    } finally {
+      setUser(null);
+      setIsAuthenticated(false);
+    }
+  };
+
+  // Função auxiliar para obter dados do usuário a partir do token (antes de login/checkAuth)
+  const getUserFromToken = async (token) => {
+    const originalToken = Cookies.get('scc_token');
+    Cookies.set('scc_token', token, { expires: 1 });
+    const response = await authService.verifyToken();
+    if (response.success) {
+      Cookies.set('scc_user', JSON.stringify(response.data.user), { expires: 1 });
+      return response.data.user;
+    } else {
+      if (originalToken) { Cookies.set('scc_token', originalToken, { expires: 1 }); } else { Cookies.remove('scc_token'); }
+      throw new Error('Token inválido');
+    }
+  };
 
   // Função para verificar se o usuário está autenticado
   const checkAuth = useCallback(async () => {
@@ -96,39 +122,6 @@ export const AuthProvider = ({ children }) => {
         success: false, 
         message: error.message || 'Erro no login' 
       };
-    }
-  };
-
-  // Função auxiliar para obter dados do usuário a partir do token
-  const getUserFromToken = async (token) => {
-    // Salvar token temporariamente para fazer a verificação
-    const originalToken = Cookies.get('scc_token');
-    Cookies.set('scc_token', token, { expires: 1 });
-    
-    const response = await authService.verifyToken();
-    
-    if (response.success) {
-      // Salvar dados do usuário nos cookies
-      Cookies.set('scc_user', JSON.stringify(response.data.user), { expires: 1 });
-      return response.data.user;
-    } else {
-      // Restaurar token original se falhou
-      if (originalToken) { Cookies.set('scc_token', originalToken, { expires: 1 }); } else { Cookies.remove('scc_token'); }
-      throw new Error('Token inválido');
-    }
-  };
-
-  // Função de logout
-  const logout = async () => {
-    try {
-      await authService.logout();
-      // Best effort unsubscribe push on logout
-  try { await unsubscribePush(); } catch { /* ignore */ }
-    } catch {
-      // ignore logout error
-    } finally {
-      setUser(null);
-      setIsAuthenticated(false);
     }
   };
 

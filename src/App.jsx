@@ -18,6 +18,8 @@ import DashboardContagemPage from './pages/DashboardContagemPage';
 import AnaliseVariacaoPage from './pages/AnaliseVariacaoPage';
 import ChecklistEntradaPage from './pages/ChecklistEntradaPage';
 import ChecklistSaidaPage from './pages/ChecklistSaidaPage';
+import AdminDiagnosticsPage from './pages/AdminDiagnosticsPage';
+import PlanningPage from './pages/PlanningPage';
 import './App.css';
 
 // Componente 404 separado para usar useNavigate
@@ -108,6 +110,24 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <ConfiguracoesPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Diagnósticos e Planejamento - apenas admin */}
+            <Route
+              path="/admin/diagnosticos"
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminDiagnosticsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/planejamento"
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <PlanningPage />
                 </ProtectedRoute>
               }
             />

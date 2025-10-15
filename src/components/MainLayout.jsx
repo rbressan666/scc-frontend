@@ -42,6 +42,18 @@ const MainLayout = ({ children }) => {
       adminOnly: true
     },
     {
+      title: "Diagnósticos",
+      icon: Settings,
+      path: "/admin/diagnosticos",
+      adminOnly: true
+    },
+    {
+      title: "Planejamento",
+      icon: Settings,
+      path: "/planejamento",
+      adminOnly: true
+    },
+    {
       title: "Perfil",
       icon: User,
       path: "/perfil",
