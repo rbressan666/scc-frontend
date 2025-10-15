@@ -20,6 +20,7 @@ import ChecklistEntradaPage from './pages/ChecklistEntradaPage';
 import ChecklistSaidaPage from './pages/ChecklistSaidaPage';
 import AdminDiagnosticsPage from './pages/AdminDiagnosticsPage';
 import PlanningPage from './pages/PlanningPage';
+import ProfilePage from './pages/ProfilePage';
 import './App.css';
 
 // Componente 404 separado para usar useNavigate
