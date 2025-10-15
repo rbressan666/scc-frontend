@@ -6,6 +6,7 @@ export default function PlanningPage() {
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [genInfo, setGenInfo] = useState(null);
 
   const [form, setForm] = useState({ userId: '', dayOfWeek: 5, shiftType: 'diurno', startDate: '' });
 
@@ -45,11 +46,30 @@ export default function PlanningPage() {
     }
   };
 
+  const generateNow = async () => {
+    try {
+      setError('');
+      const r = await api.post('/api/schedule/generate', {});
+      setGenInfo(r);
+      // Opcional: recarregar diagnósticos em outra aba; aqui apenas exibimos o resultado
+    } catch (e) {
+      setError(e?.message || 'Falha ao gerar lembretes');
+    }
+  };
+
   return (
     <MainLayout>
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold">Planejamento de Escalas</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">Planejamento de Escalas</h1>
+          <button type="button" onClick={generateNow} className="px-3 py-1 rounded bg-blue-600 text-white">Gerar lembretes</button>
+        </div>
         {error && <div className="text-red-600">{error}</div>}
+        {genInfo && (
+          <div className="p-3 bg-green-50 border border-green-200 rounded text-sm">
+            Gerados: <b>{genInfo.created || genInfo.enqueued || 0}</b> — Janela: <b>{genInfo.days || genInfo.lookaheadDays || '-'} dias</b>
+          </div>
+        )}
         <form onSubmit={create} className="p-4 bg-white rounded shadow space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <input className="border p-2 rounded" placeholder="User ID (UUID)" value={form.userId} onChange={e => setForm(f => ({...f, userId: e.target.value}))} required />
