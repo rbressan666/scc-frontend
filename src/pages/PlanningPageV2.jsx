@@ -17,11 +17,13 @@ function fmtTime(t){ return t?.slice(0,5) || ''; }
 export default function PlanningPageV2(){
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
-  const [selectedUser, setSelectedUser] = useState('');
+  const [selectedUsers, setSelectedUsers] = useState([]);
   const [week, setWeek] = useState({ weekStart: '', days: [], shifts: [] });
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [applying, setApplying] = useState(false);
+  const [showRules, setShowRules] = useState(false);
 
   // modo de criação: regra semanal contínua ou turno pontual
   const [continuous, setContinuous] = useState(false);
@@ -31,9 +33,9 @@ export default function PlanningPageV2(){
       const res = await api.get('/api/users?includeInactive=false');
       const list = (res.data || res || []).map(u => ({ id: u.id, name: u.nome_completo }));
       setUsers(list);
-      if(list.length && !selectedUser){ setSelectedUser(list[0].id); }
+      if(list.length && (!selectedUsers || selectedUsers.length===0)){ setSelectedUsers([list[0].id]); }
     }catch(e){ setError(e?.message||'Erro ao carregar usuários'); }
-  },[selectedUser]);
+  },[selectedUsers]);
 
   const loadWeek = useCallback(async(start)=>{
     try{
@@ -100,20 +102,7 @@ export default function PlanningPageV2(){
     }catch{ return iso; }
   };
 
-  // Cores: atribuir cor não usada ao selecionar usuário
-  const [overrideColors, setOverrideColors] = useState({});
-  useEffect(()=>{
-    if(!selectedUser) return;
-    const used = new Set();
-    week.shifts.forEach(s=>{ used.add(userColorMap.get(s.user_id)); });
-    // se o selecionado já tem cor não usada, mantém; senão define a primeira não utilizada
-    const current = userColorMap.get(selectedUser);
-    if(!used.has(current)) return; // já é não usada
-    const candidate = colorPalette.find(c=> !used.has(c));
-    if(candidate){ setOverrideColors(prev=> ({...prev, [selectedUser]: candidate})); }
-  },[selectedUser, week.shifts, colorPalette, userColorMap]);
-
-  const finalColor = (userId)=> overrideColors[userId] || userColorMap.get(userId) || '#3b82f6';
+  const finalColor = (userId)=> userColorMap.get(userId) || '#3b82f6';
 
   // Utilitário: converte hex #RRGGBB em rgba com alpha
   const hexToRgba = (hex, alpha=0.15)=>{
@@ -188,22 +177,43 @@ export default function PlanningPageV2(){
           {/* Controles principais: Usuário e Contínuo */}
           <div className="flex items-center gap-4 bg-white p-3 rounded border">
             <div className="flex items-center gap-2">
-              <label className="text-sm">Usuário</label>
-              <select value={selectedUser} onChange={e=>setSelectedUser(e.target.value)} className="border p-1 rounded">
-                <option value="" disabled>Selecione…</option>
+              <label className="text-sm">Usuários</label>
+              <select multiple value={selectedUsers} onChange={e=> setSelectedUsers(Array.from(e.target.selectedOptions).map(o=>o.value))} className="border p-1 rounded min-w-52" size={Math.min(6, Math.max(3, users.length))}>
                 {users.map(u=> <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
             </div>
             <div className="flex items-center gap-2">
               <label className="text-sm">Contínuo</label>
               <input type="checkbox" checked={continuous} onChange={e=>setContinuous(e.target.checked)} />
+              <span className="text-xs text-gray-500">(trabalha sempre neste dia/horário até parar)</span>
             </div>
-            {selectedUser && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: finalColor(selectedUser) }}></span>
-                <span>Cor de {users.find(u=>u.id===selectedUser)?.name || ''}</span>
-              </div>
-            )}
+            <Button
+              disabled={applying || !rules?.length || !week?.days?.length}
+              onClick={async()=>{
+                try{
+                  setApplying(true); setError('');
+                  // Aplica regras a esta semana para todos os usuários envolvidos nas regras
+                  const dayByDow = new Map();
+                  (week.days||[]).forEach(iso=>{ const d=new Date(iso+'T00:00:00Z'); dayByDow.set(d.getUTCDay(), iso); });
+                  const existing = Array.isArray(week?.shifts) ? week.shifts : [];
+                  for(const r of (rules||[])){
+                    const iso = dayByDow.get(Number(r.day_of_week));
+                    if(!iso || !r.start_time || !r.end_time) continue;
+                    const start = fmtTime(r.start_time); const end = fmtTime(r.end_time);
+                    // evita duplicar se já existe mesmo user/date/start/end
+                    const dup = existing.find(s=> s.user_id===r.user_id && s.date===iso && fmtTime(s.start_time)===start && fmtTime(s.end_time)===end);
+                    if(dup) continue;
+                    await api.post('/api/planning/shifts', { userId: r.user_id, date: iso, startTime: start, endTime: end });
+                  }
+                  await loadWeek(week.weekStart);
+                }catch(err){ setError(err?.message||'Falha ao aplicar regras'); }
+                finally{ setApplying(false); }
+              }}
+              variant="outline" size="sm"
+            >Aplicar regras nesta semana</Button>
+            <Button variant="ghost" size="sm" onClick={()=>setShowRules(v=>!v)}>
+              {showRules ? 'Ocultar regras' : 'Ver/Parar regras'}
+            </Button>
           </div>
   {error && <div className="text-red-600">{error}</div>}
   {loading && <div>Carregando...</div>}
@@ -221,6 +231,9 @@ export default function PlanningPageV2(){
             allDaySlot={false}
             selectable
             selectMirror
+            slotDuration="01:00:00"
+            expandRows={true}
+            dayHeaderFormat={{ weekday: 'short', month: '2-digit', day: '2-digit' }}
             slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
             headerToolbar={false}
             events={[
@@ -270,7 +283,7 @@ export default function PlanningPageV2(){
             editable
             eventOverlap="block"
             select={async(info)=>{
-              if(!selectedUser){ alert('Selecione um usuário'); return; }
+              if(!selectedUsers || selectedUsers.length===0){ alert('Selecione pelo menos um usuário'); return; }
               const start = new Date(info.start);
               const end = new Date(info.end);
               const dayIso = start.toISOString().slice(0,10);
@@ -278,10 +291,16 @@ export default function PlanningPageV2(){
               const endTime = end.toISOString().slice(11,16);
               try{
                 if(continuous){
+                  // Contínuo: cria/atualiza uma regra permanente para os usuários selecionados
                   const dow = start.getUTCDay();
-                  await api.post('/api/planning/rules', { userId: selectedUser, dayOfWeek: dow, startTime, endTime, continuous: true });
+                  for(const uid of selectedUsers){
+                    await api.post('/api/planning/rules', { userId: uid, dayOfWeek: dow, startTime, endTime, continuous: true });
+                  }
+                  await loadRules();
                 }else{
-                  await api.post('/api/planning/shifts', { userId: selectedUser, date: dayIso, startTime, endTime });
+                  for(const uid of selectedUsers){
+                    await api.post('/api/planning/shifts', { userId: uid, date: dayIso, startTime, endTime });
+                  }
                 }
                 await loadWeek(week.weekStart);
               }catch(err){ setError(err?.message||'Falha ao salvar'); }
@@ -306,6 +325,31 @@ export default function PlanningPageV2(){
             }}
           />
         </div>
+
+        {showRules && (
+          <div className="bg-white rounded border p-3 space-y-2">
+            <div className="text-sm font-medium">Regras ativas</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+              {(rules||[]).map(r=> (
+                <div key={r.id} className="flex items-center justify-between border rounded p-2">
+                  <div className="text-sm">
+                    <div className="font-medium">{r.user_name}</div>
+                    <div className="text-gray-600">Dia {Number(r.day_of_week)} • {fmtTime(r.start_time)}–{fmtTime(r.end_time)}</div>
+                  </div>
+                  <Button size="sm" variant="destructive" onClick={async()=>{
+                    try{
+                      await api.delete(`/api/planning/rules/${r.id}`); // soft stop
+                      await loadRules();
+                    }catch(err){ setError(err?.message||'Falha ao parar regra'); }
+                  }}>Parar</Button>
+                </div>
+              ))}
+              {(!rules || rules.length===0) && (
+                <div className="text-sm text-gray-500">Nenhuma regra ativa.</div>
+              )}
+            </div>
+          </div>
+        )}
 
   {/* Legenda por usuário próxima do calendário */}
         <div className="flex items-center gap-3 flex-wrap">
