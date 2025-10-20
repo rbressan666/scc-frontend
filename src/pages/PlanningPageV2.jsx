@@ -2,6 +2,12 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { ArrowLeft, Calendar as CalendarIcon } from 'lucide-react';
+import FullCalendar from '@fullcalendar/react';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
+import ptLocale from '@fullcalendar/core/locales/pt-br';
+import '@fullcalendar/core/index.css';
+import '@fullcalendar/timegrid/index.css';
 import api from '../services/api';
 import MainLayout from '../components/MainLayout';
 
@@ -15,13 +21,12 @@ export default function PlanningPageV2(){
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState('');
   const [week, setWeek] = useState({ weekStart: '', days: [], shifts: [] });
+  const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // form state: per-day start/end and continuous flag
+  // modo de criação: regra semanal contínua ou turno pontual
   const [continuous, setContinuous] = useState(false);
-  // interação de seleção por arraste
-  const [sel, setSel] = useState({ active:false, dayIndex:null, startMin:0, endMin:0 });
 
   const loadUsers = useCallback(async()=>{
     try{
@@ -61,30 +66,16 @@ export default function PlanningPageV2(){
   useEffect(()=>{ loadUsers(); },[loadUsers]);
   useEffect(()=>{ loadWeek(); },[loadWeek]);
 
-  // salvar conforme modo (contínuo -> regra semanal; pontual -> shift da data)
-  const saveByMode = async (dayIso, startMin, endMin)=>{
+  // Carregar regras semanais (para overlay/ghost)
+  const loadRules = useCallback(async()=>{
     try{
-      setError('');
-      if(!selectedUser) throw new Error('Selecione um usuário');
-      const startTime = minutesToHHMM(startMin);
-      const endTime = minutesToHHMM(endMin);
-      // alerta >9h
-      const spanHrs = endMin > startMin ? (endMin-startMin)/60 : ((1440 - startMin + endMin)/60);
-      if(spanHrs > 9) alert(`Atenção: duração longa (${spanHrs.toFixed(1)}h).`);
-      if(continuous){
-        const dow = new Date(dayIso+'T00:00:00Z').getUTCDay();
-        await api.post('/api/planning/rules', { userId: selectedUser, dayOfWeek: dow, startTime, endTime, continuous: true });
-      } else {
-        await api.post('/api/planning/shifts', { userId: selectedUser, date: dayIso, startTime, endTime });
-      }
-      await loadWeek(week.weekStart);
-    }catch(e){ setError(e?.message||'Falha ao salvar planejamento'); }
-  };
+      const res = await api.get('/api/planning/rules');
+      setRules(res.rows || res?.data?.rows || []);
+    }catch{ /* overlay é opcional, não bloquear */ }
+  },[]);
+  useEffect(()=>{ loadRules(); },[loadRules]);
 
-  const removeShift = async (id)=>{
-    try{ await api.delete(`/api/planning/shifts/${id}`); await loadWeek(week.weekStart); }
-    catch(e){ setError(e?.message||'Falha ao remover'); }
-  };
+  // remover shift - utilitário futuro (removido para evitar lint enquanto não há botão)
 
   const navigateWeek = async (delta)=>{
     // delta in days: -7 previous, +7 next
@@ -93,22 +84,7 @@ export default function PlanningPageV2(){
     await loadWeek(d.toISOString().slice(0,10));
   };
 
-  // Build hourly grid from 12:00 to next-day 12:00 (24h window)
-  const ROW_H = 32; // px per hour
-  const hours = useMemo(()=> Array.from({length:25}, (_,i)=> (12+i)%24 ),[]);
-  const totalHeight = useMemo(()=> 24 * ROW_H, [ROW_H]);
-
-  const dayHeaderLabels = ['Quarta','Quinta','Sexta','Sábado','Domingo','Segunda','Terça'];
-
-  const toMinutes = (t)=>{ const [h,m] = t.split(':').map(Number); return h*60+m; };
-  const minutesFromNoon = (m)=>{ // map minutes-of-day (0..1439) to offset from 12:00 within 0..1440
-    const ref = 12*60;
-    const diff = m - ref;
-    return (diff < 0 ? diff + 1440 : diff);
-  };
-  const prevIso = (iso)=>{
-    const d = new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()-1); return d.toISOString().slice(0,10);
-  };
+  // Helpers (mantidos mínimos)
 
   // Mapa de cores por usuário (legenda e barras)
   const colorPalette = useMemo(()=>['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#84cc16','#a855f7','#fb7185'],[]);
@@ -141,86 +117,17 @@ export default function PlanningPageV2(){
 
   const finalColor = (userId)=> overrideColors[userId] || userColorMap.get(userId) || '#3b82f6';
 
-  // Helpers conversão
-  const minutesToHHMM = (m)=> `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
-  const yToMinutesOfDay = (y, colHeight)=> {
-    let offset = Math.max(0, Math.min(colHeight, y)) / colHeight * 1440; // 0..1440 a partir das 12:00
-    let m = Math.round(offset);
-    return (m + 12*60) % 1440; // volta para 00..1439 minutos do dia
-  };
-  const minutesToY = (m, colHeight)=> (minutesFromNoon(m)/1440) * colHeight;
-
-  // Handlers de interação por arraste
-  const onDayMouseDown = (ci, e)=>{
+  // Utilitário: converte hex #RRGGBB em rgba com alpha
+  const hexToRgba = (hex, alpha=0.15)=>{
     try{
-      if(!selectedUser) return alert('Selecione um usuário');
-      const rect = e.currentTarget.getBoundingClientRect();
-      const y = e.clientY - rect.top;
-      const m = yToMinutesOfDay(y, rect.height);
-      setSel({ active:true, dayIndex:ci, startMin:m, endMin:m });
-  }catch{ /* noop */ }
+      const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      if(!m) return `rgba(59,130,246,${alpha})`;
+      const r = parseInt(m[1],16), g = parseInt(m[2],16), b = parseInt(m[3],16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }catch{ return `rgba(59,130,246,${alpha})`; }
   };
-  const onDayMouseMove = (ci, e)=>{
-    if(!sel.active || sel.dayIndex !== ci) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const y = e.clientY - rect.top;
-    const m = yToMinutesOfDay(y, rect.height);
-    setSel(prev=> ({ ...prev, endMin:m }));
-  };
-  const finishSelection = async ()=>{
-    const { active, dayIndex, startMin, endMin } = sel;
-    if(!active) return;
-    const dayIso = week.days[dayIndex];
-    if(!dayIso){ setSel({active:false, dayIndex:null, startMin:0, endMin:0}); return; }
-    // normaliza
-    const s = startMin;
-    const e = endMin;
-    await saveByMode(dayIso, s, e);
-    setSel({active:false, dayIndex:null, startMin:0, endMin:0});
-  };
-  const onDayMouseUp = (ci)=>{ if(sel.active && sel.dayIndex===ci) finishSelection(); };
 
-  // Edição de turnos (drag/resize)
-  const [drag, setDrag] = useState({ id:null, mode:null, startMin:0, endMin:0, dayIndex:null, startY:0 });
-  const startDrag = (e, s, ci, mode)=>{
-    e.stopPropagation();
-    const rect = e.currentTarget.parentElement.getBoundingClientRect();
-    const y = e.clientY - rect.top;
-    setDrag({ id: s.id, mode, startMin: toMinutes(fmtTime(s.start_time)), endMin: toMinutes(fmtTime(s.end_time)), dayIndex: ci, startY: y });
-  };
-  const onDragMove = (ci, e)=>{
-    if(!drag.id || drag.dayIndex!==ci) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const y = e.clientY - rect.top;
-    const delta = y - drag.startY;
-    const deltaMin = Math.round(delta / rect.height * 1440);
-    setDrag(prev=>{
-      if(prev.mode==='move'){
-        let s = (prev.startMin + deltaMin + 1440) % 1440;
-        let ee = (prev.endMin + deltaMin + 1440) % 1440;
-        return { ...prev, curStart:s, curEnd:ee };
-      }
-      if(prev.mode==='resize-start'){
-        let s = (prev.startMin + deltaMin + 1440) % 1440;
-        return { ...prev, curStart:s };
-      }
-      if(prev.mode==='resize-end'){
-        let ee = (prev.endMin + deltaMin + 1440) % 1440;
-        return { ...prev, curEnd:ee };
-      }
-      return prev;
-    });
-  };
-  const endDrag = async ()=>{
-    if(!drag.id) return;
-    const s = drag.curStart ?? drag.startMin;
-    const e = drag.curEnd ?? drag.endMin;
-    try{
-      await api.put(`/api/planning/shifts/${drag.id}`, { startTime: minutesToHHMM(s), endTime: minutesToHHMM(e) });
-      await loadWeek(week.weekStart);
-    }catch(err){ setError(err?.message||'Falha ao atualizar'); }
-    finally{ setDrag({ id:null, mode:null, startMin:0, endMin:0, dayIndex:null, startY:0 }); }
-  };
+  // Conversores úteis (nenhum necessário no momento)
 
   const headerEl = (
     <div className="bg-white shadow-sm border-b">
@@ -285,83 +192,98 @@ export default function PlanningPageV2(){
   {error && <div className="text-red-600">{error}</div>}
   {loading && <div>Carregando...</div>}
 
-        {/* Calendário semanal (primeiro bloco) */}
-        <div className="overflow-auto">
-          <div className="min-w-[900px]">
-            <div className="grid" style={{ gridTemplateColumns: `100px repeat(7, 1fr)` }}>
-              {/* cabeçalhos */}
-              <div></div>
-              {week.days.map((_,i)=> (
-                <div key={i} className="text-center font-medium border-l py-2">{dayHeaderLabels[i] || ''}</div>
-              ))}
-              {/* coluna de horários (12:00 -> 12:00) */}
-              <div className="relative border-t" style={{ height: totalHeight }}>
-                {hours.slice(0,24).map((h,idx)=> (
-                  <div key={idx} className="text-xs text-right pr-2 border-b" style={{ height: ROW_H }}>
-                    {String(h).padStart(2,'0')}:00
-                  </div>
-                ))}
-              </div>
-              {/* colunas dos dias */}
-              {week.days.map((d,ci)=> (
-                <div key={ci}
-                  className="relative border-l border-t select-none"
-                  style={{ height: totalHeight, backgroundImage: `repeating-linear-gradient(to bottom, #e5e7eb 0, #e5e7eb 1px, transparent 1px, transparent ${ROW_H}px)` }}
-                  onMouseDown={(e)=>onDayMouseDown(ci, e)}
-                  onMouseMove={(e)=>onDayMouseMove(ci, e)}
-                  onMouseUp={(e)=>onDayMouseUp(ci, e)}
-                >
-                  {/* Blocos do próprio dia */}
-                  {week.shifts.filter(s=> s.date===d).map(s=>{
-                    const startM = toMinutes(fmtTime(s.start_time));
-                    const endM = toMinutes(fmtTime(s.end_time));
-                    const spans = s.spans_next_day;
-                    const top = (minutesFromNoon(startM)/1440) * totalHeight;
-                    const durMin = spans ? (1440 - startM) : Math.max(0, endM - startM);
-                    const height = Math.max(8, (durMin/1440) * totalHeight);
-                    const color = finalColor(s.user_id);
-                    return (
-                      <div key={`${s.id}-a`} className="absolute left-1 right-1 rounded group" style={{ top, height, backgroundColor: color, opacity: 0.9 }} title={`${s.user_name} ${fmtTime(s.start_time)}-${fmtTime(s.end_time)}`} onMouseDown={(e)=>startDrag(e,s,ci,'move')} onMouseMove={(e)=>onDragMove(ci,e)} onMouseUp={endDrag}>
-                        <span className="text-[10px] text-white pl-1">{s.user_name}</span>
-                        <button onClick={(e)=>{e.stopPropagation(); removeShift(s.id);}} className="absolute right-1 top-1 text-[10px] text-white">x</button>
-                        {/* handles */}
-                        <div onMouseDown={(e)=>startDrag(e,s,ci,'resize-start')} className="absolute left-0 top-0 w-full h-2 cursor-n-resize opacity-0 group-hover:opacity-100"></div>
-                        <div onMouseDown={(e)=>startDrag(e,s,ci,'resize-end')} className="absolute left-0 bottom-0 w-full h-2 cursor-s-resize opacity-0 group-hover:opacity-100"></div>
-                      </div>
-                    );
-                  })}
-                  {/* Blocos que vêm do dia anterior e atravessam a meia-noite */}
-                  {week.shifts.filter(s=> s.spans_next_day && s.date===prevIso(d)).map(s=>{
-                    const endM = toMinutes(fmtTime(s.end_time));
-                    const top = (minutesFromNoon(0)/1440) * totalHeight; // início às 00:00
-                    const durMin = endM; // até end
-                    const height = Math.max(8, (durMin/1440) * totalHeight);
-                    const color = finalColor(s.user_id);
-                    return (
-                      <div key={`${s.id}-b`} className="absolute left-1 right-1 rounded group" style={{ top, height, backgroundColor: color, opacity: 0.9 }} title={`${s.user_name} 00:00-${fmtTime(s.end_time)}`} onMouseDown={(e)=>startDrag(e,s,ci,'move')} onMouseMove={(e)=>onDragMove(ci,e)} onMouseUp={endDrag}>
-                        <span className="text-[10px] text-white pl-1">{s.user_name}</span>
-                        <button onClick={(e)=>{e.stopPropagation(); removeShift(s.id);}} className="absolute right-1 top-1 text-[10px] text-white">x</button>
-                        {/* handles */}
-                        <div onMouseDown={(e)=>startDrag(e,s,ci,'resize-start')} className="absolute left-0 top-0 w-full h-2 cursor-n-resize opacity-0 group-hover:opacity-100"></div>
-                        <div onMouseDown={(e)=>startDrag(e,s,ci,'resize-end')} className="absolute left-0 bottom-0 w-full h-2 cursor-s-resize opacity-0 group-hover:opacity-100"></div>
-                      </div>
-                    );
-                  })}
-                  {/* seleção por arraste */}
-                  {sel.active && sel.dayIndex===ci && (
-                    (()=>{
-                      const sY = minutesToY(sel.startMin, totalHeight);
-                      const eY = minutesToY(sel.endMin, totalHeight);
-                      const top = Math.min(sY, eY);
-                      const height = Math.max(2, Math.abs(eY - sY));
-                      const color = selectedUser ? finalColor(selectedUser) : '#3b82f6';
-                      return <div className="absolute left-1 right-1 rounded border" style={{ top, height, backgroundColor: color+'33', borderColor: color }}></div>;
-                    })()
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* FullCalendar - timeGridWeek */}
+        <div className="bg-white rounded border p-2">
+          <FullCalendar
+            plugins={[timeGridPlugin, interactionPlugin]}
+            initialView="timeGridWeek"
+            locale={ptLocale}
+            firstDay={3}
+            slotMinTime="12:00:00"
+            slotMaxTime="24:00:00"
+            height="auto"
+            allDaySlot={false}
+            selectable
+            selectMirror
+            slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
+            headerToolbar={false}
+            events={[
+              // turnos pontuais
+              ...week.shifts.flatMap(s=>{
+                const startISO = `${s.date}T${fmtTime(s.start_time)}:00`;
+                const endISO = `${s.spans_next_day ? new Date(new Date(s.date+'T00:00:00Z').getTime()+86400000).toISOString().slice(0,10) : s.date}T${fmtTime(s.end_time)}:00`;
+                const base = [{ id: String(s.id), title: s.user_name, start: startISO, end: endISO, backgroundColor: finalColor(s.user_id), borderColor: finalColor(s.user_id) }];
+                if(s.spans_next_day){
+                  const nextDay = new Date(new Date(s.date+'T00:00:00Z').getTime()+86400000).toISOString().slice(0,10);
+                  return [
+                    { ...base[0] },
+                    { id: `${s.id}-b`, title: s.user_name, start: `${nextDay}T00:00:00`, end: `${nextDay}T${fmtTime(s.end_time)}:00`, backgroundColor: finalColor(s.user_id), borderColor: finalColor(s.user_id), editable: false }
+                  ];
+                }
+                return base;
+              }),
+              // overlay de regras semanais (ghost, translúcido)
+              ...(() => {
+                if(!week?.days?.length || !rules?.length) return [];
+                // mapa dow->iso do intervalo atual
+                const mapDowToIso = new Map();
+                week.days.forEach(iso=>{ const d=new Date(iso+'T00:00:00Z'); mapDowToIso.set(d.getUTCDay(), iso); });
+                const evs = [];
+                for(const r of rules){
+                  const iso = mapDowToIso.get(Number(r.day_of_week));
+                  if(!iso || !r.start_time || !r.end_time) continue;
+                  const color = finalColor(r.user_id);
+                  evs.push({
+                    id: `rule-${r.id}-${iso}`,
+                    title: `${r.user_name} (regra)`,
+                    start: `${iso}T${fmtTime(r.start_time)}:00`,
+                    end: `${iso}T${fmtTime(r.end_time)}:00`,
+                    display: 'background',
+                    backgroundColor: hexToRgba(color, 0.12),
+                    overlap: true,
+                  });
+                }
+                return evs;
+              })()
+            ]}
+            editable
+            eventOverlap="block"
+            select={async(info)=>{
+              if(!selectedUser){ alert('Selecione um usuário'); return; }
+              const start = new Date(info.start);
+              const end = new Date(info.end);
+              const dayIso = start.toISOString().slice(0,10);
+              const startTime = start.toISOString().slice(11,16);
+              const endTime = end.toISOString().slice(11,16);
+              try{
+                if(continuous){
+                  const dow = start.getUTCDay();
+                  await api.post('/api/planning/rules', { userId: selectedUser, dayOfWeek: dow, startTime, endTime, continuous: true });
+                }else{
+                  await api.post('/api/planning/shifts', { userId: selectedUser, date: dayIso, startTime, endTime });
+                }
+                await loadWeek(week.weekStart);
+              }catch(err){ setError(err?.message||'Falha ao salvar'); }
+            }}
+            eventDrop={async(info)=>{
+              const id = info.event.id;
+              const startTime = info.event.start.toISOString().slice(11,16);
+              const endTime = info.event.end?.toISOString().slice(11,16) || startTime;
+              try{
+                await api.put(`/api/planning/shifts/${id}`, { startTime, endTime });
+                await loadWeek(week.weekStart);
+              }catch(err){ setError(err?.message||'Falha ao mover'); info.revert(); }
+            }}
+            eventResize={async(info)=>{
+              const id = info.event.id;
+              const startTime = info.event.start.toISOString().slice(11,16);
+              const endTime = info.event.end?.toISOString().slice(11,16) || startTime;
+              try{
+                await api.put(`/api/planning/shifts/${id}`, { startTime, endTime });
+                await loadWeek(week.weekStart);
+              }catch(err){ setError(err?.message||'Falha ao redimensionar'); info.revert(); }
+            }}
+          />
         </div>
 
   {/* Legenda por usuário próxima do calendário */}
