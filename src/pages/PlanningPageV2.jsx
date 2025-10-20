@@ -6,8 +6,6 @@ import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import ptLocale from '@fullcalendar/core/locales/pt-br';
-import '@fullcalendar/core/index.css';
-import '@fullcalendar/timegrid/index.css';
 import api from '../services/api';
 import MainLayout from '../components/MainLayout';
 
