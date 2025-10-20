@@ -17,14 +17,12 @@ function fmtTime(t){ return t?.slice(0,5) || ''; }
 export default function PlanningPageV2(){
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
-  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState('');
   const [week, setWeek] = useState({ weekStart: '', days: [], shifts: [] });
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [applying, setApplying] = useState(false);
-  const [slotStart, setSlotStart] = useState('12:00');
-  const [slotEnd, setSlotEnd] = useState('24:00');
 
   // modo de criação: regra semanal contínua ou turno pontual
   const [continuous, setContinuous] = useState(false);
@@ -34,9 +32,9 @@ export default function PlanningPageV2(){
       const res = await api.get('/api/users?includeInactive=false');
       const list = (res.data || res || []).map(u => ({ id: u.id, name: u.nome_completo }));
       setUsers(list);
-      if(list.length && (!selectedUsers || selectedUsers.length===0)){ setSelectedUsers([list[0].id]); }
+      if(list.length && !selectedUser){ setSelectedUser(list[0].id); }
     }catch(e){ setError(e?.message||'Erro ao carregar usuários'); }
-  },[selectedUsers]);
+  },[selectedUser]);
 
   const loadWeek = useCallback(async(start)=>{
     try{
@@ -181,11 +179,11 @@ export default function PlanningPageV2(){
             {loading && <div className="text-gray-500">Carregando...</div>}
           </div>
 
-          {/* Controles principais: Usuários, Contínuo, Faixa de horas */}
+          {/* Controles principais: Usuário e Contínuo */}
           <div className="flex flex-wrap items-center gap-3 bg-white p-2 rounded border text-sm">
             <div className="flex items-center gap-2">
-              <label className="text-sm">Usuários</label>
-              <select multiple value={selectedUsers} onChange={e=> setSelectedUsers(Array.from(e.target.selectedOptions).map(o=>o.value))} className="border p-1 rounded min-w-52" size={Math.min(6, Math.max(3, users.length))}>
+              <label className="text-sm">Usuário</label>
+              <select value={selectedUser} onChange={e=> setSelectedUser(e.target.value)} className="border p-1 rounded min-w-52">
                 {users.map(u=> <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
             </div>
@@ -193,16 +191,6 @@ export default function PlanningPageV2(){
               <label className="text-sm">Contínuo</label>
               <input type="checkbox" checked={continuous} onChange={e=>setContinuous(e.target.checked)} />
               <span className="text-xs text-gray-500">(trabalha sempre neste dia/horário até parar)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm">Horas</label>
-              <select value={slotStart} onChange={e=>setSlotStart(e.target.value)} className="border p-1 rounded">
-                {Array.from({length:25},(_,h)=>String(h).padStart(2,'0')+':00').map(t=> <option key={t} value={t}>{t}</option>)}
-              </select>
-              <span>até</span>
-              <select value={slotEnd} onChange={e=>setSlotEnd(e.target.value)} className="border p-1 rounded">
-                {Array.from({length:25},(_,h)=>String(h).padStart(2,'0')+':00').map(t=> <option key={t} value={t}>{t}</option>)}
-              </select>
             </div>
             <Button
               disabled={applying || !rules?.length || !week?.days?.length}
@@ -237,8 +225,8 @@ export default function PlanningPageV2(){
             initialView="timeGridWeek"
             locale={ptLocale}
             firstDay={3}
-            slotMinTime={`${slotStart}:00`}
-            slotMaxTime={`${slotEnd}:00`}
+            slotMinTime="12:00:00"
+            slotMaxTime="24:00:00"
             height="auto"
             allDaySlot={false}
             selectable
@@ -248,6 +236,7 @@ export default function PlanningPageV2(){
             dayHeaderFormat={{ weekday: 'short', month: '2-digit', day: '2-digit' }}
             slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
             headerToolbar={false}
+            eventTextColor="#111111"
             events={[
               // turnos pontuais
               ...((Array.isArray(week?.shifts) ? week.shifts : [])).flatMap(s=>{
@@ -313,7 +302,7 @@ export default function PlanningPageV2(){
               }
             }}
             select={async(info)=>{
-              if(!selectedUsers || selectedUsers.length===0){ alert('Selecione pelo menos um usuário'); return; }
+              if(!selectedUser){ alert('Selecione um usuário'); return; }
               const start = new Date(info.start);
               const end = new Date(info.end);
               const dayIso = start.toISOString().slice(0,10);
@@ -323,14 +312,10 @@ export default function PlanningPageV2(){
                 if(continuous){
                   // Contínuo: cria/atualiza uma regra permanente para os usuários selecionados
                   const dow = start.getUTCDay();
-                  for(const uid of selectedUsers){
-                    await api.post('/api/planning/rules', { userId: uid, dayOfWeek: dow, startTime, endTime, continuous: true });
-                  }
+                  await api.post('/api/planning/rules', { userId: selectedUser, dayOfWeek: dow, startTime, endTime, continuous: true });
                   await loadRules();
                 }else{
-                  for(const uid of selectedUsers){
-                    await api.post('/api/planning/shifts', { userId: uid, date: dayIso, startTime, endTime });
-                  }
+                  await api.post('/api/planning/shifts', { userId: selectedUser, date: dayIso, startTime, endTime });
                 }
                 await loadWeek(week.weekStart);
               }catch(err){ setError(err?.message||'Falha ao salvar'); }
