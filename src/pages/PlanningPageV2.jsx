@@ -23,7 +23,8 @@ export default function PlanningPageV2(){
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [applying, setApplying] = useState(false);
-  const [showRules, setShowRules] = useState(false);
+  const [slotStart, setSlotStart] = useState('12:00');
+  const [slotEnd, setSlotEnd] = useState('24:00');
 
   // modo de criação: regra semanal contínua ou turno pontual
   const [continuous, setContinuous] = useState(false);
@@ -137,7 +138,7 @@ export default function PlanningPageV2(){
   const headerEl = (
     <div className="bg-white shadow-sm border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-4">
+        <div className="flex justify-between items-center py-3">
               <div className="flex items-center space-x-4">
                 <Button
                   variant="ghost"
@@ -150,17 +151,17 @@ export default function PlanningPageV2(){
                 </Button>
                 <div className="flex items-center space-x-3">
                   <div className="bg-blue-600 text-white p-2 rounded-lg">
-                    <CalendarIcon className="h-6 w-6" />
+                    <CalendarIcon className="h-5 w-5" />
                   </div>
                   <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Planejamento Semanal</h1>
-                    <p className="text-sm text-gray-500">Defina regras e turnos pontuais</p>
+                    <h1 className="text-xl font-semibold text-gray-900 leading-tight">Planejamento Semanal</h1>
+                    <p className="text-xs text-gray-500">Regras contínuas e turnos pontuais</p>
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <Button onClick={()=>navigateWeek(-7)} variant="outline" size="sm">◀ Semana anterior</Button>
-                <div className="text-sm text-gray-700">
+                <div className="text-xs sm:text-sm text-gray-700">
                   {week.days?.length ? `Semana de ${fmtDayHeader(week.days[0])} a ${fmtDayHeader(week.days[6])}` : ''}
                 </div>
                 <Button onClick={()=>navigateWeek(+7)} variant="outline" size="sm">Próxima semana ▶</Button>
@@ -172,10 +173,16 @@ export default function PlanningPageV2(){
 
   return (
     <MainLayout customHeader={headerEl}>
-      <div className="space-y-4">
+      <div className="space-y-3">
 
-          {/* Controles principais: Usuário e Contínuo */}
-          <div className="flex items-center gap-4 bg-white p-3 rounded border">
+          {/* Área fixa para mensagens - evita deslocamento do calendário */}
+          <div className="min-h-6 text-sm">
+            {error && <div className="text-red-600">{error}</div>}
+            {loading && <div className="text-gray-500">Carregando...</div>}
+          </div>
+
+          {/* Controles principais: Usuários, Contínuo, Faixa de horas */}
+          <div className="flex flex-wrap items-center gap-3 bg-white p-2 rounded border text-sm">
             <div className="flex items-center gap-2">
               <label className="text-sm">Usuários</label>
               <select multiple value={selectedUsers} onChange={e=> setSelectedUsers(Array.from(e.target.selectedOptions).map(o=>o.value))} className="border p-1 rounded min-w-52" size={Math.min(6, Math.max(3, users.length))}>
@@ -186,6 +193,16 @@ export default function PlanningPageV2(){
               <label className="text-sm">Contínuo</label>
               <input type="checkbox" checked={continuous} onChange={e=>setContinuous(e.target.checked)} />
               <span className="text-xs text-gray-500">(trabalha sempre neste dia/horário até parar)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm">Horas</label>
+              <select value={slotStart} onChange={e=>setSlotStart(e.target.value)} className="border p-1 rounded">
+                {Array.from({length:25},(_,h)=>String(h).padStart(2,'0')+':00').map(t=> <option key={t} value={t}>{t}</option>)}
+              </select>
+              <span>até</span>
+              <select value={slotEnd} onChange={e=>setSlotEnd(e.target.value)} className="border p-1 rounded">
+                {Array.from({length:25},(_,h)=>String(h).padStart(2,'0')+':00').map(t=> <option key={t} value={t}>{t}</option>)}
+              </select>
             </div>
             <Button
               disabled={applying || !rules?.length || !week?.days?.length}
@@ -211,12 +228,7 @@ export default function PlanningPageV2(){
               }}
               variant="outline" size="sm"
             >Aplicar regras nesta semana</Button>
-            <Button variant="ghost" size="sm" onClick={()=>setShowRules(v=>!v)}>
-              {showRules ? 'Ocultar regras' : 'Ver/Parar regras'}
-            </Button>
           </div>
-  {error && <div className="text-red-600">{error}</div>}
-  {loading && <div>Carregando...</div>}
 
         {/* FullCalendar - timeGridWeek */}
         <div className="bg-white rounded border p-2">
@@ -225,8 +237,8 @@ export default function PlanningPageV2(){
             initialView="timeGridWeek"
             locale={ptLocale}
             firstDay={3}
-            slotMinTime="12:00:00"
-            slotMaxTime="24:00:00"
+            slotMinTime={`${slotStart}:00`}
+            slotMaxTime={`${slotEnd}:00`}
             height="auto"
             allDaySlot={false}
             selectable
@@ -256,7 +268,7 @@ export default function PlanningPageV2(){
                 }
                 return base;
               }),
-              // overlay de regras semanais (ghost, translúcido)
+              // regras semanais como eventos clicáveis (translúcidos)
               ...(() => {
                 if(!Array.isArray(week?.days) || week.days.length===0 || !Array.isArray(rules) || rules.length===0) return [];
                 // mapa dow->iso do intervalo atual
@@ -272,9 +284,12 @@ export default function PlanningPageV2(){
                     title: `${r.user_name} (regra)`,
                     start: `${iso}T${fmtTime(r.start_time)}:00`,
                     end: `${iso}T${fmtTime(r.end_time)}:00`,
-                    display: 'background',
-                    backgroundColor: hexToRgba(color, 0.12),
+                    backgroundColor: hexToRgba(color, 0.18),
+                    borderColor: color,
+                    editable: false,
                     overlap: true,
+                    classNames: ['fc-rule'],
+                    extendedProps: { kind: 'rule', ruleId: r.id }
                   });
                 }
                 return evs;
@@ -282,6 +297,21 @@ export default function PlanningPageV2(){
             ]}
             editable
             eventOverlap="block"
+            eventClick={async(info)=>{
+              const kind = info.event.extendedProps?.kind;
+              if(kind === 'rule'){
+                const ruleId = info.event.extendedProps.ruleId;
+                if(!ruleId) return;
+                const ok = window.confirm('Parar esta regra contínua?');
+                if(!ok) return;
+                try{
+                  await api.delete(`/api/planning/rules/${ruleId}`);
+                  await loadRules();
+                  await loadWeek(week.weekStart);
+                }catch(err){ setError(err?.message||'Falha ao parar regra'); }
+                return;
+              }
+            }}
             select={async(info)=>{
               if(!selectedUsers || selectedUsers.length===0){ alert('Selecione pelo menos um usuário'); return; }
               const start = new Date(info.start);
@@ -326,30 +356,6 @@ export default function PlanningPageV2(){
           />
         </div>
 
-        {showRules && (
-          <div className="bg-white rounded border p-3 space-y-2">
-            <div className="text-sm font-medium">Regras ativas</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-              {(rules||[]).map(r=> (
-                <div key={r.id} className="flex items-center justify-between border rounded p-2">
-                  <div className="text-sm">
-                    <div className="font-medium">{r.user_name}</div>
-                    <div className="text-gray-600">Dia {Number(r.day_of_week)} • {fmtTime(r.start_time)}–{fmtTime(r.end_time)}</div>
-                  </div>
-                  <Button size="sm" variant="destructive" onClick={async()=>{
-                    try{
-                      await api.delete(`/api/planning/rules/${r.id}`); // soft stop
-                      await loadRules();
-                    }catch(err){ setError(err?.message||'Falha ao parar regra'); }
-                  }}>Parar</Button>
-                </div>
-              ))}
-              {(!rules || rules.length===0) && (
-                <div className="text-sm text-gray-500">Nenhuma regra ativa.</div>
-              )}
-            </div>
-          </div>
-        )}
 
   {/* Legenda por usuário próxima do calendário */}
         <div className="flex items-center gap-3 flex-wrap">
