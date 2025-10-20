@@ -43,7 +43,7 @@ export default function PlanningPageV2(){
       const qs = q.toString();
       const url = `/api/planning/week${qs ? `?${qs}` : ''}`;
       const res = await api.get(url);
-      setWeek(res);
+      setWeek(res?.data || res);
     }catch(e){ setError(e?.message||'Erro ao carregar semana'); }
     finally{ setLoading(false); }
   },[]);
@@ -123,6 +123,24 @@ export default function PlanningPageV2(){
       const r = parseInt(m[1],16), g = parseInt(m[2],16), b = parseInt(m[3],16);
       return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }catch{ return `rgba(59,130,246,${alpha})`; }
+  };
+
+  // Helper: adiciona dias a um ISO yyyy-mm-dd com segurança
+  const addDaysIso = (iso, days)=>{
+    try{
+      if(!iso) return iso;
+      const d = new Date(iso+'T00:00:00Z');
+      if(isNaN(d.getTime())) return iso;
+      d.setUTCDate(d.getUTCDate()+days);
+      return d.toISOString().slice(0,10);
+    }catch{ return iso; }
+  };
+
+  // Validadores/formatadores seguros
+  const isHHMM = (t)=> typeof t === 'string' && /^\d{2}:\d{2}$/.test(t);
+  const safeDateTime = (isoDate, hhmm)=>{
+    if(!isoDate || !isHHMM(hhmm)) return null;
+    return `${isoDate}T${hhmm}:00`;
   };
 
   // Conversores úteis (nenhum necessário no momento)
@@ -207,22 +225,27 @@ export default function PlanningPageV2(){
             headerToolbar={false}
             events={[
               // turnos pontuais
-              ...week.shifts.flatMap(s=>{
-                const startISO = `${s.date}T${fmtTime(s.start_time)}:00`;
-                const endISO = `${s.spans_next_day ? new Date(new Date(s.date+'T00:00:00Z').getTime()+86400000).toISOString().slice(0,10) : s.date}T${fmtTime(s.end_time)}:00`;
+              ...((Array.isArray(week?.shifts) ? week.shifts : [])).flatMap(s=>{
+                const startStr = fmtTime(s.start_time);
+                const endStr = fmtTime(s.end_time);
+                const startISO = safeDateTime(s.date, startStr);
+                const endISO = safeDateTime(s.spans_next_day ? addDaysIso(s.date, 1) : s.date, endStr);
+                if(!startISO || !endISO) return [];
                 const base = [{ id: String(s.id), title: s.user_name, start: startISO, end: endISO, backgroundColor: finalColor(s.user_id), borderColor: finalColor(s.user_id) }];
                 if(s.spans_next_day){
-                  const nextDay = new Date(new Date(s.date+'T00:00:00Z').getTime()+86400000).toISOString().slice(0,10);
+                  const nextDay = addDaysIso(s.date, 1);
+                  if(!nextDay) return base;
+                  const endPart = safeDateTime(nextDay, endStr);
                   return [
                     { ...base[0] },
-                    { id: `${s.id}-b`, title: s.user_name, start: `${nextDay}T00:00:00`, end: `${nextDay}T${fmtTime(s.end_time)}:00`, backgroundColor: finalColor(s.user_id), borderColor: finalColor(s.user_id), editable: false }
+                    endPart ? { id: `${s.id}-b`, title: s.user_name, start: `${nextDay}T00:00:00`, end: endPart, backgroundColor: finalColor(s.user_id), borderColor: finalColor(s.user_id), editable: false } : null
                   ];
                 }
                 return base;
               }),
               // overlay de regras semanais (ghost, translúcido)
               ...(() => {
-                if(!week?.days?.length || !rules?.length) return [];
+                if(!Array.isArray(week?.days) || week.days.length===0 || !Array.isArray(rules) || rules.length===0) return [];
                 // mapa dow->iso do intervalo atual
                 const mapDowToIso = new Map();
                 week.days.forEach(iso=>{ const d=new Date(iso+'T00:00:00Z'); mapDowToIso.set(d.getUTCDay(), iso); });
