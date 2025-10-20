@@ -131,6 +131,11 @@ export default function PlanningPageV2(){
     return `${isoDate}T${hhmm}:00`;
   };
 
+  // Datas/horas locais (evita conversão para UTC ao salvar)
+  const pad2 = (n)=> String(n).padStart(2,'0');
+  const toLocalDayISO = (d)=> `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  const toLocalHHMM = (d)=> `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+
   // Conversores úteis (nenhum necessário no momento)
 
   const headerEl = (
@@ -305,9 +310,9 @@ export default function PlanningPageV2(){
               if(!selectedUser){ alert('Selecione um usuário'); return; }
               const start = new Date(info.start);
               const end = new Date(info.end);
-              const dayIso = start.toISOString().slice(0,10);
-              const startTime = start.toISOString().slice(11,16);
-              const endTime = end.toISOString().slice(11,16);
+              const dayIso = toLocalDayISO(start);
+              const startTime = toLocalHHMM(start);
+              const endTime = toLocalHHMM(end);
               try{
                 if(continuous){
                   // Contínuo: cria/atualiza uma regra permanente para os usuários selecionados
@@ -322,8 +327,8 @@ export default function PlanningPageV2(){
             }}
             eventDrop={async(info)=>{
               const id = info.event.id;
-              const startTime = info.event.start.toISOString().slice(11,16);
-              const endTime = info.event.end?.toISOString().slice(11,16) || startTime;
+              const startTime = toLocalHHMM(info.event.start);
+              const endTime = info.event.end ? toLocalHHMM(info.event.end) : startTime;
               try{
                 await api.put(`/api/planning/shifts/${id}`, { startTime, endTime });
                 await loadWeek(week.weekStart);
@@ -331,8 +336,8 @@ export default function PlanningPageV2(){
             }}
             eventResize={async(info)=>{
               const id = info.event.id;
-              const startTime = info.event.start.toISOString().slice(11,16);
-              const endTime = info.event.end?.toISOString().slice(11,16) || startTime;
+              const startTime = toLocalHHMM(info.event.start);
+              const endTime = info.event.end ? toLocalHHMM(info.event.end) : startTime;
               try{
                 await api.put(`/api/planning/shifts/${id}`, { startTime, endTime });
                 await loadWeek(week.weekStart);
