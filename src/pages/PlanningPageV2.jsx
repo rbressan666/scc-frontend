@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { ArrowLeft, Calendar as CalendarIcon } from 'lucide-react';
@@ -72,6 +72,17 @@ export default function PlanningPageV2(){
   useEffect(()=>{ loadUsers(); },[loadUsers]);
   useEffect(()=>{ loadWeek(); },[loadWeek]);
 
+  // Mantém o calendário alinhado à semana carregada
+  const calendarRef = useRef(null);
+  useEffect(()=>{
+    if(calendarRef.current && week?.weekStart){
+      try{
+        const api = calendarRef.current.getApi();
+        api.gotoDate(week.weekStart);
+      }catch{/* ignore */}
+    }
+  },[week?.weekStart]);
+
   // Carregar regras semanais (para overlay/ghost)
   const loadRules = useCallback(async()=>{
     try{
@@ -87,7 +98,11 @@ export default function PlanningPageV2(){
     // delta in days: -7 previous, +7 next
     if(!week.weekStart) return;
     const d = new Date(week.weekStart); d.setDate(d.getDate()+delta);
-    await loadWeek(d.toISOString().slice(0,10));
+    const nextStart = d.toISOString().slice(0,10);
+    await loadWeek(nextStart);
+    if(calendarRef.current){
+      try{ calendarRef.current.getApi().gotoDate(nextStart); }catch{/* ignore */}
+    }
   };
 
   // Helpers (mantidos mínimos)
@@ -256,8 +271,10 @@ export default function PlanningPageV2(){
         {/* FullCalendar - timeGridWeek */}
         <div className="bg-white rounded border p-2">
           <FullCalendar
+            ref={calendarRef}
             plugins={[timeGridPlugin, interactionPlugin]}
             initialView="timeGridWeek"
+            initialDate={week?.weekStart || undefined}
             locale={ptLocale}
             firstDay={3}
             slotMinTime="12:00:00"

@@ -37,17 +37,25 @@ export async function initPush() {
     const vapidKey = res?.publicKey || res?.key || res;
     if (!vapidKey) return { enabled: false, reason: 'no-vapid-key' };
 
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidKey)
-    });
-
-    // Send subscription to backend
-    await api.post('/api/push/subscribe', { subscription: sub });
-    return { enabled: true, status: 'subscribed' };
+    try {
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey)
+      });
+      // Send subscription to backend
+      await api.post('/api/push/subscribe', { subscription: sub });
+      return { enabled: true, status: 'subscribed' };
+    } catch (err) {
+      // Tolerar erros do push service (ex.: AbortError), não atrapalhar a sessão
+      const reason = (err && (err.name || err.message)) || 'push-subscribe-failed';
+      console.info('initPush non-fatal:', reason);
+      return { enabled: false, reason };
+    }
   } catch (e) {
-    console.error('initPush error', e);
-    return { enabled: false, reason: e?.message || 'error' };
+    // Não fazer barulho no console por erro de push; manter a sessão fluindo
+    const reason = (e && (e.name || e.message)) || 'error';
+    console.info('initPush non-fatal:', reason);
+    return { enabled: false, reason };
   }
 }
 
