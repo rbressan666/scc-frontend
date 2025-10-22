@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { ArrowLeft, Calendar as CalendarIcon } from 'lucide-react';
+import { ArrowLeft, Calendar as CalendarIcon, Trash2, GripVertical, ChevronsDownUp } from 'lucide-react';
 import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
@@ -244,9 +244,18 @@ export default function PlanningPageV2(){
           </div>
 
         {/* FullCalendar - timeGridWeek */}
-        <div className="bg-white rounded border p-2">
+        <div className="bg-white rounded border p-2" style={{ ['--fc-highlight']: hexToRgba(finalColor(selectedUser||users[0]?.id||''), 0.25) }}>
           <style>{`
             .fc .is-past-day .fc-timegrid-col-frame { background-color: #f5f5f5; }
+            /* reduzir altura das linhas para caber na tela */
+            .fc .fc-timegrid-slot { height: 1.25em; }
+            .fc .fc-timegrid-slot-label { font-size: 0.72rem; }
+            /* cor do highlight da seleção na cor final do usuário */
+            .fc .fc-highlight { background: var(--fc-highlight, rgba(59,130,246,0.2)); }
+            /* posicionamento dos ícones dentro do evento */
+            .fc-event-main-frame { position: relative; }
+            .fc-event-actions { position: absolute; top: 2px; right: 4px; display: flex; gap: 6px; align-items: center; }
+            .fc-event-actions button { background: rgba(255,255,255,0.85); border: 1px solid rgba(0,0,0,0.05); border-radius: 4px; padding: 1px; line-height: 0; cursor: pointer; }
           `}</style>
           <FullCalendar
             ref={calendarRef}
@@ -256,17 +265,45 @@ export default function PlanningPageV2(){
             locale={ptLocale}
             firstDay={3}
             slotMinTime="00:00:00"
-            slotMaxTime="24:00:00"
-            height="auto"
+            slotMaxTime="23:00:00"
+            height="78vh"
             allDaySlot={false}
             selectable={!saving}
             selectMirror
             slotDuration="01:00:00"
-            expandRows={true}
+            expandRows={false}
             dayHeaderFormat={{ weekday: 'short', month: '2-digit', day: '2-digit' }}
             slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
             headerToolbar={false}
             eventTextColor="#111111"
+            eventContent={(arg)=>{
+              const kind = arg.event.extendedProps?.kind;
+              const isShift = kind === 'shift';
+              const isPast = toLocalDayISO(arg.event.start) < todayIso;
+              const isOvernightPart = String(arg.event.id||'').endsWith('-b');
+              return (
+                <div className="fc-event-main-frame">
+                  <div className="fc-event-main">{arg.event.title}</div>
+                  <div className="fc-event-actions">
+                    {isShift && !isPast && !isOvernightPart && (
+                      <button title="Excluir turno" onClick={async(e)=>{
+                        e.preventDefault(); e.stopPropagation();
+                        const ok = window.confirm('Excluir este turno?'); if(!ok) return;
+                        try{
+                          setSaving(true);
+                          await api.delete(`/api/planning/shifts/${arg.event.id}`);
+                          const dayIso = toLocalDayISO(arg.event.start);
+                          await loadWeek(weekStartFromIso(dayIso));
+                        }catch(err){ setError(err?.message||'Falha ao excluir'); }
+                        finally{ setSaving(false); }
+                      }}><Trash2 size={14} /></button>
+                    )}
+                    {isShift && <span title="Arraste para mover"><GripVertical size={14} /></span>}
+                    {isShift && <span title="Ajuste a alça inferior/superior para mudar horários"><ChevronsDownUp size={14} /></span>}
+                  </div>
+                </div>
+              );
+            }}
             dayCellClassNames={(arg)=> (arg.date && toLocalDayISO(arg.date) < todayIso) ? ['is-past-day'] : []}
             selectAllow={(info)=> {
               const d = toLocalDayISO(info.start);
