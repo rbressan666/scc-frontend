@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Users, Smartphone, LogOut, Settings, BarChart3, Package, Cog, Database, Clock, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Users, Smartphone, LogOut, Settings, BarChart3, Package, Cog, Database, Clock, AlertTriangle, TrendingUp, Bell } from 'lucide-react';
+import api from '../services/api';
+import { initPush } from '../services/pushClient';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
@@ -13,6 +15,77 @@ const DashboardPage = () => {
   const handleLogout = async () => {
     await logout();
     navigate('/login');
+  };
+
+  const [dbUsage, setDbUsage] = useState({ bytes: null, pretty: null, tables: null, percent: null });
+  const [pushInfo, setPushInfo] = useState({ show: false, status: 'unknown', reason: null, actionable: false, hint: null });
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.get('/api/admin/db-usage');
+        const data = res?.data || res;
+        const bytes = data?.bytes ?? null;
+        const limit = Number(import.meta.env.VITE_DB_LIMIT_BYTES || 0) || null; // opcional, define limite para %
+        const percent = bytes && limit ? Math.min(100, Math.round((bytes / limit) * 100)) : null;
+        setDbUsage({ bytes, pretty: data?.pretty || null, tables: data?.tables || null, percent });
+      } catch {
+        // deixa mocado se falhar
+        setDbUsage({ bytes: null, pretty: null, tables: null, percent: null });
+      }
+    })();
+  }, []);
+
+  // Checagem de suporte a Push e possibilidade de solicitar permissão
+  useEffect(() => {
+    const secure = window.isSecureContext || window.location.protocol === 'https:' || window.location.hostname === 'localhost';
+    const hasSW = 'serviceWorker' in navigator;
+    const hasPush = 'PushManager' in window;
+    const hasNotif = 'Notification' in window;
+    const perm = hasNotif ? Notification.permission : 'unsupported';
+    const ua = navigator.userAgent || '';
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const isStandalone = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+    // iOS requer PWA instalada na Tela Inicial (iOS 16.4+)
+    if (isIOS && (!isStandalone || !hasPush)) {
+      setPushInfo({
+        show: true,
+        status: 'unsupported',
+        reason: 'ios-home-screen-required',
+        actionable: false,
+        hint: 'No iPhone, toque em Compartilhar e “Adicionar à Tela de Início” para habilitar notificações.'
+      });
+      return;
+    }
+
+    if (!secure || !hasSW || !hasPush || !hasNotif) {
+      const reason = !secure ? 'insecure-context' : !hasSW ? 'no-service-worker' : !hasPush ? 'no-pushmanager' : 'no-notification-api';
+      setPushInfo({ show: true, status: 'unsupported', reason, actionable: false, hint: null });
+      return;
+    }
+
+    if (perm === 'default') {
+      setPushInfo({ show: true, status: 'prompt', reason: null, actionable: true, hint: null });
+    } else if (perm === 'denied') {
+      setPushInfo({ show: true, status: 'blocked', reason: 'denied', actionable: false, hint: 'Notificações estão bloqueadas no navegador. Ative nas configurações do site.' });
+    } else {
+      // granted — nenhuma ação
+      setPushInfo({ show: false, status: 'granted', reason: null, actionable: false, hint: null });
+    }
+  }, []);
+
+  const handleEnablePush = async () => {
+    try {
+      const res = await initPush();
+      if (res?.enabled) {
+        setPushInfo({ show: false, status: 'granted', reason: null, actionable: false, hint: null });
+      } else {
+        setPushInfo({ show: true, status: 'error', reason: res?.reason || 'unknown', actionable: true, hint: 'Tente novamente ou verifique as configurações do navegador.' });
+      }
+    } catch (e) {
+      setPushInfo({ show: true, status: 'error', reason: e?.message || 'unknown', actionable: true, hint: 'Tente novamente mais tarde.' });
+    }
   };
 
   const menuItems = [
@@ -24,6 +97,15 @@ const DashboardPage = () => {
       path: '/turnos',
       adminOnly: false,
       color: 'bg-blue-600'
+    },
+    {
+      id: 'notifications-admin',
+      title: 'Notificações',
+      description: 'Fila, últimos envios e dispatcher',
+      icon: Bell,
+      path: '/admin/notifications',
+      adminOnly: true,
+      color: 'bg-indigo-600'
     },
     {
       id: 'diagnostics',
@@ -171,6 +253,31 @@ const DashboardPage = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
+          {pushInfo.show && (
+            <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-800 text-sm flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2">
+                <Bell className="h-4 w-4 mt-0.5" />
+                <div>
+                  <div className="font-medium">Notificações no celular</div>
+                  {pushInfo.status === 'prompt' && (
+                    <div>Ative as notificações para receber avisos de turnos e lembretes.</div>
+                  )}
+                  {pushInfo.status === 'blocked' && (
+                    <div>{pushInfo.hint}</div>
+                  )}
+                  {pushInfo.status === 'unsupported' && (
+                    <div>{pushInfo.hint || 'Este dispositivo/navegador não suporta Web Push.'}</div>
+                  )}
+                  {pushInfo.status === 'error' && (
+                    <div>Não foi possível ativar agora ({pushInfo.reason}). {pushInfo.hint}</div>
+                  )}
+                </div>
+              </div>
+              {pushInfo.actionable && (
+                <Button size="sm" onClick={handleEnablePush} className="shrink-0">Ativar notificações</Button>
+              )}
+            </div>
+          )}
           {/* Welcome Section */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
@@ -218,9 +325,12 @@ const DashboardPage = () => {
                       <div className="space-y-1.5">
                         <div className="flex justify-between text-xs text-gray-500">
                           <span>Uso do armazenamento</span>
-                          <span>12%</span>
+                          <span>{dbUsage.percent !== null ? `${dbUsage.percent}%` : (dbUsage.pretty || 'N/D')}</span>
                         </div>
-                        <Progress value={12} className="h-1.5" />
+                        <Progress value={dbUsage.percent ?? 0} className="h-1.5" />
+                        {dbUsage.pretty && (
+                          <div className="text-[11px] text-gray-500">{dbUsage.pretty}{dbUsage.tables!=null ? ` • ${dbUsage.tables} tabelas` : ''}</div>
+                        )}
                       </div>
                     )}
                   </CardContent>

@@ -17,8 +17,9 @@ self.addEventListener('push', (event) => {
     const title = data.title || 'SCC';
     const options = {
       body: data.body || '',
-      icon: data.icon || '/icons/icon-192x192.png',
-      badge: data.badge || '/icons/icon-192x192.png',
+      // Fallback para ícones existentes no projeto
+      icon: data.icon || '/favicon.ico',
+      badge: data.badge || '/favicon.ico',
       data: data.data || {},
       renotify: true,
     };

@@ -33,8 +33,9 @@ export async function initPush() {
     }
 
     // Fetch VAPID public key
-    const res = await api.get('/api/push/public-key');
-    const vapidKey = res?.publicKey || res?.key || res;
+  const res = await api.get('/api/push/public-key');
+  // Extrair apenas string de chave válida
+  const vapidKey = (typeof res === 'string') ? res : (res && (res.publicKey || res.key));
     if (!vapidKey) return { enabled: false, reason: 'no-vapid-key' };
 
     try {

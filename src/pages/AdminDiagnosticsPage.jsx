@@ -1,8 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import api from '../services/api';
-import MainLayout from '../components/MainLayout';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '../components/ui/button';
+import { ArrowLeft, BarChart3 } from 'lucide-react';
 
 export default function AdminDiagnosticsPage() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState([]);
   const [pending, setPending] = useState({ totalQueued: 0, dueNow: 0, sample: [] });
   const [recent, setRecent] = useState([]);
@@ -34,13 +37,39 @@ export default function AdminDiagnosticsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  return (
-    <MainLayout>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Diagnósticos de Notificações</h1>
-          <button onClick={load} className="px-3 py-1 rounded bg-blue-600 text-white">Atualizar</button>
+  const headerEl = (
+    <div className="bg-white shadow-sm border-b">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center py-3">
+          <div className="flex items-center space-x-4">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="flex items-center space-x-2">
+              <ArrowLeft className="h-4 w-4" />
+              <span>Voltar</span>
+            </Button>
+            <div className="flex items-center space-x-3">
+              <div className="bg-teal-600 text-white p-2 rounded-lg">
+                <BarChart3 className="h-5 w-5" />
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900 leading-tight">Diagnósticos de Notificações</h1>
+                <p className="text-xs text-gray-500">Fila, últimos envios e status</p>
+              </div>
+            </div>
+          </div>
+          <div>
+            <Button onClick={load} variant="outline" size="sm">Atualizar</Button>
+          </div>
         </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {headerEl}
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="px-4 py-6 sm:px-0">
+          <div className="space-y-4">
         {error && <div className="text-red-600">{error}</div>}
         {loading ? <div>Carregando...</div> : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -84,7 +113,9 @@ export default function AdminDiagnosticsPage() {
             </div>
           </div>
         )}
-      </div>
-    </MainLayout>
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }
