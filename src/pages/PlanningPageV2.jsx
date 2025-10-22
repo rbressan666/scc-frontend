@@ -254,13 +254,17 @@ export default function PlanningPageV2(){
             .fc .fc-timegrid-axis-cushion { font-size: 0.7rem; }
             /* cor do highlight da seleção na cor final do usuário */
             .fc .fc-highlight { background: var(--fc-highlight, rgba(59,130,246,0.2)); }
-            /* posicionamento dos ícones dentro do evento */
-            .fc-event-main-frame { position: relative; }
-            .fc-event-main { padding-right: 56px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-            .fc-event-actions { position: absolute; top: 2px; right: 4px; display: flex; gap: 6px; align-items: center; }
-            .fc-event-actions button { background: rgba(255,255,255,0.85); border: 1px solid rgba(0,0,0,0.05); border-radius: 4px; padding: 1px; line-height: 0; cursor: pointer; }
-            /* regras translúcidas com texto sempre preto para contraste */
+            /* layout dos eventos: título centralizado e ações no rodapé */
+            .fc-event-main-frame { position: relative; display: flex; flex-direction: column; height: 100%; }
+            .fc-event-main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .fc-event-actions { position: absolute; bottom: 2px; right: 4px; display: flex; gap: 6px; align-items: center; pointer-events: auto; z-index: 2; }
+            .fc-event-actions button { background: rgba(255,255,255,0.9); border: 1px solid rgba(0,0,0,0.08); border-radius: 4px; padding: 2px; line-height: 0; cursor: pointer; }
+            .fc-event-actions svg { display: block; }
+            /* regras translúcidas com texto sempre preto e z-index menor para não cobrir turnos */
+            .fc .fc-event.fc-rule { z-index: 1 !important; }
             .fc-rule .fc-event-main { color: #111111 !important; }
+            /* garantir que os botões sejam clicáveis sobre overlays */
+            .fc .fc-event, .fc .fc-event * { pointer-events: auto; }
           `}</style>
           <FullCalendar
             ref={calendarRef}
