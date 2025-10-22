@@ -244,18 +244,23 @@ export default function PlanningPageV2(){
           </div>
 
         {/* FullCalendar - timeGridWeek */}
-        <div className="bg-white rounded border p-2" style={{ ['--fc-highlight']: hexToRgba(finalColor(selectedUser||users[0]?.id||''), 0.25) }}>
+        <div className="bg-white rounded border p-2" style={{ '--fc-highlight': hexToRgba(finalColor(selectedUser||users[0]?.id||''), 0.25) }}>
           <style>{`
             .fc .is-past-day .fc-timegrid-col-frame { background-color: #f5f5f5; }
             /* reduzir altura das linhas para caber na tela */
-            .fc .fc-timegrid-slot { height: 1.25em; }
-            .fc .fc-timegrid-slot-label { font-size: 0.72rem; }
+            .fc .fc-timegrid-slot { height: 1.0em; }
+            .fc .fc-timegrid-slot-label { font-size: 0.68rem; }
+            .fc .fc-event { font-size: 0.8rem; }
+            .fc .fc-timegrid-axis-cushion { font-size: 0.7rem; }
             /* cor do highlight da seleção na cor final do usuário */
             .fc .fc-highlight { background: var(--fc-highlight, rgba(59,130,246,0.2)); }
             /* posicionamento dos ícones dentro do evento */
             .fc-event-main-frame { position: relative; }
+            .fc-event-main { padding-right: 56px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             .fc-event-actions { position: absolute; top: 2px; right: 4px; display: flex; gap: 6px; align-items: center; }
             .fc-event-actions button { background: rgba(255,255,255,0.85); border: 1px solid rgba(0,0,0,0.05); border-radius: 4px; padding: 1px; line-height: 0; cursor: pointer; }
+            /* regras translúcidas com texto sempre preto para contraste */
+            .fc-rule .fc-event-main { color: #111111 !important; }
           `}</style>
           <FullCalendar
             ref={calendarRef}
@@ -300,6 +305,20 @@ export default function PlanningPageV2(){
                     )}
                     {isShift && <span title="Arraste para mover"><GripVertical size={14} /></span>}
                     {isShift && <span title="Ajuste a alça inferior/superior para mudar horários"><ChevronsDownUp size={14} /></span>}
+                    {kind === 'rule' && !isPast && (
+                      <button title="Parar regra" onClick={async(e)=>{
+                        e.preventDefault(); e.stopPropagation();
+                        const ruleId = arg.event.extendedProps?.ruleId; if(!ruleId) return;
+                        const ok = window.confirm('Parar esta regra contínua?'); if(!ok) return;
+                        try{
+                          setSaving(true);
+                          await api.delete(`/api/planning/rules/${ruleId}`);
+                          await loadRules();
+                          await loadWeek(week.weekStart);
+                        }catch(err){ setError(err?.message||'Falha ao parar regra'); }
+                        finally{ setSaving(false); }
+                      }}><Trash2 size={14} /></button>
+                    )}
                   </div>
                 </div>
               );
@@ -359,37 +378,6 @@ export default function PlanningPageV2(){
             ]}
             editable={!saving}
             eventOverlap="block"
-            eventClick={async(info)=>{
-              const kind = info.event.extendedProps?.kind;
-              if(kind === 'rule'){
-                const ruleId = info.event.extendedProps.ruleId;
-                if(!ruleId) return;
-                const ok = window.confirm('Parar esta regra contínua?');
-                if(!ok) return;
-                try{
-                  console.info('[Planning] STOP RULE -> DELETE /rules/', ruleId);
-                  const res = await api.delete(`/api/planning/rules/${ruleId}`);
-                  console.info('[Planning] STOP RULE <-', res);
-                  await loadRules();
-                  await loadWeek(week.weekStart);
-                }catch(err){ setError(err?.message||'Falha ao parar regra'); }
-                return;
-              }
-              if(kind === 'shift'){
-                const idStr = info.event.id;
-                if(!idStr || idStr.endsWith('-b')) return;
-                if(toLocalDayISO(info.event.start) < todayIso) return;
-                const ok = window.confirm('Excluir este turno?');
-                if(!ok) return;
-                try{
-                  setSaving(true);
-                  await api.delete(`/api/planning/shifts/${idStr}`);
-                  const dayIso = toLocalDayISO(info.event.start);
-                  await loadWeek(weekStartFromIso(dayIso));
-                }catch(err){ setError(err?.message||'Falha ao excluir'); }
-                finally{ setSaving(false); }
-              }
-            }}
             select={async(info)=>{
               if(!selectedUser){ alert('Selecione um usuário'); return; }
               const start = new Date(info.start);
