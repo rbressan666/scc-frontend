@@ -23,6 +23,7 @@ export default function PlanningPageV2(){
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [applying, setApplying] = useState(false);
+  const [status, setStatus] = useState('');
 
   // modo de criação: regra semanal contínua ou turno pontual
   const [continuous, setContinuous] = useState(false);
@@ -44,7 +45,13 @@ export default function PlanningPageV2(){
       const qs = q.toString();
       const url = `/api/planning/week${qs ? `?${qs}` : ''}`;
       const res = await api.get(url);
-      setWeek(res?.data || res);
+      const data = res?.data || res;
+      console.info('[Planning] GET /api/planning/week ->', {
+        weekStart: data?.weekStart,
+        days: data?.days,
+        shiftsCount: Array.isArray(data?.shifts) ? data.shifts.length : 0,
+      });
+      setWeek(data);
     }catch(e){ setError(e?.message||'Erro ao carregar semana'); }
     finally{ setLoading(false); }
   },[]);
@@ -135,6 +142,7 @@ export default function PlanningPageV2(){
   const pad2 = (n)=> String(n).padStart(2,'0');
   const toLocalDayISO = (d)=> `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
   const toLocalHHMM = (d)=> `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  const DOW = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 
   // Conversores úteis (nenhum necessário no momento)
 
@@ -181,6 +189,7 @@ export default function PlanningPageV2(){
           {/* Área fixa para mensagens - evita deslocamento do calendário */}
           <div className="min-h-6 text-sm">
             {error && <div className="text-red-600">{error}</div>}
+            {!error && status && <div className="text-green-700">{status}</div>}
             {loading && <div className="text-gray-500">Carregando...</div>}
           </div>
 
@@ -202,10 +211,12 @@ export default function PlanningPageV2(){
               onClick={async()=>{
                 try{
                   setApplying(true); setError('');
+                  setStatus('');
                   // Aplica regras a esta semana para todos os usuários envolvidos nas regras
                   const dayByDow = new Map();
                   (week.days||[]).forEach(iso=>{ const d=new Date(iso+'T00:00:00Z'); dayByDow.set(d.getUTCDay(), iso); });
                   const existing = Array.isArray(week?.shifts) ? week.shifts : [];
+                  let created = 0;
                   for(const r of (rules||[])){
                     const iso = dayByDow.get(Number(r.day_of_week));
                     if(!iso || !r.start_time || !r.end_time) continue;
@@ -213,9 +224,14 @@ export default function PlanningPageV2(){
                     // evita duplicar se já existe mesmo user/date/start/end
                     const dup = existing.find(s=> s.user_id===r.user_id && s.date===iso && fmtTime(s.start_time)===start && fmtTime(s.end_time)===end);
                     if(dup) continue;
-                    await api.post('/api/planning/shifts', { userId: r.user_id, date: iso, startTime: start, endTime: end });
+                    const payload = { userId: r.user_id, date: iso, startTime: start, endTime: end };
+                    console.info('[Planning] APPLY -> POST /shifts', payload);
+                    const res = await api.post('/api/planning/shifts', payload);
+                    console.info('[Planning] APPLY <-', res);
+                    created++;
                   }
                   await loadWeek(week.weekStart);
+                  setStatus(created > 0 ? `Regras aplicadas: ${created} turno(s) criado(s) nesta semana.` : 'Nenhum turno novo para aplicar nesta semana.');
                 }catch(err){ setError(err?.message||'Falha ao aplicar regras'); }
                 finally{ setApplying(false); }
               }}
@@ -299,9 +315,12 @@ export default function PlanningPageV2(){
                 const ok = window.confirm('Parar esta regra contínua?');
                 if(!ok) return;
                 try{
-                  await api.delete(`/api/planning/rules/${ruleId}`);
+                  console.info('[Planning] STOP RULE -> DELETE /rules/', ruleId);
+                  const res = await api.delete(`/api/planning/rules/${ruleId}`);
+                  console.info('[Planning] STOP RULE <-', res);
                   await loadRules();
                   await loadWeek(week.weekStart);
+                  setStatus('Regra contínua parada.');
                 }catch(err){ setError(err?.message||'Falha ao parar regra'); }
                 return;
               }
@@ -317,10 +336,18 @@ export default function PlanningPageV2(){
                 if(continuous){
                   // Contínuo: cria/atualiza uma regra permanente para os usuários selecionados
                   const dow = start.getUTCDay();
-                  await api.post('/api/planning/rules', { userId: selectedUser, dayOfWeek: dow, startTime, endTime, continuous: true });
+                  const payload = { userId: selectedUser, dayOfWeek: dow, startTime, endTime, continuous: true };
+                  console.info('[Planning] SELECT(rule) -> POST /rules', payload, `( ${DOW[dow]} ${startTime}-${endTime} )`);
+                  const res = await api.post('/api/planning/rules', payload);
+                  console.info('[Planning] SELECT(rule) <-', res);
                   await loadRules();
+                  setStatus(`Regra salva para ${DOW[dow]} ${startTime}–${endTime}.`);
                 }else{
-                  await api.post('/api/planning/shifts', { userId: selectedUser, date: dayIso, startTime, endTime });
+                  const payload = { userId: selectedUser, date: dayIso, startTime, endTime };
+                  console.info('[Planning] SELECT(shift) -> POST /shifts', payload);
+                  const res = await api.post('/api/planning/shifts', payload);
+                  console.info('[Planning] SELECT(shift) <-', res);
+                  setStatus(`Turno criado em ${dayIso} ${startTime}–${endTime}.`);
                 }
                 await loadWeek(week.weekStart);
               }catch(err){ setError(err?.message||'Falha ao salvar'); }
@@ -330,8 +357,12 @@ export default function PlanningPageV2(){
               const startTime = toLocalHHMM(info.event.start);
               const endTime = info.event.end ? toLocalHHMM(info.event.end) : startTime;
               try{
-                await api.put(`/api/planning/shifts/${id}`, { startTime, endTime });
+                const payload = { startTime, endTime };
+                console.info('[Planning] DROP -> PUT /shifts/', id, payload);
+                const res = await api.put(`/api/planning/shifts/${id}`, payload);
+                console.info('[Planning] DROP <-', res);
                 await loadWeek(week.weekStart);
+                setStatus(`Turno atualizado para ${startTime}–${endTime}.`);
               }catch(err){ setError(err?.message||'Falha ao mover'); info.revert(); }
             }}
             eventResize={async(info)=>{
@@ -339,8 +370,12 @@ export default function PlanningPageV2(){
               const startTime = toLocalHHMM(info.event.start);
               const endTime = info.event.end ? toLocalHHMM(info.event.end) : startTime;
               try{
-                await api.put(`/api/planning/shifts/${id}`, { startTime, endTime });
+                const payload = { startTime, endTime };
+                console.info('[Planning] RESIZE -> PUT /shifts/', id, payload);
+                const res = await api.put(`/api/planning/shifts/${id}`, payload);
+                console.info('[Planning] RESIZE <-', res);
                 await loadWeek(week.weekStart);
+                setStatus(`Turno redimensionado para ${startTime}–${endTime}.`);
               }catch(err){ setError(err?.message||'Falha ao redimensionar'); info.revert(); }
             }}
           />
