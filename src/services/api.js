@@ -243,6 +243,26 @@ export const socketService = {
 
 export default api;
 
+// Serviços de Notificações
+export const notificationsService = {
+  async adminStats() {
+    return await api.get('/api/notifications/admin/stats');
+  },
+  async adminPending({ onlyDue = true, limit = 20 } = {}) {
+    const od = String(onlyDue) !== 'false';
+    return await api.get(`/api/notifications/admin/pending?onlyDue=${od}&limit=${limit}`);
+  },
+  async adminRecent(limit = 20) {
+    return await api.get(`/api/notifications/admin/recent?limit=${limit}`);
+  },
+  async dispatchNow(cronKey) {
+    return await api.post('/api/notifications/dispatch', {}, { headers: { 'x-cron-key': cronKey } });
+  },
+  async enqueueTest({ userId, subject = 'SCC - Teste', message = 'Notificação de teste', scheduleInSeconds = 0 }) {
+    return await api.post('/api/notifications/_test/enqueue', { userId, subject, message, scheduleInSeconds });
+  },
+};
+
 // Serviços de Setores
 export const setorService = {
   async getAll(includeInactive = false) {

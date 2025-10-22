@@ -20,6 +20,7 @@ import ChecklistEntradaPage from './pages/ChecklistEntradaPage';
 import ChecklistSaidaPage from './pages/ChecklistSaidaPage';
 import AdminDiagnosticsPage from './pages/AdminDiagnosticsPage';
 import PlanningPageV2 from './pages/PlanningPageV2';
+import NotificationsAdminPage from './pages/NotificationsAdminPage';
 import ProfilePage from './pages/ProfilePage';
 import './App.css';
 
@@ -121,6 +122,14 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <AdminDiagnosticsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/notifications"
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <NotificationsAdminPage />
                 </ProtectedRoute>
               }
             />
