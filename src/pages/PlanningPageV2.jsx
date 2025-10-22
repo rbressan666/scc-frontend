@@ -124,7 +124,8 @@ export default function PlanningPageV2(){
   const addDaysIso = (iso, days)=>{
     try{
       if(!iso) return iso;
-      const d = new Date(iso+'T00:00:00Z');
+      const base = typeof iso === 'string' ? iso.split('T')[0] : iso;
+      const d = new Date(`${base}T00:00:00Z`);
       if(isNaN(d.getTime())) return iso;
       d.setUTCDate(d.getUTCDate()+days);
       return d.toISOString().slice(0,10);
@@ -135,7 +136,8 @@ export default function PlanningPageV2(){
   const isHHMM = (t)=> typeof t === 'string' && /^\d{2}:\d{2}$/.test(t);
   const safeDateTime = (isoDate, hhmm)=>{
     if(!isoDate || !isHHMM(hhmm)) return null;
-    return `${isoDate}T${hhmm}:00`;
+    const base = typeof isoDate === 'string' ? isoDate.split('T')[0] : isoDate;
+    return `${base}T${hhmm}:00`;
   };
 
   // Datas/horas locais (evita conversão para UTC ao salvar)
@@ -143,6 +145,18 @@ export default function PlanningPageV2(){
   const toLocalDayISO = (d)=> `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
   const toLocalHHMM = (d)=> `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
   const DOW = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  
+  // Normaliza ISO e calcula início da semana (quarta) para uma data
+  const weekStartFromIso = (iso)=>{
+    try{
+      const base = typeof iso === 'string' ? iso.split('T')[0] : iso;
+      const d = new Date(`${base}T00:00:00`);
+      const dow = d.getDay(); // 0..6 (0=Dom, 3=Qua)
+      const delta = (dow - 3 + 7) % 7;
+      d.setDate(d.getDate() - delta);
+      return toLocalDayISO(d);
+    }catch{ return typeof iso === 'string' ? iso.split('T')[0] : iso; }
+  };
 
   // Conversores úteis (nenhum necessário no momento)
 
@@ -349,7 +363,9 @@ export default function PlanningPageV2(){
                   console.info('[Planning] SELECT(shift) <-', res);
                   setStatus(`Turno criado em ${dayIso} ${startTime}–${endTime}.`);
                 }
-                await loadWeek(week.weekStart);
+                // Recarrega a semana que contém o dia selecionado
+                const nextWeekStart = weekStartFromIso(dayIso);
+                await loadWeek(nextWeekStart);
               }catch(err){ setError(err?.message||'Falha ao salvar'); }
             }}
             eventDrop={async(info)=>{
@@ -361,7 +377,8 @@ export default function PlanningPageV2(){
                 console.info('[Planning] DROP -> PUT /shifts/', id, payload);
                 const res = await api.put(`/api/planning/shifts/${id}`, payload);
                 console.info('[Planning] DROP <-', res);
-                await loadWeek(week.weekStart);
+                const dayIso = toLocalDayISO(info.event.start);
+                await loadWeek(weekStartFromIso(dayIso));
                 setStatus(`Turno atualizado para ${startTime}–${endTime}.`);
               }catch(err){ setError(err?.message||'Falha ao mover'); info.revert(); }
             }}
@@ -374,7 +391,8 @@ export default function PlanningPageV2(){
                 console.info('[Planning] RESIZE -> PUT /shifts/', id, payload);
                 const res = await api.put(`/api/planning/shifts/${id}`, payload);
                 console.info('[Planning] RESIZE <-', res);
-                await loadWeek(week.weekStart);
+                const dayIso = toLocalDayISO(info.event.start);
+                await loadWeek(weekStartFromIso(dayIso));
                 setStatus(`Turno redimensionado para ${startTime}–${endTime}.`);
               }catch(err){ setError(err?.message||'Falha ao redimensionar'); info.revert(); }
             }}
