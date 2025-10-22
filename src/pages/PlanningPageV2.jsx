@@ -22,8 +22,7 @@ export default function PlanningPageV2(){
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [applying, setApplying] = useState(false);
-  const [status, setStatus] = useState('');
+  const [saving, setSaving] = useState(false);
 
   // modo de criação: regra semanal contínua ou turno pontual
   const [continuous, setContinuous] = useState(false);
@@ -160,6 +159,12 @@ export default function PlanningPageV2(){
   const toLocalDayISO = (d)=> `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
   const toLocalHHMM = (d)=> `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
   const DOW = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const todayIso = toLocalDayISO(new Date());
+  const isPastIso = (iso)=>{
+    if(!iso) return false;
+    const base = typeof iso === 'string' ? iso.split('T')[0] : iso;
+    return base < todayIso;
+  };
   
   // Normaliza ISO e calcula início da semana (quarta) para uma data
   const weekStartFromIso = (iso)=>{
@@ -218,8 +223,8 @@ export default function PlanningPageV2(){
           {/* Área fixa para mensagens - evita deslocamento do calendário */}
           <div className="min-h-6 text-sm">
             {error && <div className="text-red-600">{error}</div>}
-            {!error && status && <div className="text-green-700">{status}</div>}
             {loading && <div className="text-gray-500">Carregando...</div>}
+            {saving && !loading && <div className="text-gray-500">Salvando...</div>}
           </div>
 
           {/* Controles principais: Usuário e Contínuo */}
@@ -235,41 +240,14 @@ export default function PlanningPageV2(){
               <input type="checkbox" checked={continuous} onChange={e=>setContinuous(e.target.checked)} />
               <span className="text-xs text-gray-500">(trabalha sempre neste dia/horário até parar)</span>
             </div>
-            <Button
-              disabled={applying || !rules?.length || !week?.days?.length}
-              onClick={async()=>{
-                try{
-                  setApplying(true); setError('');
-                  setStatus('');
-                  // Aplica regras a esta semana para todos os usuários envolvidos nas regras
-                  const dayByDow = new Map();
-                  (week.days||[]).forEach(iso=>{ const d=new Date(iso+'T00:00:00Z'); dayByDow.set(d.getUTCDay(), iso); });
-                  const existing = Array.isArray(week?.shifts) ? week.shifts : [];
-                  let created = 0;
-                  for(const r of (rules||[])){
-                    const iso = dayByDow.get(Number(r.day_of_week));
-                    if(!iso || !r.start_time || !r.end_time) continue;
-                    const start = fmtTime(r.start_time); const end = fmtTime(r.end_time);
-                    // evita duplicar se já existe mesmo user/date/start/end
-                    const dup = existing.find(s=> s.user_id===r.user_id && s.date===iso && fmtTime(s.start_time)===start && fmtTime(s.end_time)===end);
-                    if(dup) continue;
-                    const payload = { userId: r.user_id, date: iso, startTime: start, endTime: end };
-                    console.info('[Planning] APPLY -> POST /shifts', payload);
-                    const res = await api.post('/api/planning/shifts', payload);
-                    console.info('[Planning] APPLY <-', res);
-                    created++;
-                  }
-                  await loadWeek(week.weekStart);
-                  setStatus(created > 0 ? `Regras aplicadas: ${created} turno(s) criado(s) nesta semana.` : 'Nenhum turno novo para aplicar nesta semana.');
-                }catch(err){ setError(err?.message||'Falha ao aplicar regras'); }
-                finally{ setApplying(false); }
-              }}
-              variant="outline" size="sm"
-            >Aplicar regras nesta semana</Button>
+            {/* Botão 'Aplicar regras nesta semana' removido por simplificação */}
           </div>
 
         {/* FullCalendar - timeGridWeek */}
         <div className="bg-white rounded border p-2">
+          <style>{`
+            .fc .is-past-day .fc-timegrid-col-frame { background-color: #f5f5f5; }
+          `}</style>
           <FullCalendar
             ref={calendarRef}
             plugins={[timeGridPlugin, interactionPlugin]}
@@ -277,11 +255,11 @@ export default function PlanningPageV2(){
             initialDate={week?.weekStart || undefined}
             locale={ptLocale}
             firstDay={3}
-            slotMinTime="12:00:00"
+            slotMinTime="00:00:00"
             slotMaxTime="24:00:00"
             height="auto"
             allDaySlot={false}
-            selectable
+            selectable={!saving}
             selectMirror
             slotDuration="01:00:00"
             expandRows={true}
@@ -289,6 +267,11 @@ export default function PlanningPageV2(){
             slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
             headerToolbar={false}
             eventTextColor="#111111"
+            dayCellClassNames={(arg)=> (arg.date && toLocalDayISO(arg.date) < todayIso) ? ['is-past-day'] : []}
+            selectAllow={(info)=> {
+              const d = toLocalDayISO(info.start);
+              return d >= todayIso && !saving;
+            }}
             events={[
               // turnos pontuais
               ...((Array.isArray(week?.shifts) ? week.shifts : [])).flatMap(s=>{
@@ -297,14 +280,15 @@ export default function PlanningPageV2(){
                 const startISO = safeDateTime(s.date, startStr);
                 const endISO = safeDateTime(s.spans_next_day ? addDaysIso(s.date, 1) : s.date, endStr);
                 if(!startISO || !endISO) return [];
-                const base = [{ id: String(s.id), title: s.user_name, start: startISO, end: endISO, backgroundColor: finalColor(s.user_id), borderColor: finalColor(s.user_id) }];
+                const editable = !isPastIso(s.date);
+                const base = [{ id: String(s.id), title: s.user_name, start: startISO, end: endISO, backgroundColor: finalColor(s.user_id), borderColor: finalColor(s.user_id), editable, extendedProps: { kind: 'shift' } }];
                 if(s.spans_next_day){
                   const nextDay = addDaysIso(s.date, 1);
                   if(!nextDay) return base;
                   const endPart = safeDateTime(nextDay, endStr);
                   return [
                     { ...base[0] },
-                    endPart ? { id: `${s.id}-b`, title: s.user_name, start: `${nextDay}T00:00:00`, end: endPart, backgroundColor: finalColor(s.user_id), borderColor: finalColor(s.user_id), editable: false } : null
+                    endPart ? { id: `${s.id}-b`, title: s.user_name, start: `${nextDay}T00:00:00`, end: endPart, backgroundColor: finalColor(s.user_id), borderColor: finalColor(s.user_id), editable: false, extendedProps: { kind: 'shift' } } : null
                   ];
                 }
                 return base;
@@ -312,13 +296,13 @@ export default function PlanningPageV2(){
               // regras semanais como eventos clicáveis (translúcidos)
               ...(() => {
                 if(!Array.isArray(week?.days) || week.days.length===0 || !Array.isArray(rules) || rules.length===0) return [];
-                // mapa dow->iso do intervalo atual
                 const mapDowToIso = new Map();
                 week.days.forEach(iso=>{ const d=new Date(iso+'T00:00:00Z'); mapDowToIso.set(d.getUTCDay(), iso); });
                 const evs = [];
                 for(const r of rules){
                   const iso = mapDowToIso.get(Number(r.day_of_week));
                   if(!iso || !r.start_time || !r.end_time) continue;
+                  if(isPastIso(iso)) continue;
                   const color = finalColor(r.user_id);
                   evs.push({
                     id: `rule-${r.id}-${iso}`,
@@ -336,7 +320,7 @@ export default function PlanningPageV2(){
                 return evs;
               })()
             ]}
-            editable
+            editable={!saving}
             eventOverlap="block"
             eventClick={async(info)=>{
               const kind = info.event.extendedProps?.kind;
@@ -351,9 +335,22 @@ export default function PlanningPageV2(){
                   console.info('[Planning] STOP RULE <-', res);
                   await loadRules();
                   await loadWeek(week.weekStart);
-                  setStatus('Regra contínua parada.');
                 }catch(err){ setError(err?.message||'Falha ao parar regra'); }
                 return;
+              }
+              if(kind === 'shift'){
+                const idStr = info.event.id;
+                if(!idStr || idStr.endsWith('-b')) return;
+                if(toLocalDayISO(info.event.start) < todayIso) return;
+                const ok = window.confirm('Excluir este turno?');
+                if(!ok) return;
+                try{
+                  setSaving(true);
+                  await api.delete(`/api/planning/shifts/${idStr}`);
+                  const dayIso = toLocalDayISO(info.event.start);
+                  await loadWeek(weekStartFromIso(dayIso));
+                }catch(err){ setError(err?.message||'Falha ao excluir'); }
+                finally{ setSaving(false); }
               }
             }}
             select={async(info)=>{
@@ -364,54 +361,58 @@ export default function PlanningPageV2(){
               const startTime = toLocalHHMM(start);
               const endTime = toLocalHHMM(end);
               try{
+                if(dayIso < todayIso){ info.view.calendar.unselect(); return; }
+                setSaving(true);
+                info.view.calendar.unselect();
                 if(continuous){
-                  // Contínuo: cria/atualiza uma regra permanente para os usuários selecionados
-                  const dow = start.getUTCDay();
+                  const dow = start.getDay();
                   const payload = { userId: selectedUser, dayOfWeek: dow, startTime, endTime, continuous: true };
                   console.info('[Planning] SELECT(rule) -> POST /rules', payload, `( ${DOW[dow]} ${startTime}-${endTime} )`);
                   const res = await api.post('/api/planning/rules', payload);
                   console.info('[Planning] SELECT(rule) <-', res);
                   await loadRules();
-                  setStatus(`Regra salva para ${DOW[dow]} ${startTime}–${endTime}.`);
                 }else{
                   const payload = { userId: selectedUser, date: dayIso, startTime, endTime };
                   console.info('[Planning] SELECT(shift) -> POST /shifts', payload);
                   const res = await api.post('/api/planning/shifts', payload);
                   console.info('[Planning] SELECT(shift) <-', res);
-                  setStatus(`Turno criado em ${dayIso} ${startTime}–${endTime}.`);
                 }
-                // Recarrega a semana que contém o dia selecionado
-                const nextWeekStart = weekStartFromIso(dayIso);
-                await loadWeek(nextWeekStart);
+                const newWeekStart = weekStartFromIso(dayIso);
+                await loadWeek(newWeekStart);
               }catch(err){ setError(err?.message||'Falha ao salvar'); }
+              finally { setSaving(false); }
             }}
             eventDrop={async(info)=>{
               const id = info.event.id;
               const startTime = toLocalHHMM(info.event.start);
               const endTime = info.event.end ? toLocalHHMM(info.event.end) : startTime;
               try{
+                if(toLocalDayISO(info.event.start) < todayIso){ info.revert(); return; }
+                setSaving(true);
                 const payload = { startTime, endTime };
                 console.info('[Planning] DROP -> PUT /shifts/', id, payload);
                 const res = await api.put(`/api/planning/shifts/${id}`, payload);
                 console.info('[Planning] DROP <-', res);
                 const dayIso = toLocalDayISO(info.event.start);
                 await loadWeek(weekStartFromIso(dayIso));
-                setStatus(`Turno atualizado para ${startTime}–${endTime}.`);
               }catch(err){ setError(err?.message||'Falha ao mover'); info.revert(); }
+              finally { setSaving(false); }
             }}
             eventResize={async(info)=>{
               const id = info.event.id;
               const startTime = toLocalHHMM(info.event.start);
               const endTime = info.event.end ? toLocalHHMM(info.event.end) : startTime;
               try{
+                if(toLocalDayISO(info.event.start) < todayIso){ info.revert(); return; }
+                setSaving(true);
                 const payload = { startTime, endTime };
                 console.info('[Planning] RESIZE -> PUT /shifts/', id, payload);
                 const res = await api.put(`/api/planning/shifts/${id}`, payload);
                 console.info('[Planning] RESIZE <-', res);
                 const dayIso = toLocalDayISO(info.event.start);
                 await loadWeek(weekStartFromIso(dayIso));
-                setStatus(`Turno redimensionado para ${startTime}–${endTime}.`);
               }catch(err){ setError(err?.message||'Falha ao redimensionar'); info.revert(); }
+              finally { setSaving(false); }
             }}
           />
         </div>
