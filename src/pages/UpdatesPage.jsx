@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Clock, Info } from 'lucide-react';
+import { Clock, Info, ArrowLeft, TrendingUp } from 'lucide-react';
 
 function formatDateTime(isoDate, time) {
   // isoDate: YYYY-MM-DD, time: HH:mm (optional)
@@ -18,6 +19,7 @@ function formatDateTime(isoDate, time) {
 }
 
 const UpdatesPage = () => {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [error, setError] = useState(null);
 
@@ -42,11 +44,38 @@ const UpdatesPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto py-8 px-4">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Últimas Atualizações</h1>
-          <p className="text-sm text-gray-600">Resumo das novidades e correções para os usuários do sistema.</p>
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/dashboard')}
+                className="flex items-center space-x-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Voltar</span>
+              </Button>
+              <div className="flex items-center space-x-3">
+                <div className="bg-sky-600 text-white p-2 rounded-lg">
+                  <TrendingUp className="h-6 w-6" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Últimas Atualizações</h1>
+                  <p className="text-sm text-gray-500">Resumo das novidades e correções mais recentes</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2" />
+          </div>
         </div>
+      </header>
+
+      {/* Main */}
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto px-4">
 
         {error && (
           <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-red-800 text-sm">
@@ -91,7 +120,8 @@ const UpdatesPage = () => {
             </Card>
           ))}
         </div>
-      </div>
+        </div>
+      </main>
     </div>
   );
 };
