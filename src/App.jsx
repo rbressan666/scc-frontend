@@ -21,6 +21,7 @@ import ChecklistSaidaPage from './pages/ChecklistSaidaPage';
 import AdminDiagnosticsPage from './pages/AdminDiagnosticsPage';
 import PlanningPageV2 from './pages/PlanningPageV2';
 import NotificationsAdminPage from './pages/NotificationsAdminPage';
+import UpdatesPage from './pages/UpdatesPage';
 import ProfilePage from './pages/ProfilePage';
 import './App.css';
 
@@ -60,6 +61,15 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             
             {/* Rotas protegidas */}
+            <Route
+              path="/atualizacoes"
+              element={
+                <ProtectedRoute>
+                  <UpdatesPage />
+                </ProtectedRoute>
+              }
+            />
+
             <Route
               path="/dashboard"
               element={

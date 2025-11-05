@@ -1,5 +1,31 @@
 #!/usr/bin/env sh
 
-# Husky v9+ no longer requires sourcing _/husky.sh; remove deprecated lines
-# Run lint-staged directly
-pnpm exec lint-staged
+# Run lint-staged from the scc-frontend package to ensure devDependencies are resolved
+# Works when committing from monorepo root or from scc-frontend dir
+
+set -e
+
+# Prefer pnpm if available
+if command -v pnpm >/dev/null 2>&1; then
+	# If running from repo root, prefer running in scc-frontend package.
+	if [ -d "scc-frontend" ]; then
+		(
+			pnpm -C scc-frontend exec lint-staged \
+			|| (cd scc-frontend && pnpm exec lint-staged) \
+			|| (cd scc-frontend && pnpm dlx lint-staged)
+		)
+	else
+		# Already inside scc-frontend (or single-package mode)
+		(
+			pnpm exec lint-staged \
+			|| pnpm dlx lint-staged
+		)
+	fi
+else
+	# Fallback: try npx in the scc-frontend dir
+	if [ -d "scc-frontend" ]; then
+		(cd scc-frontend && npx --yes lint-staged)
+	else
+		npx --yes lint-staged
+	fi
+fi

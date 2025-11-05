@@ -99,6 +99,15 @@ const DashboardPage = () => {
       color: 'bg-blue-600'
     },
     {
+      id: 'updates',
+      title: 'Últimas Atualizações',
+      description: 'Resumo das novidades e correções mais recentes',
+      icon: TrendingUp,
+      path: '/atualizacoes',
+      adminOnly: false,
+      color: 'bg-sky-600'
+    },
+    {
       id: 'notifications-admin',
       title: 'Notificações',
       description: 'Fila, últimos envios e dispatcher',

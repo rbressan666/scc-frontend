@@ -1,0 +1,8 @@
+[
+  {
+    "date": "2025-11-05",
+    "time": "09:00",
+    "title": "Confirmação imediata de escalas",
+    "summary": "Ao criar um turno, o usuário passa a receber confirmação imediata por email e push. Correções de fuso aplicadas no agendamento."
+  }
+]
