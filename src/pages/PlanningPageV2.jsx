@@ -252,7 +252,13 @@ export default function PlanningPageV2(){
           </div>
 
         {/* FullCalendar - timeGridWeek */}
-  <div className="bg-white rounded border p-2" style={{ '--fc-highlight': hexToRgba(finalColor(selectedUser||users[0]?.id||''), 0.25) }}>
+        <div
+          className="bg-white rounded border p-2"
+          style={{
+            '--fc-highlight': hexToRgba(finalColor(selectedUser||users[0]?.id||''), 0.25),
+            '--fc-highlight-border': finalColor(selectedUser||users[0]?.id||''),
+          }}
+        >
           <style>{`
             .fc .is-past-day .fc-timegrid-col-frame { background-color: #f5f5f5; }
             /* altura dos slots: usar padrão do FullCalendar para distribuição uniforme */
@@ -260,7 +266,10 @@ export default function PlanningPageV2(){
             .fc .fc-event { font-size: 0.8rem; }
             .fc .fc-timegrid-axis-cushion { font-size: 0.7rem; }
             /* cor do highlight da seleção na cor final do usuário */
-            .fc .fc-highlight { background: var(--fc-highlight, rgba(59,130,246,0.2)); }
+            /* desabilitar o highlight padrão da seleção para evitar sobreposição com o espelho (mirror) */
+            .fc .fc-highlight { background-color: transparent !important; }
+            /* colorir o espelho da seleção com a cor do usuário */
+            .fc .fc-event.fc-mirror { background-color: var(--fc-highlight, rgba(59,130,246,0.2)) !important; border: 1px solid var(--fc-highlight-border, rgba(59,130,246,0.5)) !important; }
             /* layout dos eventos: título centralizado e ações no rodapé */
             .fc-event-main-frame { position: relative; display: flex; flex-direction: column; height: 100%; }
             .fc-event-main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -293,6 +302,18 @@ export default function PlanningPageV2(){
             headerToolbar={false}
             eventTextColor="#111111"
             eventContent={(arg)=>{
+              // Enquanto seleciona (mirror), mostrar horários topo/fim e evitar ações
+              if (arg.isMirror) {
+                const startLabel = arg.event.start ? toLocalHHMM(arg.event.start) : '';
+                const endLabel = arg.event.end ? toLocalHHMM(arg.event.end) : '';
+                return (
+                  <div className="fc-event-main-frame">
+                    <div className="fc-event-main" />
+                    <div className="absolute top-0 left-1 right-1 text-[10px] text-gray-900 font-medium">{startLabel}</div>
+                    <div className="absolute bottom-0 left-1 right-1 text-[10px] text-gray-900 font-medium">{endLabel}</div>
+                  </div>
+                );
+              }
               const kind = arg.event.extendedProps?.kind;
               const isShift = kind === 'shift';
               const isPast = toLocalDayISO(arg.event.start) < todayIso;
