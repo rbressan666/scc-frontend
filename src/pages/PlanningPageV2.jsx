@@ -110,7 +110,7 @@ export default function PlanningPageV2(){
   const colorPalette = useMemo(()=>['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#84cc16','#a855f7','#fb7185'],[]);
   const userColorMap = useMemo(()=>{
     const map = new Map();
-    users.forEach((u, idx)=> map.set(u.id, colorPalette[idx % colorPalette.length]));
+    users.forEach((u, idx)=> map.set(String(u.id), colorPalette[idx % colorPalette.length]));
     return map;
   },[users, colorPalette]);
 
@@ -122,7 +122,7 @@ export default function PlanningPageV2(){
     }catch{ return iso; }
   };
 
-  const finalColor = (userId)=> userColorMap.get(userId) || '#3b82f6';
+  const finalColor = (userId)=> userColorMap.get(String(userId)) || '#3b82f6';
 
   // Utilitário: converte hex #RRGGBB em rgba com alpha
   const hexToRgba = (hex, alpha=0.15)=>{
@@ -218,7 +218,15 @@ export default function PlanningPageV2(){
 
   return (
     <MainLayout customHeader={headerEl}>
-      <div className="space-y-3">
+      <div className="relative">
+        {saving && (
+          <div className="absolute inset-0 z-50 bg-white/60 backdrop-blur-[2px] flex items-center justify-center">
+            <div className="px-4 py-3 rounded-md bg-white shadow border text-sm text-gray-700">
+              Salvando seleção...
+            </div>
+          </div>
+        )}
+        <div className="space-y-3">
 
           {/* Área fixa para mensagens - evita deslocamento do calendário */}
           <div className="min-h-6 text-sm">
@@ -244,7 +252,7 @@ export default function PlanningPageV2(){
           </div>
 
         {/* FullCalendar - timeGridWeek */}
-        <div className="bg-white rounded border p-2" style={{ '--fc-highlight': hexToRgba(finalColor(selectedUser||users[0]?.id||''), 0.25) }}>
+  <div className="bg-white rounded border p-2" style={{ '--fc-highlight': hexToRgba(finalColor(selectedUser||users[0]?.id||''), 0.25) }}>
           <style>{`
             .fc .is-past-day .fc-timegrid-col-frame { background-color: #f5f5f5; }
             /* altura dos slots: usar padrão do FullCalendar para distribuição uniforme */
@@ -272,8 +280,8 @@ export default function PlanningPageV2(){
             initialDate={week?.weekStart || undefined}
             locale={ptLocale}
             firstDay={3}
-            slotMinTime="00:00:00"
-            slotMaxTime="24:00:00"
+            slotMinTime="11:00:00"
+            slotMaxTime="36:00:00"
             contentHeight="auto"
             allDaySlot={false}
             selectable={!saving}
@@ -456,6 +464,7 @@ export default function PlanningPageV2(){
           ))}
         </div>
 
+        </div>
       </div>
     </MainLayout>
   );
