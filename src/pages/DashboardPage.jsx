@@ -26,9 +26,9 @@ const DashboardPage = () => {
   const res = await api.get('/api/admin/db-usage');
         const data = res?.data || res;
         const bytes = data?.bytes ?? null;
-  // Limite fixo: 2 GB
-  const TWO_GB = 2 * 1024 * 1024 * 1024; // 2 GiB em bytes
-  const percent = bytes != null ? Math.min(100, Math.round((bytes / TWO_GB) * 100)) : null;
+  // Limite fixo: 0,5 GB (plano atual do Supabase)
+  const HALF_GB = 0.5 * 1024 * 1024 * 1024; // 0,5 GiB em bytes
+  const percent = bytes != null ? Math.min(100, Math.round((bytes / HALF_GB) * 100)) : null;
         setDbUsage({ bytes, pretty: data?.pretty || null, tables: data?.tables || null, percent });
       } catch {
         // deixa mocado se falhar

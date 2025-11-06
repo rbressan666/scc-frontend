@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
-import { userService } from '../services/api';
+import { userService, setorService } from '../services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,6 +31,8 @@ const UserEditPage = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [setores, setSetores] = useState([]);
+  const [selectedSetores, setSelectedSetores] = useState([]);
   
   const [formData, setFormData] = useState({
     nome_completo: '',
@@ -56,6 +58,9 @@ const UserEditPage = () => {
           senha: '', // Sempre vazio por segurança
           ativo: user.ativo !== undefined ? user.ativo : true
         });
+        // Pré-selecionar setores do usuário, se retornados
+        const ss = Array.isArray(user.setores) ? user.setores.map(s => s.id) : [];
+        setSelectedSetores(ss);
       } else {
         setError('Usuário não encontrado');
       }
@@ -72,7 +77,17 @@ const UserEditPage = () => {
       navigate('/dashboard');
       return;
     }
-    loadUser();
+    (async()=>{
+      // carregar setores para seleção
+      try{
+        const resp = await setorService.getAll(false);
+        const list = resp?.data || resp || [];
+        setSetores(list);
+      }catch(e){
+        console.error('Erro ao carregar setores:', e);
+      }
+      await loadUser();
+    })();
   }, [id, isAdmin, navigate, loadUser]);
 
   // Atualizar campo do formulário
@@ -118,7 +133,8 @@ const UserEditPage = () => {
         nome_completo: formData.nome_completo.trim(),
         email: formData.email.trim(),
         perfil: formData.perfil,
-        ativo: formData.ativo
+        ativo: formData.ativo,
+        setores: selectedSetores
       };
       
       // Só incluir senha se foi preenchida
@@ -267,6 +283,31 @@ const UserEditPage = () => {
                       )}
                     </Button>
                   </div>
+                </div>
+
+                {/* Setores */}
+                <div className="md:col-span-2">
+                  <label className="text-sm font-medium text-gray-700 block mb-2">
+                    Setores onde pode trabalhar
+                  </label>
+                  {setores.length === 0 ? (
+                    <div className="text-sm text-gray-500">Nenhum setor cadastrado.</div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {setores.map(s => (
+                        <label key={s.id} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={selectedSetores.includes(s.id)}
+                            onChange={(e)=>{
+                              setSelectedSetores(prev => e.target.checked ? [...prev, s.id] : prev.filter(id=>id!==s.id));
+                            }}
+                          />
+                          <span>{s.nome}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Status */}
