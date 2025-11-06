@@ -23,11 +23,12 @@ const DashboardPage = () => {
   useEffect(() => {
     (async () => {
       try {
-        const res = await api.get('/api/admin/db-usage');
+  const res = await api.get('/api/admin/db-usage');
         const data = res?.data || res;
         const bytes = data?.bytes ?? null;
-        const limit = Number(import.meta.env.VITE_DB_LIMIT_BYTES || 0) || null; // opcional, define limite para %
-        const percent = bytes && limit ? Math.min(100, Math.round((bytes / limit) * 100)) : null;
+  // Limite fixo: 2 GB
+  const TWO_GB = 2 * 1024 * 1024 * 1024; // 2 GiB em bytes
+  const percent = bytes != null ? Math.min(100, Math.round((bytes / TWO_GB) * 100)) : null;
         setDbUsage({ bytes, pretty: data?.pretty || null, tables: data?.tables || null, percent });
       } catch {
         // deixa mocado se falhar
