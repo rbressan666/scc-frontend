@@ -247,8 +247,7 @@ export default function PlanningPageV2(){
         <div className="bg-white rounded border p-2" style={{ '--fc-highlight': hexToRgba(finalColor(selectedUser||users[0]?.id||''), 0.25) }}>
           <style>{`
             .fc .is-past-day .fc-timegrid-col-frame { background-color: #f5f5f5; }
-            /* reduzir altura das linhas para caber na tela */
-            .fc .fc-timegrid-slot { height: 1.0em; }
+            /* altura dos slots: usar padrão do FullCalendar para distribuição uniforme */
             .fc .fc-timegrid-slot-label { font-size: 0.68rem; }
             .fc .fc-event { font-size: 0.8rem; }
             .fc .fc-timegrid-axis-cushion { font-size: 0.7rem; }
@@ -274,8 +273,8 @@ export default function PlanningPageV2(){
             locale={ptLocale}
             firstDay={3}
             slotMinTime="00:00:00"
-            slotMaxTime="23:00:00"
-            height="78vh"
+            slotMaxTime="24:00:00"
+            contentHeight="auto"
             allDaySlot={false}
             selectable={!saving}
             selectMirror
