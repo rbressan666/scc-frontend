@@ -301,6 +301,14 @@ export default function PlanningPageV2(){
             slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
             headerToolbar={false}
             eventTextColor="#111111"
+            eventDidMount={(info)=>{
+              // Força a cor do bloco enquanto seleciona (mirror)
+              if(info.isMirror){
+                const color = finalColor(selectedUser||users[0]?.id||'');
+                info.el.style.backgroundColor = hexToRgba(color, 0.25);
+                info.el.style.borderColor = color;
+              }
+            }}
             eventContent={(arg)=>{
               // Enquanto seleciona (mirror), mostrar horários topo/fim e evitar ações
               if (arg.isMirror) {
@@ -362,25 +370,15 @@ export default function PlanningPageV2(){
             }}
             events={[
               // turnos pontuais
-              ...((Array.isArray(week?.shifts) ? week.shifts : [])).flatMap(s=>{
+              ...((Array.isArray(week?.shifts) ? week.shifts : [])).map(s=>{
                 const startStr = fmtTime(s.start_time);
                 const endStr = fmtTime(s.end_time);
                 const startISO = safeDateTime(s.date, startStr);
                 const endISO = safeDateTime(s.spans_next_day ? addDaysIso(s.date, 1) : s.date, endStr);
-                if(!startISO || !endISO) return [];
+                if(!startISO || !endISO) return null;
                 const editable = !isPastIso(s.date);
-                const base = [{ id: String(s.id), title: s.user_name, start: startISO, end: endISO, backgroundColor: finalColor(s.user_id), borderColor: finalColor(s.user_id), editable, extendedProps: { kind: 'shift' } }];
-                if(s.spans_next_day){
-                  const nextDay = addDaysIso(s.date, 1);
-                  if(!nextDay) return base;
-                  const endPart = safeDateTime(nextDay, endStr);
-                  return [
-                    { ...base[0] },
-                    endPart ? { id: `${s.id}-b`, title: s.user_name, start: `${nextDay}T00:00:00`, end: endPart, backgroundColor: finalColor(s.user_id), borderColor: finalColor(s.user_id), editable: false, extendedProps: { kind: 'shift' } } : null
-                  ];
-                }
-                return base;
-              }),
+                return { id: String(s.id), title: s.user_name, start: startISO, end: endISO, backgroundColor: finalColor(s.user_id), borderColor: finalColor(s.user_id), editable, extendedProps: { kind: 'shift' } };
+              }).filter(Boolean),
               // regras semanais como eventos clicáveis (translúcidos)
               ...(() => {
                 if(!Array.isArray(week?.days) || week.days.length===0 || !Array.isArray(rules) || rules.length===0) return [];
