@@ -8,6 +8,7 @@ import UserListPage from './pages/UserListPage';
 import UserViewPage from './pages/UserViewPage';
 import UserEditPage from './pages/UserEditPage';
 import UserCreatePage from './pages/UserCreatePage';
+import UserInvitePage from './pages/UserInvitePage';
 import ConfiguracoesPage from './pages/ConfiguracoesPage';
 import ProdutosPage from './pages/ProdutosPage';
 import CadastroPorCameraPage from './pages/CadastroPorCameraPage';
@@ -23,6 +24,9 @@ import PlanningPageV2 from './pages/PlanningPageV2';
 import NotificationsAdminPage from './pages/NotificationsAdminPage';
 import UpdatesPage from './pages/UpdatesPage';
 import ProfilePage from './pages/ProfilePage';
+import StatuteWizardPage from './pages/StatuteWizardPage';
+import ConfirmSignupPage from './pages/ConfirmSignupPage';
+import SetPasswordPage from './pages/SetPasswordPage';
 import './App.css';
 
 // Componente 404 separado para usar useNavigate
@@ -59,8 +63,18 @@ function App() {
           <Routes>
             {/* Rota pública - Login */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/confirmar" element={<ConfirmSignupPage />} />
+            <Route path="/definir-senha" element={<SetPasswordPage />} />
             
             {/* Rotas protegidas */}
+            <Route
+              path="/termos"
+              element={
+                <ProtectedRoute>
+                  <StatuteWizardPage />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/atualizacoes"
               element={
@@ -94,6 +108,14 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <UserCreatePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/usuarios/convidar"
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <UserInvitePage />
                 </ProtectedRoute>
               }
             />

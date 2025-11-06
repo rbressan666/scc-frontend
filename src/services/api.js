@@ -195,6 +195,11 @@ export const userService = {
     return await api.post('/api/users', userData);
   },
 
+  // Convidar usuário: cria sem senha e envia e-mail de confirmação
+  async invite(inviteData) {
+    return await api.post('/api/users/invite', inviteData);
+  },
+
   async update(id, userData) {
     return await api.put(`/api/users/${id}`, userData);
   },
@@ -221,6 +226,26 @@ export const userService = {
 
   async updateProfile(profileData) {
     return await api.put('/api/users/profile', profileData);
+  }
+};
+
+// Serviços de Estatutos
+export const statutesService = {
+  async getPending() {
+    return await api.get('/api/statutes/pending');
+  },
+  async acknowledge(acks) {
+    return await api.post('/api/statutes/ack', { acks });
+  }
+};
+
+// Fluxos públicos de convite
+export const signupService = {
+  async confirm(token) {
+    return await api.get(`/api/auth/confirm?token=${encodeURIComponent(token)}`);
+  },
+  async setPasswordWithToken(token, senha) {
+    return await api.post('/api/auth/set-password-token', { token, senha });
   }
 };
 
