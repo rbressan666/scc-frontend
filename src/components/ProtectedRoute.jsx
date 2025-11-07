@@ -15,12 +15,16 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
     let cancelled = false;
     const run = async () => {
       if (loading || !isAuthenticated) return;
-      if (requireAdmin || isAdmin()) return; // admins não passam pelo gating
+  if (requireAdmin) return; // rota exige admin, gating de estatutos não interfere aqui
+  if (isAdmin()) return; // admins não precisam reconhecer estatutos
       if (location.pathname === '/termos') return; // já está no wizard
       try {
         setGateLoading(true);
         const resp = await statutesService.getPending();
-        if (!cancelled) setHasPendingStatutes(Array.isArray(resp.data) && resp.data.length > 0);
+        if (!cancelled) {
+          const has = Array.isArray(resp.data) && resp.data.length > 0;
+          setHasPendingStatutes(has);
+        }
       } catch {
         // Em caso de falha, não bloquear navegação
         if (!cancelled) setHasPendingStatutes(false);
