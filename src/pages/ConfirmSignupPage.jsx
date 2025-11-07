@@ -17,7 +17,15 @@ export default function ConfirmSignupPage(){
         if (resp.success && resp.setPasswordUrl){
           // redireciona para página de definir senha desta aplicação
           const url = new URL(resp.setPasswordUrl);
-          navigate(`/definir-senha?token=${url.searchParams.get('token')}`, { replace: true });
+          // Quando usamos HashRouter, o token vem após '#'
+          let tokenParam = url.searchParams.get('token');
+          if (!tokenParam) {
+            const hash = url.hash?.startsWith('#') ? url.hash.slice(1) : (url.hash || '');
+            const hashQuery = hash.split('?')[1] || '';
+            tokenParam = new URLSearchParams(hashQuery).get('token');
+          }
+          if (!tokenParam) { setError('Token inválido'); return; }
+          navigate(`/definir-senha?token=${encodeURIComponent(tokenParam)}`, { replace: true });
         } else {
           setError('Não foi possível confirmar.');
         }
