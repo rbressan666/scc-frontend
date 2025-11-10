@@ -38,15 +38,19 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       Cookies.remove('scc_token');
       Cookies.remove('scc_user');
-      
-      // Redirecionar para login se não estiver na página de login
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+
+      // Com HashRouter, garantir rota correta e forçar reload para remontar AuthProvider
+      const currentHash = window.location.hash || '';
+      const target = '/#/login';
+      const alreadyOnLogin = currentHash.startsWith('#/login');
+      if (!alreadyOnLogin) {
+        // Usar replace para evitar empilhar histórico e garantir remontagem
+        window.location.replace(target);
       }
     }
     
     // Retornar erro estruturado com mensagem específica
-    let errorMessage = 'Erro de conexão com o servidor';
+  let errorMessage = 'Erro de conexão com o servidor';
     
     if (error.response?.data?.message) {
       errorMessage = error.response.data.message;

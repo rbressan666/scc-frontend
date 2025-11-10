@@ -181,10 +181,6 @@ const UserListPage = () => {
             </div>
 
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => navigate('/usuarios/convidar')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Convidar Usuário
-              </Button>
               <Button onClick={() => navigate('/usuarios/novo')}>
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar Usuário
