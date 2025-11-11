@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import RouteLogger from './components/RouteLogger';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import UserListPage from './pages/UserListPage';
@@ -79,6 +80,7 @@ function App() {
     <AuthProvider>
       <Router>
         <div className="App">
+          <RouteLogger />
           <Routes>
             {/* Rota pública - Login */}
             <Route path="/login" element={<LoginPage />} />
