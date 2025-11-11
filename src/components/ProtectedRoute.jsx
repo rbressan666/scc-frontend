@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 import { Loader2 } from 'lucide-react';
@@ -9,6 +9,20 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const location = useLocation();
   const [gateLoading, setGateLoading] = useState(false);
   const [hasPendingStatutes, setHasPendingStatutes] = useState(false);
+
+  // Helper para debug de navegação (ativar com localStorage.setItem('scc_debug_nav','1'))
+  const debugNav = useMemo(() => (reason, target) => {
+    try {
+      if (window.localStorage.getItem('scc_debug_nav') === '1') {
+        console.log('[NAV DEBUG]', {
+          ts: new Date().toISOString(),
+          from: location.pathname,
+          reason,
+          target
+        });
+      }
+    } catch {/* ignore */}
+  }, [location.pathname]);
 
   // Gating: verificar termos pendentes para não-admins
   useEffect(() => {
@@ -24,6 +38,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
         if (!cancelled) {
           const has = Array.isArray(resp.data) && resp.data.length > 0;
           setHasPendingStatutes(has);
+          if (has) debugNav('pending-statutes-detected', '/termos');
         }
       } catch {
         // Em caso de falha, não bloquear navegação
@@ -34,7 +49,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
     };
     run();
     return () => { cancelled = true; };
-  }, [loading, isAuthenticated, requireAdmin, isAdmin, location.pathname]);
+  }, [loading, isAuthenticated, requireAdmin, isAdmin, location.pathname, debugNav]);
 
   // Mostrar loading enquanto verifica autenticação
   if (loading) {
@@ -50,11 +65,13 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
 
   // Redirecionar para login se não estiver autenticado
   if (!isAuthenticated) {
+    debugNav('not-authenticated', '/login');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // Verificar se requer permissões de admin
   if (requireAdmin && !isAdmin()) {
+    debugNav('access-denied-non-admin', null);
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center max-w-md mx-auto p-6">
@@ -91,6 +108,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
     );
   }
   if (!requireAdmin && !isAdmin() && hasPendingStatutes && location.pathname !== '/termos') {
+    debugNav('redirect-to-termos', '/termos');
     return <Navigate to="/termos" state={{ from: location }} replace />;
   }
 

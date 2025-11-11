@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -56,6 +56,25 @@ const NotFoundPage = () => {
 };
 
 function App() {
+  // Debug global de navegação via hash (ativar com localStorage.setItem('scc_debug_nav','1'))
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage.getItem('scc_debug_nav') === '1') {
+        const log = (ctx) => {
+          console.log('[NAV DEBUG]', {
+            ts: new Date().toISOString(),
+            ctx,
+            hash: window.location.hash,
+          });
+        };
+        log('App:mount');
+        const onHash = () => log('hashchange');
+        window.addEventListener('hashchange', onHash);
+        return () => window.removeEventListener('hashchange', onHash);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   return (
     <AuthProvider>
       <Router>

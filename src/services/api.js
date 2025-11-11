@@ -14,6 +14,39 @@ const api = axios.create({
   },
 });
 
+// Debug opcional de requisições/respostas (ativar com localStorage.setItem('scc_debug_nav','1'))
+try {
+  if (typeof window !== 'undefined' && window.localStorage.getItem('scc_debug_nav') === '1') {
+    api.interceptors.response.use(
+      (response) => {
+        try {
+          console.log('[HTTP DEBUG]', {
+            ts: new Date().toISOString(),
+            method: response.config?.method,
+            url: response.config?.url,
+            status: response.status,
+            route: window.location.hash || window.location.pathname,
+          });
+        } catch { /* ignore */ }
+        return response; // manter fluxo para próximos interceptors
+      },
+      (error) => {
+        try {
+          console.log('[HTTP DEBUG][ERR]', {
+            ts: new Date().toISOString(),
+            method: error.config?.method,
+            url: error.config?.url,
+            status: error.response?.status,
+            message: error.message,
+            route: window.location.hash || window.location.pathname,
+          });
+        } catch { /* ignore */ }
+        return Promise.reject(error);
+      }
+    );
+  }
+} catch { /* ignore */ }
+
 // Interceptor para adicionar token automaticamente
 api.interceptors.request.use(
   (config) => {
@@ -44,6 +77,11 @@ api.interceptors.response.use(
       const target = '/#/login';
       const alreadyOnLogin = currentHash.startsWith('#/login');
       if (!alreadyOnLogin) {
+        try {
+          // Guardar rota para redirecionar após login
+          const postLogin = currentHash ? currentHash.substring(1) : '/dashboard';
+          window.localStorage.setItem('scc_post_login_redirect', postLogin);
+        } catch { /* ignore */ }
         // Usar replace para evitar empilhar histórico e garantir remontagem
         window.location.replace(target);
       }

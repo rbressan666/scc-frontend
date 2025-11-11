@@ -47,7 +47,25 @@ const LoginPage = () => {
   // Redirecionar se já estiver logado
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      const from = location.state?.from?.pathname || '/dashboard';
+      // Priorizar redirect armazenado por 401, se existir
+      let from = location.state?.from?.pathname || '/dashboard';
+      try {
+        const stored = window.localStorage.getItem('scc_post_login_redirect');
+        if (stored && stored !== '/login' && stored !== '#/login') {
+          from = stored;
+          window.localStorage.removeItem('scc_post_login_redirect');
+        }
+      } catch { /* ignore */ }
+      try {
+        if (window.localStorage.getItem('scc_debug_nav') === '1') {
+          console.log('[NAV DEBUG]', {
+            ts: new Date().toISOString(),
+            ctx: 'LoginPage:post-auth',
+            to: from,
+            stateFrom: location.state?.from?.pathname || null
+          });
+        }
+      } catch { /* ignore */ }
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, authLoading, navigate, location]);
@@ -66,6 +84,15 @@ const LoginPage = () => {
           // Simular login com os dados recebidos
           const result = await login(data.user.email, null, data.token);
           if (result.success) {
+            try {
+              if (window.localStorage.getItem('scc_debug_nav') === '1') {
+                console.log('[NAV DEBUG]', {
+                  ts: new Date().toISOString(),
+                  ctx: 'LoginPage:qrLoginSuccess',
+                  to: '/dashboard'
+                });
+              }
+            } catch { /* ignore */ }
             navigate('/dashboard');
           }
         } catch {
@@ -121,7 +148,24 @@ const LoginPage = () => {
       const result = await login(formData.email, formData.senha);
       
       if (result.success) {
-        const from = location.state?.from?.pathname || '/dashboard';
+        let from = location.state?.from?.pathname || '/dashboard';
+        try {
+          const stored = window.localStorage.getItem('scc_post_login_redirect');
+          if (stored && stored !== '/login' && stored !== '#/login') {
+            from = stored;
+            window.localStorage.removeItem('scc_post_login_redirect');
+          }
+        } catch { /* ignore */ }
+        try {
+          if (window.localStorage.getItem('scc_debug_nav') === '1') {
+            console.log('[NAV DEBUG]', {
+              ts: new Date().toISOString(),
+              ctx: 'LoginPage:handleSubmit',
+              to: from,
+              stateFrom: location.state?.from?.pathname || null
+            });
+          }
+        } catch { /* ignore */ }
         navigate(from, { replace: true });
       } else {
         setError(result.message || 'Erro no login');
