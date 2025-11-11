@@ -23,6 +23,16 @@ localStorage.removeItem('scc_debug_nav')
 
 Os logs incluem timestamp (ISO), rota atual (hash ou pathname), e contexto (ctx/reason/target).
 
+## Interpretação do request /api/admin/db-usage
+
+O chamado `/api/admin/db-usage` acontece SOMENTE quando o componente do Dashboard é montado (efeito `useEffect` lá busca o uso do banco). Portanto:
+
+- Se você vê esse request logo após um "pulo" inesperado, ele é consequência do redirecionamento (porque o Dashboard acabou de montar), não a causa.
+- Ele não dispara nenhuma navegação; apenas lê estatísticas e atualiza a barra de progresso.
+- O redirecionamento em si deve gerar um log `[NAV DEBUG]` com `ctx: 'route-change'` (ou algum motivo em ProtectedRoute/LoginPage) imediatamente antes ou bem próximo do momento em que o Dashboard aparece.
+
+Use isso para distinguir causa versus efeito: primeiro aparece o log de navegação, em seguida o request `db-usage`. Se você só vê o request mas não vê log de navegação, provavelmente o debug estava desligado ou houve um reload completo sem preservar o hash.
+
 ## Como coletar
 
 1) Abra DevTools > Console e aba Network (marque "Preserve log").

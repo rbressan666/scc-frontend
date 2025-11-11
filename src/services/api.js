@@ -81,6 +81,15 @@ api.interceptors.response.use(
           // Guardar rota para redirecionar após login
           const postLogin = currentHash ? currentHash.substring(1) : '/dashboard';
           window.localStorage.setItem('scc_post_login_redirect', postLogin);
+          if (window.localStorage.getItem('scc_debug_nav') === '1') {
+            console.log('[AUTH DEBUG]', {
+              ts: new Date().toISOString(),
+              reason: '401-interceptor',
+              fromHash: currentHash,
+              to: target,
+              postLogin,
+            });
+          }
         } catch { /* ignore */ }
         // Usar replace para evitar empilhar histórico e garantir remontagem
         window.location.replace(target);
