@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Função de logout (definida antes para evitar TDZ em checkAuth)
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await authService.logout();
     } catch {
@@ -23,8 +23,13 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setUser(null);
       setIsAuthenticated(false);
+      try {
+        if (window.localStorage.getItem('scc_debug_nav') === '1') {
+          console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'logout', hadUser: !!user });
+        }
+      } catch { /* ignore */ }
     }
-  };
+  }, [user]);
 
   // Função auxiliar para obter dados do usuário a partir do token (antes de login/checkAuth)
   const getUserFromToken = async (token) => {
@@ -44,11 +49,21 @@ export const AuthProvider = ({ children }) => {
   const checkAuth = useCallback(async () => {
     try {
       setLoading(true);
+      try {
+        if (window.localStorage.getItem('scc_debug_nav') === '1') {
+          console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'checkAuth:start' });
+        }
+      } catch { /* ignore */ }
       
       // Verificar se há token nos cookies
       if (!authService.isAuthenticated()) {
         setUser(null);
         setIsAuthenticated(false);
+        try {
+          if (window.localStorage.getItem('scc_debug_nav') === '1') {
+            console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'checkAuth:no-token' });
+          }
+        } catch { /* ignore */ }
         return;
       }
 
@@ -62,25 +77,50 @@ export const AuthProvider = ({ children }) => {
           if (response.success) {
             setUser(response.data.user);
             setIsAuthenticated(true);
+            try {
+              if (window.localStorage.getItem('scc_debug_nav') === '1') {
+                console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'checkAuth:valid', userId: response.data.user?.id });
+              }
+            } catch { /* ignore */ }
           } else {
             throw new Error('Token inválido');
           }
         } catch {
           // Token inválido, limpar dados
           await logout();
+          try {
+            if (window.localStorage.getItem('scc_debug_nav') === '1') {
+              console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'checkAuth:token-invalid' });
+            }
+          } catch { /* ignore */ }
         }
       } else {
         setUser(null);
         setIsAuthenticated(false);
+        try {
+          if (window.localStorage.getItem('scc_debug_nav') === '1') {
+            console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'checkAuth:no-user-cookie' });
+          }
+        } catch { /* ignore */ }
       }
     } catch (err) {
       console.error('Erro ao verificar autenticação:', err);
       setUser(null);
       setIsAuthenticated(false);
+      try {
+        if (window.localStorage.getItem('scc_debug_nav') === '1') {
+          console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'checkAuth:error', message: err?.message });
+        }
+      } catch { /* ignore */ }
     } finally {
       setLoading(false);
+      try {
+        if (window.localStorage.getItem('scc_debug_nav') === '1') {
+          console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'checkAuth:end', isAuth: isAuthenticated });
+        }
+      } catch { /* ignore */ }
     }
-  }, []);
+  }, [logout, isAuthenticated]);
 
   // Verificar autenticação ao carregar a aplicação (depois que checkAuth foi definido)
   useEffect(() => {
@@ -90,11 +130,15 @@ export const AuthProvider = ({ children }) => {
   // Função de login
   const login = async (email, senha, token = null) => {
     try {
+      try {
+        if (window.localStorage.getItem('scc_debug_nav') === '1') {
+          console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'login:begin', mode: token ? 'qr' : 'standard', email });
+        }
+      } catch { /* ignore */ }
       let response;
       
       // Se token foi fornecido (login via QR Code), usar diretamente
       if (token) {
-        // Simular resposta para login via QR Code
         response = {
           success: true,
           data: {
@@ -112,12 +156,22 @@ export const AuthProvider = ({ children }) => {
         setIsAuthenticated(true);
     // Try to register push subscription for this user
     try { await initPush(); } catch { /* ignore */ }
+        try {
+          if (window.localStorage.getItem('scc_debug_nav') === '1') {
+            console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'login:success', userId: response.data.user?.id });
+          }
+        } catch { /* ignore */ }
         return { success: true, user: response.data.user };
       } else {
         throw new Error(response.message || 'Erro no login');
       }
     } catch (error) {
       console.error('Erro no login:', error);
+      try {
+        if (window.localStorage.getItem('scc_debug_nav') === '1') {
+          console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'login:error', message: error?.message });
+        }
+      } catch { /* ignore */ }
       return { 
         success: false, 
         message: error.message || 'Erro no login' 
