@@ -14,22 +14,33 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Função de logout (definida antes para evitar TDZ em checkAuth)
+  // Limpar autenticação local (estável)
+  const clearAuth = useCallback(() => {
+    try {
+      // limpar cookies também
+      Cookies.remove('scc_token');
+      Cookies.remove('scc_user');
+    } catch { /* ignore */ }
+    setUser(null);
+    setIsAuthenticated(false);
+  }, []);
+
+  // Função de logout (usa clearAuth para não depender de 'user')
   const logout = useCallback(async () => {
+    const hadUser = !!Cookies.get('scc_user');
     try {
       await authService.logout();
     } catch {
       // ignore logout error
     } finally {
-      setUser(null);
-      setIsAuthenticated(false);
+      clearAuth();
       try {
         if (window.localStorage.getItem('scc_debug_nav') === '1') {
-          console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'logout', hadUser: !!user });
+          console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'logout', hadUser });
         }
       } catch { /* ignore */ }
     }
-  }, [user]);
+  }, [clearAuth]);
 
   // Função auxiliar para obter dados do usuário a partir do token (antes de login/checkAuth)
   const getUserFromToken = async (token) => {
@@ -57,8 +68,7 @@ export const AuthProvider = ({ children }) => {
       
       // Verificar se há token nos cookies
       if (!authService.isAuthenticated()) {
-        setUser(null);
-        setIsAuthenticated(false);
+        clearAuth();
         try {
           if (window.localStorage.getItem('scc_debug_nav') === '1') {
             console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'checkAuth:no-token' });
@@ -73,13 +83,22 @@ export const AuthProvider = ({ children }) => {
       if (userData) {
         // Verificar se o token ainda é válido
         try {
-          const response = await authService.verifyToken();
-          if (response.success) {
-            setUser(response.data.user);
-            setIsAuthenticated(true);
+          const rawRes = await authService.verifyToken();
+          // Debug opcional do shape de verify
+          try {
+            if (window.localStorage.getItem('scc_debug_nav') === '1') {
+              console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'checkAuth:verify:raw', keys: Object.keys(rawRes || {}), success: rawRes?.success, hasUser: !!(rawRes?.data?.user || rawRes?.user) });
+            }
+          } catch { /* ignore */ }
+          if (rawRes?.success && (rawRes?.data?.user)) {
+            const nextUser = rawRes.data.user;
+            // Evitar setState desnecessário se o mesmo usuário já está setado
+            const sameUser = user && nextUser && user.id === nextUser.id;
+            if (!sameUser) setUser(nextUser);
+            if (!isAuthenticated) setIsAuthenticated(true);
             try {
               if (window.localStorage.getItem('scc_debug_nav') === '1') {
-                console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'checkAuth:valid', userId: response.data.user?.id });
+                console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'checkAuth:valid', userId: nextUser?.id });
               }
             } catch { /* ignore */ }
           } else {
@@ -87,7 +106,7 @@ export const AuthProvider = ({ children }) => {
           }
         } catch {
           // Token inválido, limpar dados
-          await logout();
+          clearAuth();
           try {
             if (window.localStorage.getItem('scc_debug_nav') === '1') {
               console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'checkAuth:token-invalid' });
@@ -95,8 +114,7 @@ export const AuthProvider = ({ children }) => {
           } catch { /* ignore */ }
         }
       } else {
-        setUser(null);
-        setIsAuthenticated(false);
+        clearAuth();
         try {
           if (window.localStorage.getItem('scc_debug_nav') === '1') {
             console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'checkAuth:no-user-cookie' });
@@ -105,8 +123,7 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (err) {
       console.error('Erro ao verificar autenticação:', err);
-      setUser(null);
-      setIsAuthenticated(false);
+      clearAuth();
       try {
         if (window.localStorage.getItem('scc_debug_nav') === '1') {
           console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'checkAuth:error', message: err?.message });
@@ -116,16 +133,19 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
       try {
         if (window.localStorage.getItem('scc_debug_nav') === '1') {
-          console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'checkAuth:end', isAuth: isAuthenticated });
+          // Usa cookies para refletir estado atual de forma estável sem depender de closures
+          console.log('[AUTH DEBUG]', { ts: new Date().toISOString(), ctx: 'checkAuth:end', isAuth: !!Cookies.get('scc_token') });
         }
       } catch { /* ignore */ }
     }
-  }, [logout, isAuthenticated]);
+  }, [clearAuth, isAuthenticated, user]);
 
   // Verificar autenticação ao carregar a aplicação (depois que checkAuth foi definido)
   useEffect(() => {
+    // Executa somente no mount para evitar loops
     checkAuth();
-  }, [checkAuth]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Função de login
   const login = async (email, senha, token = null) => {
