@@ -228,7 +228,25 @@ export const authService = {
 
   // Verificar validade do token
   async verifyToken() {
-    return await api.get("/api/auth/verify");
+    // Normaliza a resposta para { success: true, data: { user } }
+    const res = await api.get("/api/auth/verify");
+    try {
+      // Alguns ambientes podem retornar { success, user }, outros apenas { user }
+      const user = res?.user || res?.data?.user || null;
+      const hasSuccess = typeof res?.success !== 'undefined' ? !!res.success : null;
+      if ((hasSuccess === true && user) || (hasSuccess === null && user)) {
+        return { success: true, data: { user } };
+      }
+      // Caso venha estruturado de outra forma, tenta inferir
+      if (res && typeof res === 'object' && !Array.isArray(res)) {
+        const maybeUser = res.user || res.currentUser || res.data?.currentUser;
+        if (maybeUser) return { success: true, data: { user: maybeUser } };
+      }
+      return { success: false, message: res?.message || 'Token inválido' };
+    } catch {
+      // Em caso de erro ao normalizar, devolve forma conservadora
+      return { success: false, message: 'Token inválido' };
+    }
   }
 };
 
