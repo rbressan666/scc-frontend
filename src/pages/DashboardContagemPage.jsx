@@ -21,12 +21,30 @@ const DashboardContagemPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (turnoId) {
-      fetchDashboardData();
-    }
-  }, [turnoId, fetchDashboardData]);
+  // Primeiro, defina os utilitários que serão usados pelas buscas
+  const calcularEstatisticas = useCallback((contagens, produtos) => {
+    const totalProdutos = produtos.length;
+    let produtosContados = 0;
+    
+    // Contar produtos que já foram contados
+    contagens.forEach(contagem => {
+      if (contagem.total_itens_contados > 0) {
+        produtosContados += contagem.total_itens_contados;
+      }
+    });
 
+    const percentualConcluido = totalProdutos > 0 ? Math.round((produtosContados / totalProdutos) * 100) : 0;
+
+    setEstatisticas({
+      totalProdutos,
+      produtosContados,
+      percentualConcluido: Math.min(percentualConcluido, 100), // Limitar a 100%
+      operadoresAtivos: usuarios.filter(u => u.ativo).length,
+      alertasAtivos: alertas.length
+    });
+  }, [usuarios, alertas]);
+
+  // Depois, a função que busca os dados do dashboard
   const fetchDashboardData = useCallback(async () => {
     try {
       setError(null);
@@ -62,11 +80,11 @@ const DashboardContagemPage = () => {
         setUsuarios(usuariosAtivos);
       }
 
-      // Processar produtos
+      // Calcular produtos
       // produtos são usados apenas para cálculo; não manter em estado
 
       // Calcular estatísticas
-  calcularEstatisticas(contagensRes.value?.data || [], produtosRes.value?.data || []);
+      calcularEstatisticas(contagensRes.value?.data || [], produtosRes.value?.data || []);
 
     } catch (error) {
       console.error('Erro ao buscar dados do dashboard:', error);
@@ -76,27 +94,12 @@ const DashboardContagemPage = () => {
     }
   }, [turnoId, calcularEstatisticas]);
 
-  const calcularEstatisticas = useCallback((contagens, produtos) => {
-    const totalProdutos = produtos.length;
-    let produtosContados = 0;
-    
-    // Contar produtos que já foram contados
-    contagens.forEach(contagem => {
-      if (contagem.total_itens_contados > 0) {
-        produtosContados += contagem.total_itens_contados;
-      }
-    });
-
-    const percentualConcluido = totalProdutos > 0 ? Math.round((produtosContados / totalProdutos) * 100) : 0;
-
-    setEstatisticas({
-      totalProdutos,
-      produtosContados,
-      percentualConcluido: Math.min(percentualConcluido, 100), // Limitar a 100%
-      operadoresAtivos: usuarios.filter(u => u.ativo).length,
-      alertasAtivos: alertas.length
-    });
-  }, [usuarios, alertas]);
+  // Por fim, o efeito que dispara a busca, após as funções acima existirem
+  useEffect(() => {
+    if (turnoId) {
+      fetchDashboardData();
+    }
+  }, [turnoId, fetchDashboardData]);
 
   const handleFecharTurno = async () => {
     if (!window.confirm('Tem certeza que deseja fechar este turno?')) {
