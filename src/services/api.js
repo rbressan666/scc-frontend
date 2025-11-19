@@ -333,6 +333,16 @@ export const statutesService = {
   async deleteStatute(id) {
     try { return await api.delete(`/api/statutes/${id}`); } catch (e) { return { success: false, message: e.message }; }
   },
+  // Itens (termos)
+  async createItem(statuteId, data) {
+    try { return await api.post(`/api/statutes/${statuteId}/items`, data); } catch (e) { return { success: false, message: e.message }; }
+  },
+  async updateItem(itemId, data) {
+    try { return await api.put(`/api/statutes/items/${itemId}`, data); } catch (e) { return { success: false, message: e.message }; }
+  },
+  async deleteItem(itemId) {
+    try { return await api.delete(`/api/statutes/items/${itemId}`); } catch (e) { return { success: false, message: e.message }; }
+  },
   async listAcknowledgements() {
     // Espera endpoint GET /api/statutes/acks (todos usuários x itens)
     try { return await api.get('/api/statutes/acks'); } catch (e) { return { success: false, message: e.message }; }

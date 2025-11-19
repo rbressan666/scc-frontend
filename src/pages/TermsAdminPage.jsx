@@ -35,7 +35,11 @@ const TermsAdminPage = () => {
       ]);
       if (statRes?.success) setGroups(statRes.data || []);
       if (ackRes?.success) setAcks(ackRes.data || []);
-      if (Array.isArray(userRes)) setUsers(userRes); // userService returns raw array via interceptor
+      // Normalizar resposta de usuários: pode vir {success, data} ou array direto
+      const usersData = Array.isArray(userRes)
+        ? userRes
+        : (Array.isArray(userRes?.data) ? userRes.data : []);
+      setUsers(usersData);
     } catch (e) {
       setError(e.message || 'Erro ao carregar dados');
     } finally {
