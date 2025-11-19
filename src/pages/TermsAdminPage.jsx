@@ -14,6 +14,7 @@ const TermsAdminPage = () => {
   const [groups, setGroups] = useState([]); // statutes
   const [acks, setAcks] = useState([]); // lista de acks crus
   const [users, setUsers] = useState([]);
+  const [userSectors, setUserSectors] = useState({}); // { userId: Set<setor_id> }
 
   const [newTermText, setNewTermText] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState('');
@@ -40,7 +41,20 @@ const TermsAdminPage = () => {
         ? userRes
         : (Array.isArray(userRes?.data) ? userRes.data : []);
       // Excluir administradores: apenas usuários assinam termos
-      setUsers(usersData.filter(u => (u?.perfil || '').toLowerCase() !== 'admin'));
+      const nonAdmins = usersData.filter(u => (u?.perfil || '').toLowerCase() !== 'admin');
+      setUsers(nonAdmins);
+
+      // Buscar setores por usuário (para filtrar grupos aplicáveis)
+      const sectorResults = await Promise.all(
+        nonAdmins.map(u => userService.getById(u.id).catch(() => null))
+      );
+      const sectorMap = {};
+      sectorResults.forEach((res, idx) => {
+        const uid = nonAdmins[idx].id;
+        const setoresArr = res?.data?.setores || [];
+        sectorMap[uid] = new Set(setoresArr.map(s => s.id));
+      });
+      setUserSectors(sectorMap);
     } catch (e) {
       setError(e.message || 'Erro ao carregar dados');
     } finally {
@@ -98,9 +112,17 @@ const TermsAdminPage = () => {
     return acc;
   }, {});
 
-  // Lista plana de todos os termos ativos (para ordenação exibição global) e inativos (still show?)
-  const allTerms = groups.flatMap(g => (g.items || []).map(it => ({ ...it, groupTitle: g.title })));
-  allTerms.sort((a, b) => a.groupTitle.localeCompare(b.groupTitle) || a.sequence - b.sequence);
+  // Função para obter grupos aplicáveis a um usuário (geral + setores do usuário)
+  const getApplicableGroupsForUser = (userId) => {
+    const set = userSectors[userId];
+    return groups
+      .filter(g => g && (g.setor_id == null || (set instanceof Set && set.has(g.setor_id))))
+      .map(g => ({
+        ...g,
+        items: (g.items || []).filter(it => it.active !== false)
+      }))
+      .sort((a, b) => a.title.localeCompare(b.title));
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-6">
@@ -197,7 +219,7 @@ const TermsAdminPage = () => {
               </CardContent>
             </Card>
 
-            {/* Coluna 3: Ciência por Usuário */}
+            {/* Coluna 3: Ciência por Usuário (subdividido por grupos aplicáveis) */}
             <Card className="lg:col-span-1">
               <CardHeader>
                 <CardTitle className="text-lg">Ciência dos Usuários</CardTitle>
@@ -206,26 +228,35 @@ const TermsAdminPage = () => {
                 {users.length === 0 && <p className="text-xs text-gray-500">Nenhum usuário listado.</p>}
                 {users.map(u => {
                   const ackSet = ackMap[u.id] || new Set();
+                  const applicableGroups = getApplicableGroupsForUser(u.id);
                   return (
-                    <div key={u.id} className="border rounded bg-white p-2">
-                      <p className="text-sm font-medium mb-2">{u.nome_completo || u.email}</p>
-                      <ul className="space-y-1 text-xs">
-                        {allTerms.map(t => {
-                          const signed = ackSet.has(t.id);
-                          return (
-                            <li key={t.id + '-' + u.id} className="flex items-center gap-2">
-                              <span className="inline-block w-3 h-3 rounded-full flex-shrink-0 border border-gray-300 overflow-hidden">
-                                {signed ? (
-                                  <span className="w-full h-full bg-green-600 text-white flex items-center justify-center text-[10px]">✓</span>
-                                ) : (
-                                  <span className="w-full h-full bg-yellow-400 text-black flex items-center justify-center text-[10px]">!</span>
-                                )}
-                              </span>
-                              <span className="whitespace-pre-wrap break-words" title={t.text}>{t.text}</span>
-                            </li>
-                          );
-                        })}
-                      </ul>
+                    <div key={u.id} className="border rounded bg-white p-2 space-y-2">
+                      <p className="text-sm font-medium">{u.nome_completo || u.email}</p>
+                      {applicableGroups.length === 0 && (
+                        <p className="text-[11px] text-gray-500">Sem grupos aplicáveis para este usuário.</p>
+                      )}
+                      {applicableGroups.map(g => (
+                        <div key={g.id} className="bg-gray-50 border rounded p-2">
+                          <p className="text-xs font-semibold mb-1">{g.title}</p>
+                          <ul className="space-y-1 text-xs">
+                            {(g.items || []).map(t => {
+                              const signed = ackSet.has(t.id);
+                              return (
+                                <li key={t.id + '-' + u.id} className="flex items-center gap-2">
+                                  <span className="inline-block w-3 h-3 rounded-full flex-shrink-0 border border-gray-300 overflow-hidden">
+                                    {signed ? (
+                                      <span className="w-full h-full bg-green-600 text-white flex items-center justify-center text-[10px]">✓</span>
+                                    ) : (
+                                      <span className="w-full h-full bg-yellow-400 text-black flex items-center justify-center text-[10px]">!</span>
+                                    )}
+                                  </span>
+                                  <span className="whitespace-pre-wrap break-words" title={t.text}>{t.text}</span>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      ))}
                     </div>
                   );
                 })}
