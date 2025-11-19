@@ -213,7 +213,14 @@ const DashboardPage = () => {
     color: 'bg-yellow-600'
   };
 
-  const availableItems = [...menuItems.filter(item => !item.adminOnly || isAdmin()), termosItem];
+  // Garantir que o card de uso do banco fique sempre por último
+  const filtered = menuItems.filter(item => !item.adminOnly || isAdmin());
+  const dbCardIndex = filtered.findIndex(i => i.id === 'database');
+  let dbCard = null;
+  if (dbCardIndex !== -1) {
+    dbCard = filtered.splice(dbCardIndex, 1)[0];
+  }
+  const availableItems = [...filtered, termosItem, ...(dbCard ? [dbCard] : [])];
 
   return (
     <div className="min-h-screen bg-gray-50">

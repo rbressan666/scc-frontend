@@ -3,6 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { statutesService } from '../services/api';
 import { useAuth } from '../context/useAuth';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 // Página para usuário visualizar termos já reconhecidos (ciência)
 // Como backend ainda não fornece endpoint de ciência, exibimos pendências ou mensagem.
@@ -37,11 +40,39 @@ const TermsUserPage = () => {
     if (user?.id) load();
   }, [user?.id]);
 
+  const navigate = useNavigate();
+
   return (
-    <div className="min-h-screen bg-gray-50 py-6">
-      <div className="max-w-4xl mx-auto px-4">
-        <h1 className="text-2xl font-bold mb-4 text-gray-900">Termos e Ciência</h1>
-        <p className="text-sm text-gray-600 mb-6">Aqui você consulta os termos já reconhecidos e os que ainda pendem de ciência.</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header semelhante ao planejamento */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-14">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/dashboard')}
+                className="flex items-center space-x-1"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Voltar</span>
+              </Button>
+              <div className="flex items-center space-x-3">
+                <div className="bg-yellow-600 text-white p-2 rounded-lg">
+                  <span className="font-semibold text-xs">T&C</span>
+                </div>
+                <div>
+                  <h1 className="text-lg font-semibold text-gray-900 leading-tight">Termos e Ciência</h1>
+                  <p className="text-xs text-gray-500">Reconhecidos e pendentes</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        <p className="text-sm text-gray-600 mb-6">Consulte abaixo os termos que você já reconheceu e os que ainda pendem de ciência.</p>
 
         {loading && (
           <div className="text-gray-500">Carregando...</div>

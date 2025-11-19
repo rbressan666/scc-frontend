@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { statutesService, userService } from '../services/api';
+import { statutesService, userService, setorService } from '../services/api';
+import { ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 
 // Tela simplificada conforme requisitos: criar grupos em modal separado e criar termos (itens) exigindo seleção de grupo.
@@ -22,6 +24,8 @@ const TermsAdminPage = () => {
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [newGroupTitle, setNewGroupTitle] = useState('');
   const [creatingGroup, setCreatingGroup] = useState(false);
+  const [groupSetorId, setGroupSetorId] = useState('');
+  const [sectors, setSectors] = useState([]);
   const [creatingTerm, setCreatingTerm] = useState(false);
   const [deactivating, setDeactivating] = useState(null);
 
@@ -55,6 +59,11 @@ const TermsAdminPage = () => {
         sectorMap[uid] = new Set(setoresArr.map(s => s.id));
       });
       setUserSectors(sectorMap);
+
+      // Carregar setores para criação de grupos (estatutos)
+      const setoresRes = await setorService.getAll(false);
+      const setoresData = Array.isArray(setoresRes?.data) ? setoresRes.data : (Array.isArray(setoresRes) ? setoresRes : []);
+      setSectors(setoresData.filter(s => s?.active !== false));
     } catch (e) {
       setError(e.message || 'Erro ao carregar dados');
     } finally {
@@ -64,14 +73,32 @@ const TermsAdminPage = () => {
 
   useEffect(() => { loadAll(); }, []);
 
+  // Helper slugify local (repete backend)
+    const slugifyLocal = (str = '') => {
+      return str
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // remove diacríticos
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '') // mantém apenas caracteres seguros
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-');
+    };
+
   const handleCreateGroup = async (e) => {
     e.preventDefault();
     if (!newGroupTitle.trim()) return;
+    const slug = slugifyLocal(newGroupTitle.trim()).slice(0, 60) || 'grupo';
+    const isGeneral = slug === 'geral';
+    if (!isGeneral && !groupSetorId) return; // exige setor para não geral
     setCreatingGroup(true);
     try {
-      const res = await statutesService.createStatute({ title: newGroupTitle.trim() });
+      const payload = { title: newGroupTitle.trim() };
+      if (!isGeneral) payload.setor_id = groupSetorId;
+      const res = await statutesService.createStatute(payload);
       if (res?.success) {
         setNewGroupTitle('');
+        setGroupSetorId('');
         setShowGroupModal(false);
         loadAll();
       }
@@ -124,16 +151,39 @@ const TermsAdminPage = () => {
       .sort((a, b) => a.title.localeCompare(b.title));
   };
 
+  const navigate = useNavigate();
+
   return (
-    <div className="min-h-screen bg-gray-50 py-6">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Administração de Termos</h1>
-            <p className="text-sm text-gray-600">Criar grupos separados e adicionar termos obrigando a seleção de grupo.</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header estilo planejamento */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-14">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/dashboard')}
+                className="flex items-center space-x-1"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Voltar</span>
+              </Button>
+              <div className="flex items-center space-x-3">
+                <div className="bg-yellow-600 text-white p-2 rounded-lg">
+                  <span className="font-semibold text-xs">T&C</span>
+                </div>
+                <div>
+                  <h1 className="text-lg font-semibold text-gray-900 leading-tight">Administração de Termos</h1>
+                  <p className="text-xs text-gray-500">Gerenciar grupos e termos; visualizar ciência</p>
+                </div>
+              </div>
+            </div>
+            <Button size="sm" onClick={() => setShowGroupModal(true)}>Novo Grupo</Button>
           </div>
-          <Button size="sm" onClick={() => setShowGroupModal(true)}>Novo Grupo</Button>
         </div>
+      </div>
+      <div className="max-w-7xl mx-auto px-4 py-6">
 
         {loading && <div className="text-gray-500">Carregando...</div>}
         {error && <div className="text-red-600 text-sm mb-4">{error}</div>}
@@ -280,9 +330,38 @@ const TermsAdminPage = () => {
                   required
                 />
               </div>
+              {(() => {
+                const slug = slugifyLocal(newGroupTitle.trim());
+                const isGeneral = slug === 'geral';
+                if (isGeneral) {
+                  return <p className="text-[11px] text-gray-500">Grupo Geral não exige setor.</p>;
+                }
+                return (
+                  <div>
+                    <label className="text-xs text-gray-500">Setor *</label>
+                    <select
+                      required
+                      value={groupSetorId}
+                      onChange={e => setGroupSetorId(e.target.value)}
+                      className="w-full border rounded h-9 text-sm px-2 bg-white"
+                    >
+                      <option value="">Selecione...</option>
+                      {sectors.map(s => (
+                        <option key={s.id} value={s.id}>{s.nome || s.nome_exibicao || s.code || s.id}</option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-gray-500 mt-1">Todo grupo (exceto Geral) deve estar associado a um setor.</p>
+                  </div>
+                );
+              })()}
               <div className="flex items-center justify-end gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => setShowGroupModal(false)}>Cancelar</Button>
-                <Button type="submit" size="sm" disabled={creatingGroup || !newGroupTitle.trim()}>{creatingGroup ? 'Criando...' : 'Criar Grupo'}</Button>
+                {(() => {
+                  const slug = slugifyLocal(newGroupTitle.trim());
+                  const isGeneral = slug === 'geral';
+                  const disabled = creatingGroup || !newGroupTitle.trim() || (!isGeneral && !groupSetorId);
+                  return <Button type="submit" size="sm" disabled={disabled}>{creatingGroup ? 'Criando...' : 'Criar Grupo'}</Button>;
+                })()}
               </div>
             </form>
           </div>
