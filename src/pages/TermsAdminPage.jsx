@@ -173,7 +173,7 @@ const TermsAdminPage = () => {
                     <ul className="space-y-1">
                       {(g.items || []).map(it => (
                         <li key={it.id} className="flex items-center justify-between border rounded px-2 py-1 text-xs">
-                          <span className="truncate max-w-[200px]" title={it.text}>{it.text}</span>
+                          <span className="whitespace-pre-wrap break-words" title={it.text}>{it.text}</span>
                           <div className="flex items-center gap-2">
                             {it.active ? (
                               <Button
@@ -221,7 +221,7 @@ const TermsAdminPage = () => {
                                   <span className="w-full h-full bg-yellow-400 text-black flex items-center justify-center text-[10px]">!</span>
                                 )}
                               </span>
-                              <span className="truncate" title={t.text}>{t.text}</span>
+                              <span className="whitespace-pre-wrap break-words" title={t.text}>{t.text}</span>
                             </li>
                           );
                         })}
