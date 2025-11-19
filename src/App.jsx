@@ -28,6 +28,8 @@ import ProfilePage from './pages/ProfilePage';
 import StatuteWizardPage from './pages/StatuteWizardPage';
 import ConfirmSignupPage from './pages/ConfirmSignupPage';
 import SetPasswordPage from './pages/SetPasswordPage';
+import TermsUserPage from './pages/TermsUserPage';
+import TermsAdminPage from './pages/TermsAdminPage';
 import './App.css';
 
 // Componente 404 separado para usar useNavigate
@@ -191,6 +193,25 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <PlanningPageV2 />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Termos - ciência do usuário */}
+            <Route
+              path="/termos-usuario"
+              element={
+                <ProtectedRoute>
+                  <TermsUserPage />
+                </ProtectedRoute>
+              }
+            />
+            {/* Termos - administração */}
+            <Route
+              path="/admin/termos"
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <TermsAdminPage />
                 </ProtectedRoute>
               }
             />

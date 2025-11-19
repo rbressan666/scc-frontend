@@ -689,3 +689,47 @@ Arquivos alterados:
 
 Resultado esperado:
 - Próximos logs de erro em produção virão com caminhos/letras legíveis. Envie o novo stack trace para darmos o diagnóstico final do erro remanescente.
+
+## 2025-11-19 - Feature: Termos & Ciência (Frontend + Endpoints Base Backend)
+
+- O que foi implementado:
+  - Novo card dinâmico "Termos & Ciência" no `DashboardPage.jsx` direcionando:
+    - Usuário comum → `/termos-usuario` (visualização de termos reconhecidos e pendências)
+    - Administrador → `/admin/termos` (CRUD básico + ciência agregada)
+  - Novas páginas: `TermsUserPage.jsx` e `TermsAdminPage.jsx` com carregamento resiliente (exibem mensagens amigáveis caso endpoints ainda inexistam).
+  - Extensão do `statutesService` em `services/api.js` com métodos futuros: `listStatutes`, `listGroups` (placeholder), `createStatute`, `updateStatute`, `deleteStatute`, `listAcknowledgements`, `userAcknowledgements`.
+  - Backend: adicionados endpoints reais para estatutos e itens (CRUD), além de listagem de ciência:
+    - `GET /api/statutes` listagem completa (estatutos + itens)
+    - `POST /api/statutes`, `PUT /api/statutes/:id`, `DELETE /api/statutes/:id` (soft delete)
+    - `POST /api/statutes/:id/items`, `PUT /api/statutes/items/:itemId`, `DELETE /api/statutes/items/:itemId`
+    - `GET /api/statutes/acks` (admin) e `GET /api/statutes/acks/:userId`
+  - Controle de acesso: operações de escrita/restritas exigem perfil `admin` (verificação simples `req.user.perfil`).
+
+- Motivo:
+  - Iniciar governança de termos de conduta e procedimentos operacionais com rastreabilidade de ciência por usuário.
+
+- Impacto:
+  - Usuários já visualizam pendências através do endpoint existente `/pending`; agora estrutura preparada para histórico de ciência.
+  - Administradores podem iniciar cadastro incremental de novos estatutos/itens sem bloquear o restante do sistema.
+
+- Como evoluir na próxima fase:
+  - Implementar tabela opcional de "grupos" se necessária (hoje agrupamento pode ser por `setor_id` + estatutos gerais).
+  - Adicionar paginação e filtros (ativo/inativo, setor, busca por texto).
+  - Registrar ciência em lote com metadados (versão do estatuto, IP, user-agent) se auditoria ampliada for requerida.
+
+- Arquivos principais alterados:
+  - Frontend: `DashboardPage.jsx`, `TermsUserPage.jsx`, `TermsAdminPage.jsx`, `services/api.js`
+  - Backend: `controllers/statutesController.js`, `routes/statutes.js`
+
+- Teste rápido sugerido:
+  1. Login como admin → acessar `/admin/termos` → criar estatuto e item → verificar retorno JSON.
+  2. Login como usuário comum → acessar `/termos-usuario` → conferir pendências.
+  3. Registrar ciência via `POST /api/statutes/ack` → reabrir página usuário → item deixa de aparecer em pendências.
+
+- Reversão simples:
+  - Remover card adicionando filtro em `DashboardPage.jsx` ou excluir objeto `termosItem`.
+  - Comentar novos blocos de rota em `routes/statutes.js` se necessitar rollback parcial.
+
+- Observação:
+  - Endpoint `listGroups()` permanece placeholder aguardando definição de modelo de grupos distinto de setores.
+

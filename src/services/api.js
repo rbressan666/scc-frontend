@@ -305,6 +305,41 @@ export const statutesService = {
   },
   async acknowledge(acks) {
     return await api.post('/api/statutes/ack', { acks });
+  },
+  // Novos métodos (endpoints futuros; frontend tolera ausência)
+  async listStatutes() {
+    // Espera endpoint GET /api/statutes (lista todos com itens)
+    try { return await api.get('/api/statutes'); } catch (e) { return { success: false, message: e.message }; }
+  },
+  async listGroups() {
+    // Espera endpoint GET /api/statutes/groups
+    try { return await api.get('/api/statutes/groups'); } catch (e) { return { success: false, message: e.message }; }
+  },
+  async createGroup(data) {
+    try { return await api.post('/api/statutes/groups', data); } catch (e) { return { success: false, message: e.message }; }
+  },
+  async updateGroup(id, data) {
+    try { return await api.put(`/api/statutes/groups/${id}`, data); } catch (e) { return { success: false, message: e.message }; }
+  },
+  async deleteGroup(id) {
+    try { return await api.delete(`/api/statutes/groups/${id}`); } catch (e) { return { success: false, message: e.message }; }
+  },
+  async createStatute(data) {
+    try { return await api.post('/api/statutes', data); } catch (e) { return { success: false, message: e.message }; }
+  },
+  async updateStatute(id, data) {
+    try { return await api.put(`/api/statutes/${id}`, data); } catch (e) { return { success: false, message: e.message }; }
+  },
+  async deleteStatute(id) {
+    try { return await api.delete(`/api/statutes/${id}`); } catch (e) { return { success: false, message: e.message }; }
+  },
+  async listAcknowledgements() {
+    // Espera endpoint GET /api/statutes/acks (todos usuários x itens)
+    try { return await api.get('/api/statutes/acks'); } catch (e) { return { success: false, message: e.message }; }
+  },
+  async userAcknowledgements(userId) {
+    // Espera endpoint GET /api/statutes/acks/:userId
+    try { return await api.get(`/api/statutes/acks/${userId}`); } catch (e) { return { success: false, message: e.message }; }
   }
 };
 

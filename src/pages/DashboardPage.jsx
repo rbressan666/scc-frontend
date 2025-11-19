@@ -202,10 +202,18 @@ const DashboardPage = () => {
     }
   ];
 
-  // Filtrar itens baseado no perfil do usuário
-  const availableItems = menuItems.filter(item => 
-    !item.adminOnly || isAdmin()
-  );
+  // Card dinâmico de Termos conforme perfil
+  const termosItem = {
+    id: 'termos-ciencia',
+    title: 'Termos & Ciência',
+    description: isAdmin() ? 'Gerenciar termos e ver ciência dos usuários' : 'Consultar termos que você já reconheceu',
+    icon: Cog,
+    path: isAdmin() ? '/admin/termos' : '/termos-usuario',
+    adminOnly: false,
+    color: 'bg-yellow-600'
+  };
+
+  const availableItems = [...menuItems.filter(item => !item.adminOnly || isAdmin()), termosItem];
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -4,5 +4,11 @@
     "time": "09:00",
     "title": "Confirmação imediata de escalas",
     "summary": "Ao criar um turno, o usuário passa a receber confirmação imediata por email e push. Correções de fuso aplicadas no agendamento."
+  },
+  {
+    "date": "2025-11-19",
+    "time": "10:30",
+    "title": "Termos & Ciência (MVP)",
+    "summary": "Adicionado card 'Termos & Ciência' ao dashboard. Usuários visualizam pendências e (futuramente) termos reconhecidos. Admins podem criar estatutos/itens e consultar ciência agregada via novos endpoints base."
   }
 ]
