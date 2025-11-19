@@ -39,7 +39,8 @@ const TermsAdminPage = () => {
       const usersData = Array.isArray(userRes)
         ? userRes
         : (Array.isArray(userRes?.data) ? userRes.data : []);
-      setUsers(usersData);
+      // Excluir administradores: apenas usuários assinam termos
+      setUsers(usersData.filter(u => (u?.perfil || '').toLowerCase() !== 'admin'));
     } catch (e) {
       setError(e.message || 'Erro ao carregar dados');
     } finally {
