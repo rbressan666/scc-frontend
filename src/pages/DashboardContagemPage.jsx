@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
 import { ArrowLeft, Clock, Package, AlertTriangle, Users, CheckCircle, X, Play, Square } from 'lucide-react';
-import { turnosService, contagensService, alertasService, userService, produtoService } from '../services/api';
+import { turnosService, contagensService, alertasService, produtoService } from '../services/api';
 import { useAuth } from '../context/useAuth';
 
 const DashboardContagemPage = () => {
@@ -15,7 +15,8 @@ const DashboardContagemPage = () => {
   const [turno, setTurno] = useState(null);
   const [contagens, setContagens] = useState([]);
   const [alertas, setAlertas] = useState([]);
-  const [usuarios, setUsuarios] = useState([]);
+  // Participantes (usuários associados ao turno via join)
+  const [participantes, setParticipantes] = useState([]);
   // Removido estado 'produtos' não utilizado diretamente
   const [estatisticas, setEstatisticas] = useState({});
   const [loading, setLoading] = useState(true);
@@ -39,10 +40,10 @@ const DashboardContagemPage = () => {
       totalProdutos,
       produtosContados,
       percentualConcluido: Math.min(percentualConcluido, 100), // Limitar a 100%
-      operadoresAtivos: usuarios.filter(u => u.ativo).length,
+      operadoresAtivos: participantes.length,
       alertasAtivos: alertas.length
     });
-  }, [usuarios, alertas]);
+  }, [participantes, alertas]);
 
   // Depois, a função que busca os dados do dashboard
   const fetchDashboardData = useCallback(async () => {
@@ -50,11 +51,11 @@ const DashboardContagemPage = () => {
       setError(null);
       
       // Buscar dados em paralelo
-      const [turnoRes, contagensRes, alertasRes, usuariosRes, produtosRes] = await Promise.allSettled([
+      const [turnoRes, contagensRes, alertasRes, participantesRes, produtosRes] = await Promise.allSettled([
         turnosService.getById(turnoId),
         contagensService.getByTurno(turnoId),
         alertasService.getAll(),
-        userService.getAll(),
+        turnosService.participants(turnoId),
         produtoService.getAll()
       ]);
 
@@ -74,10 +75,9 @@ const DashboardContagemPage = () => {
         setAlertas(alertasAtivos);
       }
 
-      // Processar usuários ativos
-      if (usuariosRes.status === 'fulfilled') {
-        const usuariosAtivos = (usuariosRes.value.data || []).filter(u => u.ativo);
-        setUsuarios(usuariosAtivos);
+      // Processar participantes (todos os associados ao turno)
+      if (participantesRes.status === 'fulfilled') {
+        setParticipantes(participantesRes.value.data || []);
       }
 
       // Calcular produtos
@@ -248,9 +248,9 @@ const DashboardContagemPage = () => {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <p className="text-blue-100 text-sm font-medium">Operadores</p>
-                  <p className="text-2xl font-bold mt-1">{usuarios.length}</p>
-                  <p className="text-blue-200 text-xs mt-2">Usuários ativos</p>
+                  <p className="text-blue-100 text-sm font-medium">Usuários Associados</p>
+                  <p className="text-2xl font-bold mt-1">{participantes.length}</p>
+                  <p className="text-blue-200 text-xs mt-2">Participantes do turno</p>
                 </div>
                 <div className="ml-3">
                   <Users className="h-8 w-8 text-blue-200" />

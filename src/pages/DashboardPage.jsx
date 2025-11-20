@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Users, Smartphone, LogOut, Settings, BarChart3, Package, Cog, Database, Clock, AlertTriangle, TrendingUp, Bell } from 'lucide-react';
-import api from '../services/api';
+import api, { turnosService, statutesService, userService } from '../services/api';
 import { initPush } from '../services/pushClient';
 
 const DashboardPage = () => {
@@ -19,6 +19,8 @@ const DashboardPage = () => {
 
   const [dbUsage, setDbUsage] = useState({ bytes: null, pretty: null, tables: null, percent: null });
   const [pushInfo, setPushInfo] = useState({ show: false, status: 'unknown', reason: null, actionable: false, hint: null });
+  const [turnoModal, setTurnoModal] = useState({ open: false, stage: null, loading: false, turno: null, opener: null });
+  const [turnoCheckDone, setTurnoCheckDone] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -36,6 +38,91 @@ const DashboardPage = () => {
       }
     })();
   }, []);
+
+  // Checar termos pendentes e estado do turno após login (apenas primeira carga)
+  useEffect(() => {
+    const run = async () => {
+      if (!user || turnoCheckDone) return;
+      try {
+        // Verificar se há termos pendentes: se houver, não exibir modal de turno ainda
+        const pendingRes = await statutesService.getPending();
+        const hasPendencias = Array.isArray(pendingRes?.data) ? pendingRes.data.length > 0 : (Array.isArray(pendingRes) ? pendingRes.length > 0 : false);
+        if (hasPendencias) { setTurnoCheckDone(true); return; }
+
+        // Buscar turno atual
+        try {
+          const turnoRes = await turnosService.getCurrent();
+          if (turnoRes?.success && turnoRes.data) {
+            const turno = turnoRes.data;
+            // Buscar nome de quem abriu
+            let opener = null;
+            try {
+              const uRes = await userService.getById(turno.usuario_abertura);
+              opener = uRes?.data || uRes?.user || null;
+            } catch (errOpener) {
+              console.debug('Falha ao obter usuário que abriu o turno (ignorado)', errOpener);
+            }
+            setTurnoModal({ open: true, stage: 'open-existing', loading: false, turno, opener });
+          } else {
+            // Prompt para abrir novo
+            setTurnoModal({ open: true, stage: 'prompt-create', loading: false, turno: null, opener: null });
+          }
+        } catch {
+          // 404 ou erro -> prompt criar
+          setTurnoModal({ open: true, stage: 'prompt-create', loading: false, turno: null, opener: null });
+        }
+      } finally {
+        setTurnoCheckDone(true);
+      }
+    };
+    run();
+  }, [user, turnoCheckDone]);
+
+  const handleConfirmEnterTurno = async () => {
+    if (turnoModal.turno?.id) {
+      try {
+        await turnosService.join(turnoModal.turno.id);
+      } catch (errJoin) {
+        console.debug('Falha ao registrar participação no turno (ignorado)', errJoin);
+      }
+    }
+    setTurnoModal(m => ({ ...m, open: false }));
+    navigate('/turnos');
+  };
+
+  const handleDeclineCreateTurno = () => {
+    setTurnoModal(m => ({ ...m, open: false }));
+  };
+
+  const handleCreateTurno = async () => {
+    setTurnoModal(m => ({ ...m, loading: true }));
+    try {
+      // Tipo de turno simples baseado no horário
+      const hora = new Date().getHours();
+      const tipo_turno = (hora >= 6 && hora < 18) ? 'diurno' : 'noturno';
+      const createRes = await turnosService.create({ tipo_turno });
+      if (createRes?.success && createRes.data) {
+        let opener = null;
+        try {
+          const uRes = await userService.getById(createRes.data.usuario_abertura);
+          opener = uRes?.data || uRes?.user || null;
+        } catch (errOpenerCreate) {
+          console.debug('Falha ao obter usuário abertura turno recém criado (ignorado)', errOpenerCreate);
+        }
+        // Registrar o próprio usuário como participante também
+        try {
+          await turnosService.join(createRes.data.id);
+        } catch (errJoinCreate) {
+          console.debug('Falha ao registrar participação após criação do turno (ignorado)', errJoinCreate);
+        }
+        setTurnoModal({ open: true, stage: 'open-existing', loading: false, turno: createRes.data, opener });
+      } else {
+        setTurnoModal(m => ({ ...m, loading: false }));
+      }
+    } catch {
+      setTurnoModal(m => ({ ...m, loading: false }));
+    }
+  };
 
   // Checagem de suporte a Push e possibilidade de solicitar permissão
   useEffect(() => {
@@ -365,6 +452,44 @@ const DashboardPage = () => {
           </div>
         </div>
       </main>
+
+      {turnoModal.open && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 space-y-4">
+            {turnoModal.stage === 'open-existing' && (
+              <>
+                <h2 className="text-lg font-semibold">Turno em andamento</h2>
+                <p className="text-sm text-gray-700 whitespace-pre-line">
+                  {`Há um turno aberto.
+Aberto por: ${turnoModal.opener?.nome_completo || turnoModal.opener?.email || 'Usuário'}
+Iniciado em: ${turnoModal.turno?.horario_inicio ? new Date(turnoModal.turno.horario_inicio).toLocaleString() : 'N/D'}
+Tipo: ${turnoModal.turno?.tipo_turno || 'N/D'}
+
+Você será incluído neste turno e redirecionado para a tela de turno.
+Siga os passos de registro (iremos detalhar em breve).`}
+                </p>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button size="sm" onClick={handleConfirmEnterTurno}>Entrar no Turno</Button>
+                </div>
+              </>
+            )}
+            {turnoModal.stage === 'prompt-create' && (
+              <>
+                <h2 className="text-lg font-semibold">Nenhum turno aberto</h2>
+                <p className="text-sm text-gray-700">
+                  Não há turno aberto agora. Deseja iniciar seu turno abrindo um novo?
+                </p>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" size="sm" onClick={handleDeclineCreateTurno}>Agora não</Button>
+                  <Button size="sm" disabled={turnoModal.loading} onClick={handleCreateTurno}>
+                    {turnoModal.loading ? 'Abrindo...' : 'Abrir Turno'}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

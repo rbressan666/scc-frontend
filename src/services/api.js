@@ -636,6 +636,18 @@ export const turnosService = {
   async getStats() {
     return await api.get('/api/turnos/stats');
   },
+  // Entrar em um turno aberto
+  async join(turnoId) {
+    return await api.post(`/api/turnos/${turnoId}/join`);
+  },
+  // Listar participantes ativos
+  async participants(turnoId) {
+    return await api.get(`/api/turnos/${turnoId}/participants`);
+  },
+  // Sair de um turno
+  async leave(turnoId) {
+    return await api.post(`/api/turnos/${turnoId}/leave`);
+  },
 };
 
 // Serviços de Contagens (MVP3)
