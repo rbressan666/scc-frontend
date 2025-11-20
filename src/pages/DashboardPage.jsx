@@ -474,8 +474,8 @@ Aberto por: ${turnoModal.opener?.nome_completo || turnoModal.opener?.email || 'U
 Iniciado em: ${turnoModal.turno?.horario_inicio ? new Date(turnoModal.turno.horario_inicio).toLocaleString() : 'N/D'}
 Tipo: ${turnoModal.turno?.tipo_turno || 'N/D'}
 
-Você será incluído neste turno e redirecionado para a tela de turno.
-Siga os passos de registro (iremos detalhar em breve).`}
+Você será incluído automaticamente e redirecionado para a visão detalhada.
+Em seguida, siga os passos do assistente.`}
                 </p>
                 <div className="flex justify-end gap-2 pt-2">
                   <Button size="sm" onClick={handleConfirmEnterTurno}>Entrar no Turno</Button>
