@@ -43,6 +43,11 @@ const DashboardPage = () => {
   useEffect(() => {
     const run = async () => {
       if (!user || turnoCheckDone) return;
+      // Admins não recebem modal de turno
+      if (isAdmin()) {
+        setTurnoCheckDone(true);
+        return;
+      }
       try {
         // Verificar se há termos pendentes: se houver, não exibir modal de turno ainda
         const pendingRes = await statutesService.getPending();
@@ -76,7 +81,7 @@ const DashboardPage = () => {
       }
     };
     run();
-  }, [user, turnoCheckDone]);
+  }, [user, turnoCheckDone, isAdmin]);
 
   const handleConfirmEnterTurno = async () => {
     if (turnoModal.turno?.id) {
@@ -87,7 +92,11 @@ const DashboardPage = () => {
       }
     }
     setTurnoModal(m => ({ ...m, open: false }));
-    navigate('/turnos');
+    if (turnoModal.turno?.id) {
+      navigate(`/turnos/${turnoModal.turno.id}`);
+    } else {
+      navigate('/turnos');
+    }
   };
 
   const handleDeclineCreateTurno = () => {
