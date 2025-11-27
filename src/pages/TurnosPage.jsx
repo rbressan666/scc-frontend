@@ -245,10 +245,12 @@ const TurnosPage = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {turnos.map((turno) => (
+                {turnos.map((turno) => {
+                  const borderColor = turno.status === 'aberto' ? 'border-green-500' : (turno.status === 'fechado' ? 'border-gray-400' : 'border-blue-500');
+                  return (
                   <div
                     key={turno.id}
-                    className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                    className={`border rounded-lg p-4 hover:shadow-md transition-shadow border-l-4 ${borderColor}`}
                   >
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-3">
@@ -305,7 +307,7 @@ const TurnosPage = () => {
                       </div>
                     )}
                   </div>
-                ))}
+                );})}
               </div>
             )}
           </CardContent>

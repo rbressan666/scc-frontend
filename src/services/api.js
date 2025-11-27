@@ -738,3 +738,19 @@ export const analiseService = {
     return await api.get(`/api/analise/report/turno/${turnoId}`);
   },
 };
+
+// Serviços de Checklist (MVP3)
+export const checklistService = {
+  async get(turnoId, tipo) {
+    return await api.get(`/api/turnos/${turnoId}/checklist?tipo=${encodeURIComponent(tipo)}`);
+  },
+  async lock(turnoId, perguntaId) {
+    return await api.post(`/api/turnos/${turnoId}/checklist/lock/${perguntaId}`);
+  },
+  async unlock(turnoId, perguntaId) {
+    return await api.delete(`/api/turnos/${turnoId}/checklist/lock/${perguntaId}`);
+  },
+  async answer(turnoId, { pergunta_id, resposta, justificativa }) {
+    return await api.post(`/api/turnos/${turnoId}/checklist/responder`, { pergunta_id, resposta, justificativa });
+  }
+};

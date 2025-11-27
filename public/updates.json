@@ -10,5 +10,11 @@
     "time": "10:30",
     "title": "Termos & Ciência (MVP)",
     "summary": "Adicionado card 'Termos & Ciência' ao dashboard. Usuários visualizam pendências e (futuramente) termos reconhecidos. Admins podem criar estatutos/itens e consultar ciência agregada via novos endpoints base."
+  },
+  {
+    "date": "2025-11-26",
+    "time": "14:35",
+    "title": "Checklists de Turno (Entrada/Saída)",
+    "summary": "Telas de check-in e check-out integradas ao backend, com perguntas por setor, respostas SIM/NAO/NA com justificativa quando necessário, trava por pergunta, progresso em tempo real e acesso rápido à contagem do inventário."
   }
 ]

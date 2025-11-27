@@ -73,6 +73,39 @@
 **Resultado:** Agora, ao pressionar as setas para cima ou para baixo, o valor da contagem é sempre incrementado/decrementado em 1 unidade inteira, nunca em frações.
 # Diário de Ajustes - Frontend SCC
 
+## [2025-11-26T14:30:00-03:00] - Checklists de Turno (Entrada/Saída) integrados ao backend
+
+- Visão geral:
+  - Implementadas telas de checklist de Entrada e Saída com base em perguntas por setor do usuário, respostas SIM/NAO/NA com justificativa obrigatória quando a resposta não é SIM, controle de trava (lock) por pergunta e barra de progresso dinâmica.
+  - Sub-etapa “Contagem do Inventário” incluída em ambos (Entrada/Saída) com progresso e atalho para a tela de contagem.
+  - Todas as ações de checklist (listar, travar, destravar, responder) registradas no log de auditoria do sistema.
+
+- Backend (scc-backend):
+  - Migration adicionada: `scc-database/202511261200_mvp3_checklists.sql` criando:
+    - `checklist_perguntas` (definição por tipo e setor)
+    - `checklist_respostas` (resposta por turno/pergunta, única por pergunta/turno)
+    - `checklist_locks` (lock por pergunta/turno para evitar concorrência)
+  - Controller novo: `controllers/checklistController.js` com endpoints:
+    - `GET /api/turnos/:id/checklist?tipo=entrada|saida`
+    - `POST /api/turnos/:id/checklist/lock/:perguntaId`
+    - `DELETE /api/turnos/:id/checklist/lock/:perguntaId`
+    - `POST /api/turnos/:id/checklist/responder`
+  - Rotas: atualizadas em `routes/turnos.js` para expor os endpoints acima.
+  - Audit: uso de `auditService.log` em todas as operações de checklist.
+
+- Frontend (scc-frontend):
+  - Serviço novo: `checklistService` em `src/services/api.js` (get/lock/unlock/answer).
+  - Páginas atualizadas:
+    - `src/pages/ChecklistEntradaPage.jsx`: passou a consumir API, exibir itens, modal de resposta (SIM/NAO/NA + justificativa), locks e progresso; inclui sub-etapa de contagem com progresso e link.
+    - `src/pages/ChecklistSaidaPage.jsx`: mesmo padrão da entrada, com alerta de pendências e sub-etapa de contagem.
+  - Dashboard: fluxo de entrada no turno já leva ao detalhe do turno; admins não veem modal de turno.
+
+- Observações/Próximos passos:
+  - Seed de perguntas ainda não foi incluído (admin UI para gerenciar perguntas poderá ser adicionada em iteração futura).
+  - Validação de expiração/refresh do lock usa TTL de 5 minutos (ajustável em banco). Avaliar refresh no frontend se necessário.
+  - Estilização dos cards da `TurnosPage` (pendente no TODO atual) mantém-se para próxima etapa.
+
+
 ## [2025-10-06] - Correções na Tela de Detalhamento da Contagem
 
 ### Problemas Corrigidos:
