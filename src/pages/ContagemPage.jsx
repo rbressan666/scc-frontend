@@ -82,7 +82,15 @@ const ContagemPage = () => {
     'Higiene Pessoal': 'bg-yellow-100'
   };
 
+  // Flag para garantir carregamento único e evitar loops em desenvolvimento / falhas 403
+  const carregouRef = useRef(false);
+
   const carregarDados = useCallback(async () => {
+    if (carregouRef.current) {
+      console.log('⏹️ Carregamento já executado – ignorando nova chamada');
+      return;
+    }
+    carregouRef.current = true;
     try {
       setLoading(true);
       console.log('🔄 Iniciando carregamento de dados para turno:', turnoId);
@@ -216,24 +224,8 @@ const ContagemPage = () => {
         
         // Carregar itens da contagem se não for local
         if (!contagemAtiva._isLocal) {
-          console.log('🔄 Chamando carregarItensContagem na inicialização...');
-          
-          // AGUARDAR variações serem carregadas antes de processar itens
-          console.log('⏳ Aguardando variações serem carregadas...');
-          let tentativas = 0;
-          while (variacoesRef.current.length === 0 && tentativas < 50) {
-            await new Promise(resolve => setTimeout(resolve, 200));
-            tentativas++;
-          }
-          
-          if (variacoesRef.current.length > 0) {
-            console.log('✅ Variações carregadas, processando itens...');
-            await carregarItensContagem(contagemAtiva.id);
-          } else {
-            console.log('⚠️ Timeout aguardando variações, tentando carregar itens mesmo assim...');
-            await carregarItensContagem(contagemAtiva.id);
-          }
-          
+          console.log('🔄 Carregando itens da contagem (sem espera por variações)...');
+          await carregarItensContagem(contagemAtiva.id);
           console.log('✅ carregarItensContagem concluído na inicialização');
         } else {
           console.log('⚠️ Contagem é local, não carregando itens do backend');
