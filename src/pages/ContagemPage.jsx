@@ -82,12 +82,6 @@ const ContagemPage = () => {
     'Higiene Pessoal': 'bg-yellow-100'
   };
 
-  useEffect(() => {
-    if (turnoId) {
-      carregarDados();
-    }
-  }, [turnoId, carregarDados]);
-
   const carregarDados = useCallback(async () => {
     try {
       setLoading(true);
@@ -146,6 +140,12 @@ const ContagemPage = () => {
       setLoading(false);
     }
   }, [turnoId, toast]);
+
+  useEffect(() => {
+    if (turnoId) {
+      carregarDados();
+    }
+  }, [turnoId, carregarDados]);
 
   const inicializarContagem = async () => {
     try {
