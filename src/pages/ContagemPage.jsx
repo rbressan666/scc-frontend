@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -42,7 +42,8 @@ const ContagemPage = () => {
   const [contagens, setContagens] = useState({});
   const [contagemAtual, setContagemAtual] = useState(null);
   const [itensContagem, setItensContagem] = useState([]);
-  const [usuariosAtivos, setUsuariosAtivos] = useState({});
+  // Estado de usuários ativos não está sendo atualizado; mantido apenas para futura extensão sem lint error
+  const [usuariosAtivos] = useState({});
   const [loading, setLoading] = useState(true);
   const [inicializandoContagem, setInicializandoContagem] = useState(false);
   const [processandoDetalhada, setProcessandoDetalhada] = useState(false);
@@ -85,9 +86,9 @@ const ContagemPage = () => {
     if (turnoId) {
       carregarDados();
     }
-  }, [turnoId]);
+  }, [turnoId, carregarDados]);
 
-  const carregarDados = async () => {
+  const carregarDados = useCallback(async () => {
     try {
       setLoading(true);
       console.log('🔄 Iniciando carregamento de dados para turno:', turnoId);
@@ -144,7 +145,7 @@ const ContagemPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [turnoId, toast]);
 
   const inicializarContagem = async () => {
     try {
@@ -651,63 +652,7 @@ const ContagemPage = () => {
     }
   };
 
-  // Função para capturar setas nativas do campo de input
-  const handleSetasNativas = async (e, produtoId) => {
-    // Capturar teclas de seta para cima (ArrowUp) e para baixo (ArrowDown)
-    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-      e.preventDefault(); // Prevenir comportamento padrão do input number
-      
-      const direcao = e.key === 'ArrowUp' ? 1 : -1;
-      console.log('🔢 Seta nativa pressionada:', { produtoId, direcao, tecla: e.key });
-      
-      try {
-        // Obter unidade principal do produto
-        const unidadesProduto = getUnidadesPorProduto(produtoId);
-        if (unidadesProduto.length === 0) {
-          console.log('⚠️ Nenhuma unidade encontrada para o produto');
-          return;
-        }
-        
-        const unidadePrincipal = unidadesProduto[0];
-        // SEMPRE incrementar/decrementar 1, independente da unidade principal
-        const incremento = 1 * direcao;
-        
-        console.log('📊 Incremento calculado:', {
-          unidadePrincipal: unidadePrincipal.nome,
-          incrementoFixo: incremento,
-          direcao
-        });
-        
-        // Obter contagem atual
-        const contagemAtualProduto = contagens[produtoId] || 0;
-        const contagemAtualNum = typeof contagemAtualProduto === 'string' ? 
-          parseFloat(contagemAtualProduto) : contagemAtualProduto;
-        const novaContagem = Math.max(0, Math.round(contagemAtualNum + incremento));
-        // Forçar valor inteiro ao atualizar
-        if (!Number.isInteger(novaContagem)) {
-          console.warn('⚠️ Valor não inteiro detectado, ajustando para inteiro:', novaContagem);
-        }
-        
-        console.log('🔄 Atualizando contagem via setas nativas:', {
-          anterior: contagemAtualProduto,
-          incremento,
-          nova: novaContagem
-        });
-        
-        // Salvar nova contagem
-        await handleContagemSimples(produtoId, novaContagem);
-        
-      } catch (error) {
-        console.error('❌ Erro ao processar setas nativas:', error);
-        
-        toast({
-          title: "Erro",
-          description: "Erro ao atualizar contagem",
-          variant: "destructive",
-        });
-      }
-    }
-  };
+  // Removida função handleSetasNativas (não utilizada após padronização de incremento)
 
   const calcularTotalDetalhado = () => {
     // Buscar contagem atual do estado contagens (valor real do banco)
@@ -836,10 +781,7 @@ const ContagemPage = () => {
     return setor?.nome || '';
   };
 
-  const getCategoriaNome = (categoriaId) => {
-    const categoria = categorias.find(c => c.id === categoriaId);
-    return categoria?.nome || '';
-  };
+  // Removida função getCategoriaNome (não utilizada)
 
   const getCategoriaHierarquia = (categoriaId) => {
     const categoria = categorias.find(c => c.id === categoriaId);
@@ -1072,6 +1014,13 @@ const ContagemPage = () => {
                       <tbody className="divide-y divide-gray-200">
                         {categoriaData.produtos.map((produto) => {
                           const produtoVariacoes = getVariacoesPorProduto(produto.id);
+                          const doneKey = `scc_contagem_done_${turnoId}`;
+                          let doneSet = new Set();
+                          try {
+                            const raw = window.localStorage.getItem(doneKey);
+                            if (raw) doneSet = new Set(JSON.parse(raw));
+                          } catch { /* ignore */ }
+                          const concluido = doneSet.has(String(produto.id));
                           const contagemAtualProduto = Number(contagens[produto.id] ?? 0);
                           const valorInput = valorEditado[produto.id] !== undefined ? valorEditado[produto.id] : contagemAtualProduto;
                           const valorAlterado = Number(valorInput) !== Number(contagemAtualProduto);
@@ -1100,6 +1049,25 @@ const ContagemPage = () => {
                                         <span>{usuarioAtivo} está contando</span>
                                       </div>
                                     )}
+                                  </div>
+                                  <div className="ml-auto flex items-center gap-2">
+                                    <label className="flex items-center gap-1 text-xs text-gray-600">
+                                      <input type="checkbox" checked={concluido} onChange={(e) => {
+                                        try {
+                                          let s = new Set();
+                                          const raw = window.localStorage.getItem(doneKey);
+                                          if (raw) s = new Set(JSON.parse(raw));
+                                          const pid = String(produto.id);
+                                          if (e.target.checked) {
+                                            s.add(pid);
+                                          } else {
+                                            s.delete(pid);
+                                          }
+                                          window.localStorage.setItem(doneKey, JSON.stringify(Array.from(s)));
+                                        } catch { /* ignore */ }
+                                      }} />
+                                      <span>Concluído</span>
+                                    </label>
                                   </div>
                                 </div>
                               </td>

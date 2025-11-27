@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Textarea } from '../components/ui/textarea';
 import { ArrowLeft, CheckCircle, AlertTriangle, Clock, Save, Lock } from 'lucide-react';
-import { contagensService, produtoService, checklistService } from '../services/api';
+import { produtoService, checklistService, turnosService, userService } from '../services/api';
 
 const ChecklistEntradaPage = () => {
   const navigate = useNavigate();
@@ -16,22 +16,42 @@ const ChecklistEntradaPage = () => {
   const [saving, setSaving] = useState(false);
   const [modal, setModal] = useState({ open: false, pergunta: null, resposta: 'SIM', justificativa: '', lockOwned: false });
   const [contagemProg, setContagemProg] = useState({ total: 0, contados: 0, percent: 0 });
+  const [turnoInfo, setTurnoInfo] = useState({ inicio: null, opener: null });
+  const [instrucaoExpandida, setInstrucaoExpandida] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const tRes = await turnosService.getById(turnoId);
+        const turno = tRes?.data || tRes;
+        let opener = null;
+        if (turno?.usuario_abertura) {
+          try {
+            const uRes = await userService.getById(turno.usuario_abertura);
+            opener = uRes?.data || uRes?.user || null;
+          } catch { /* ignore */ }
+        }
+        setTurnoInfo({ inicio: turno?.horario_inicio || null, opener });
+      } catch { /* ignore */ }
+    })();
+  }, [turnoId]);
 
   // useEffect será declarado após as funções para evitar TDZ
 
   const carregarProgressoContagem = useCallback(async () => {
     try {
-      const [contagensRes, produtosRes] = await Promise.all([
-        contagensService.getByTurno(turnoId),
-        produtoService.getAll()
-      ]);
-      const contagens = contagensRes.data || [];
+      const produtosRes = await produtoService.getAll();
       const produtos = produtosRes.data || [];
       const totalProdutos = produtos.length;
-      let produtosContados = 0;
-      contagens.forEach(c => { if (c.total_itens_contados > 0) produtosContados += c.total_itens_contados; });
-      const percent = totalProdutos > 0 ? Math.min(100, Math.round((produtosContados / totalProdutos) * 100)) : 0;
-      setContagemProg({ total: totalProdutos, contados: produtosContados, percent });
+      const key = `scc_contagem_done_${turnoId}`;
+      let doneSet = new Set();
+      try {
+        const raw = window.localStorage.getItem(key);
+        if (raw) doneSet = new Set(JSON.parse(raw));
+      } catch { /* ignore */ }
+      const concluidos = doneSet.size;
+      const percent = totalProdutos > 0 ? Math.min(100, Math.round((concluidos / totalProdutos) * 100)) : 0;
+      setContagemProg({ total: totalProdutos, contados: concluidos, percent });
     } catch (err) {
       console.debug('Não foi possível calcular progresso da contagem agora', err);
     }
@@ -146,7 +166,10 @@ const ChecklistEntradaPage = () => {
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">Checklist de Entrada</h1>
                   <div className="flex items-center space-x-4 text-sm text-gray-500">
-                    <span>Turno: {turnoId}</span>
+                    <span>
+                      {turnoInfo.inicio ? new Date(turnoInfo.inicio).toLocaleString() : 'Data/Hora N/D'}
+                      {turnoInfo.opener ? ` • Aberto por: ${turnoInfo.opener.nome_completo || turnoInfo.opener.email}` : ''}
+                    </span>
                     <span>•</span>
                     {getStatusBadge()}
                   </div>
@@ -194,7 +217,7 @@ const ChecklistEntradaPage = () => {
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{item.pergunta}</span>
                         {answered ? (
-                          <Badge className={item.resposta.resposta === 'SIM' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'}>
+                          <Badge className={(item.resposta.resposta === 'SIM' || ((item.resposta.resposta === 'NAO' || item.resposta.resposta === 'NA') && (item.resposta.justificativa || '').trim() !== '')) ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'}>
                             {item.resposta.resposta}
                           </Badge>
                         ) : (
@@ -202,14 +225,23 @@ const ChecklistEntradaPage = () => {
                         )}
                         {locked && <Lock className="h-4 w-4 text-gray-400" title="Em edição por outro usuário" />}
                       </div>
-                      {item.instrucao && (
-                        <p className="text-xs text-gray-500 mt-1">{item.instrucao}</p>
-                      )}
+                      {/* Instrução removida da lista principal */}
                       {item.resposta?.justificativa && (
                         <p className="text-xs text-gray-600 mt-1">Justificativa: {item.resposta.justificativa}</p>
                       )}
                     </div>
                     <div>
+                      {(!answered || item.resposta.resposta !== 'SIM') && (
+                        <Button size="sm" className="mr-2" variant="secondary" disabled={locked}
+                          onClick={async () => {
+                            try {
+                              await checklistService.answer(turnoId, { pergunta_id: item.id, resposta: 'SIM', justificativa: null });
+                              await carregarChecklist();
+                            } catch (e) { alert(e?.message || 'Falha ao marcar SIM'); }
+                          }}>
+                          Marcar SIM
+                        </Button>
+                      )}
                       <Button size="sm" variant="outline" disabled={locked} onClick={() => abrirPergunta(item)}>
                         Responder
                       </Button>
@@ -248,7 +280,17 @@ const ChecklistEntradaPage = () => {
             <div className="text-lg font-semibold">Responder</div>
             <div className="text-sm text-gray-800">{modal.pergunta?.pergunta}</div>
             {modal.pergunta?.instrucao && (
-              <div className="text-xs text-gray-500">{modal.pergunta.instrucao}</div>
+              <div className="text-xs text-gray-500">
+                <div className="line-clamp-3 whitespace-pre-line">{modal.pergunta.instrucao}</div>
+                <div className="mt-1 flex gap-2 items-start">
+                  <Button size="xs" variant="ghost" onClick={() => setInstrucaoExpandida(v => !v)}>
+                    {instrucaoExpandida ? 'Minimizar instruções' : 'Ver instruções completas'}
+                  </Button>
+                </div>
+                {instrucaoExpandida && (
+                  <div className="text-xs text-gray-700 whitespace-pre-line border rounded p-2 max-h-48 overflow-auto mt-1">{modal.pergunta.instrucao}</div>
+                )}
+              </div>
             )}
             <div className="flex gap-2 pt-2">
               {['SIM','NAO','NA'].map(opt => (
@@ -259,6 +301,7 @@ const ChecklistEntradaPage = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Justificativa {modal.resposta !== 'SIM' ? '(obrigatória)' : '(opcional)'}</label>
+              <div className="text-[11px] text-gray-500 mb-1">Inclua o nome de um admin responsável/ciência na justificativa.</div>
               <Textarea rows={4} value={modal.justificativa} onChange={(e) => setModal(m => ({ ...m, justificativa: e.target.value }))} placeholder="Descreva observações, ressalvas ou motivos." />
             </div>
             <div className="flex justify-end gap-2">

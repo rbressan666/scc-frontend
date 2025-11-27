@@ -319,6 +319,18 @@ const DashboardPage = () => {
   }
   const availableItems = [...filtered, termosItem, ...(dbCard ? [dbCard] : [])];
 
+  // Gate: não renderizar o dashboard até concluir checagem de turno/termos
+  if (!turnoCheckDone) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 text-sm">Preparando seu ambiente...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -479,6 +491,7 @@ Você será incluído automaticamente e redirecionado para a visão detalhada.
 Em seguida, siga os passos do assistente.`}
                 </p>
                 <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" size="sm" onClick={() => setTurnoModal(m => ({ ...m, open: false }))}>Agora não</Button>
                   <Button size="sm" onClick={handleConfirmEnterTurno}>Entrar no Turno</Button>
                 </div>
               </>

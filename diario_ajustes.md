@@ -105,6 +105,35 @@
   - Validação de expiração/refresh do lock usa TTL de 5 minutos (ajustável em banco). Avaliar refresh no frontend se necessário.
   - Estilização dos cards da `TurnosPage` (pendente no TODO atual) mantém-se para próxima etapa.
 
+## [2025-11-27T09:30:00-03:00] - Refinos de Fluxo de Turno, Checklist e Contagem
+
+- Visão geral:
+  - Gating do Dashboard: agora o conteúdo principal só é exibido após resolução do modal de entrada em turno (evita uso prematuro de funcionalidades sem turno ativo ou decisão explícita).
+  - Botão "Agora não": adicionada opção para usuário recusar entrar em turno em andamento sem bloquear navegação futura.
+  - Cabeçalho do Checklist: inclui data/hora de abertura e usuário (opener) para contexto operacional e auditoria visual imediata.
+  - Instruções: removidas da lista principal para reduzir ruído; movidas para modal de resposta com expansão (toggle) preservando orientação detalhada.
+  - Ação rápida "Marcar SIM": permite registrar resposta afirmativa sem abrir modal (agiliza conferências rotineiras tranquilas).
+  - Regras de Cores: respostas SIM e também NAO/NA COM justificativa tratadas como conformes (verde). NAO/NA sem justificativa mantêm destaque (amarelo/vermelho conforme lógica existente).
+  - Progresso de Contagem: agora derivado de localStorage (chave `scc_contagem_done_<turnoId>`), desacoplando cálculo inicial de necessidade de round-trip ao backend.
+  - Checkbox "Concluído" por produto na contagem: persiste localmente e alimenta cálculo de progresso mostrado dentro dos checklists (sub-etapa Inventário).
+  - Limpeza de Lint: remoção de imports não usados (`contagensService` em páginas de checklist) e funções obsoletas (`handleSetasNativas`, `getCategoriaNome`), além de ajuste do hook `carregarDados` com `useCallback`.
+
+- Arquivos afetados (frontend):
+  - `src/pages/DashboardPage.jsx`: gating + botão recusa.
+  - `src/pages/ChecklistEntradaPage.jsx` e `ChecklistSaidaPage.jsx`: cabeçalho com opener, instruções movidas, ação rápida SIM, cálculo de progresso de inventário via localStorage, remoção import não usado.
+  - `src/pages/ContagemPage.jsx`: inclusão checkbox concluído, persistência em localStorage, remoção de funções não utilizadas e ajuste de dependências de efeito com `useCallback`.
+
+- Observações / próximos passos:
+  - Sincronização futura de status "concluído" por produto para backend (hoje apenas local) poderá habilitar relatórios de acurácia e SLA.
+  - Possível implementação de ação para desfazer marcação rápida de SIM (atualmente abrir modal permite edição).
+  - Avaliar listener para storage events para refletir progresso em abas múltiplas.
+  - Auditoria já cobre respostas; adicionar logging específico para ação rápida poderia reforçar trilha (pendente decisão).
+
+- Impacto:
+  - Fluxo mais claro e reduz fricção diária (menos cliques para confirmar conformidades).
+  - Checklist visualmente mais enxuto sem perda de contexto detalhado.
+  - Base preparada para refinamentos de sincronização e analytics de contagem.
+
 
 ## [2025-10-06] - Correções na Tela de Detalhamento da Contagem
 

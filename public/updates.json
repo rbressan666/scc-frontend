@@ -16,5 +16,11 @@
     "time": "14:35",
     "title": "Checklists de Turno (Entrada/Saída)",
     "summary": "Telas de check-in e check-out integradas ao backend, com perguntas por setor, respostas SIM/NAO/NA com justificativa quando necessário, trava por pergunta, progresso em tempo real e acesso rápido à contagem do inventário."
+  },
+  {
+    "date": "2025-11-27",
+    "time": "09:30",
+    "title": "Fluxo de Turno & Checklist Refinado",
+    "summary": "Dashboard somente após decisão de turno, botão de recusa, cabeçalho com abertura/opener, instruções movidas para modal expansível, ação rápida Marcar SIM, cores de conformidade ajustadas, progresso de inventário e checkbox concluído por produto via localStorage, limpeza de lint."
   }
 ]
