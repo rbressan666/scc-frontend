@@ -17,12 +17,7 @@ const ChecklistEntradaPage = () => {
   const [modal, setModal] = useState({ open: false, pergunta: null, resposta: 'SIM', justificativa: '', lockOwned: false });
   const [contagemProg, setContagemProg] = useState({ total: 0, contados: 0, percent: 0 });
 
-  useEffect(() => {
-    if (turnoId) {
-      carregarChecklist();
-      carregarProgressoContagem();
-    }
-  }, [turnoId, carregarChecklist, carregarProgressoContagem]);
+  // useEffect será declarado após as funções para evitar TDZ
 
   const carregarProgressoContagem = useCallback(async () => {
     try {
@@ -55,6 +50,13 @@ const ChecklistEntradaPage = () => {
       setLoading(false);
     }
   }, [turnoId]);
+
+  useEffect(() => {
+    if (turnoId) {
+      carregarChecklist();
+      carregarProgressoContagem();
+    }
+  }, [turnoId, carregarChecklist, carregarProgressoContagem]);
 
   const abrirPergunta = async (pergunta) => {
     try {
