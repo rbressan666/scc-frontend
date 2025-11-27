@@ -93,8 +93,8 @@ const DashboardPage = () => {
     }
     setTurnoModal(m => ({ ...m, open: false }));
     if (turnoModal.turno?.id) {
-      // Redireciona direto para o checklist de entrada conforme planejado
-      navigate(`/checklist/entrada/${turnoModal.turno.id}`);
+      // Redireciona direto para o checklist de entrada conforme planejado (rota: /checklist-entrada/:turnoId)
+      navigate(`/checklist-entrada/${turnoModal.turno.id}`);
     } else {
       navigate('/turnos');
     }
