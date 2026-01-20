@@ -107,12 +107,10 @@ const DashboardContagemPage = () => {
     }
 
     try {
-      const response = await turnosService.close(turnoId, {
-        observacoes_fechamento: 'Turno fechado via dashboard'
-      });
+      const response = await turnosService.close(turnoId);
       
       if (response.success) {
-        alert('Turno fechado com sucesso!');
+        console.log('Turno fechado via dashboard');
         navigate('/turnos');
       }
     } catch (error) {

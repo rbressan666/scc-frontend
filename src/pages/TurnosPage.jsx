@@ -56,8 +56,7 @@ const TurnosPage = () => {
     setCreatingTurno(true);
     try {
       const novoTurno = {
-        tipo_turno: 'diurno', // Por padrão, pode ser alterado futuramente
-        observacoes_abertura: 'Turno criado pelo sistema'
+        tipo_turno: 'diurno' // Por padrão, pode ser alterado futuramente
       };
 
       const response = await turnosService.create(novoTurno);
@@ -65,7 +64,7 @@ const TurnosPage = () => {
       if (response.success) {
         await fetchTurnos();
         await fetchTurnoAtual();
-        alert('Turno criado com sucesso!');
+        console.log('Turno criado');
       }
     } catch (error) {
       console.error('Erro ao criar turno:', error);
@@ -81,16 +80,12 @@ const TurnosPage = () => {
     }
 
     try {
-      const dadosFechamento = {
-        observacoes_fechamento: 'Turno fechado pelo usuário'
-      };
-
-      const response = await turnosService.close(turnoId, dadosFechamento);
+      const response = await turnosService.close(turnoId);
       
       if (response.success) {
         await fetchTurnos();
         await fetchTurnoAtual();
-        alert('Turno fechado com sucesso!');
+        console.log('Turno fechado');
       }
     } catch (error) {
       console.error('Erro ao fechar turno:', error);
@@ -119,7 +114,7 @@ const TurnosPage = () => {
       if (response.success) {
         await fetchTurnos();
         await fetchTurnoAtual();
-        alert('Turno reaberto com sucesso!');
+        console.log('Turno reaberto');
       }
     } catch (error) {
       console.error('Erro ao reabrir turno:', error);
@@ -206,20 +201,7 @@ const TurnosPage = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         {/* Alerta se há turno aberto */}
-        {turnoAtual && (
-          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center space-x-2">
-              <AlertCircle className="h-5 w-5 text-blue-600" />
-              <div>
-                <h3 className="font-medium text-blue-900">Turno Ativo</h3>
-                <p className="text-sm text-blue-700">
-                  Há um turno aberto desde {formatDateTime(turnoAtual.horario_inicio)}. 
-                  Feche o turno atual antes de abrir um novo.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Top alert removed per request: opening/closing messages hidden */}
 
         {/* Mensagem de erro */}
         {error && (
@@ -295,17 +277,8 @@ const TurnosPage = () => {
                       <span>•</span>
                       <span><strong>Fim:</strong> {formatDateTime(turno.horario_fim)}</span>
                       <span>•</span>
-                      <span><strong>Responsável:</strong> {turno.usuario_abertura}</span>
-                      <span>•</span>
                       <span><strong>Status:</strong> {turno.status}</span>
                     </div>
-
-                    {turno.observacoes_abertura && (
-                      <div className="mt-3 pt-3 border-t">
-                        <span className="text-gray-500 text-sm">Observações:</span>
-                        <p className="text-sm">{turno.observacoes_abertura}</p>
-                      </div>
-                    )}
                   </div>
                 );})}
               </div>
