@@ -22,6 +22,9 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { setorService, categoriaService, unidadeMedidaService, produtoService, variacaoService } from '../services/api';
 
+// Configuração base da API para imagens
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 const ProdutosPage = () => {
   const navigate = useNavigate();
   const [produtos, setProdutos] = useState([]);
@@ -757,7 +760,7 @@ const ProdutosPage = () => {
                               <div className="flex items-center space-x-3">
                                 {produto.imagem_principal_url && (
                                   <img
-                                    src={produto.imagem_principal_url}
+                                    src={`${API_BASE_URL}${produto.imagem_principal_url}`}
                                     alt={produto.nome}
                                     className="w-10 h-10 rounded-lg object-cover"
                                     onError={(e) => {

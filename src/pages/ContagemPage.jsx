@@ -23,6 +23,9 @@ import {
 import { produtoService, variacaoService, setorService, categoriaService, contagensService, unidadeMedidaService } from '../services/api';
 import { useToast } from '@/hooks/use-toast';
 
+// Configuração base da API para imagens
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 const ContagemPage = () => {
   const navigate = useNavigate();
   const { turnoId } = useParams();
@@ -1025,7 +1028,7 @@ const ContagemPage = () => {
                                   <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
                                     {produto.imagem_principal_url ? (
                                       <img 
-                                        src={produto.imagem_principal_url} 
+                                        src={`${API_BASE_URL}${produto.imagem_principal_url}`} 
                                         alt={produto.nome}
                                         className="w-full h-full object-cover"
                                       />
