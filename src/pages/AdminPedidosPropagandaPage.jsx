@@ -20,7 +20,7 @@ const AdminPedidosPropagandaPage = () => {
   // Estados da Tab 1: Parâmetros
   const [parametros, setParametros] = useState({
     autostart: true,
-    modo_exibicao: 'slideshow',
+    modo_exibicao: 'pedidos-propaganda',
     intervalo_exibicao_seg: 10,
     exibir_numero_pedido: true,
     exibir_observacao_pedido: true,
@@ -78,11 +78,11 @@ const AdminPedidosPropagandaPage = () => {
     setLoading(true);
     try {
       const res = await api.get('/api/pedidos');
-      if (res.data?.success) {
-        setPedidos(res.data.data);
-      }
+      const data = res.data?.data || res.data || [];
+      setPedidos(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Erro ao carregar pedidos:', err);
+      setPedidos([]);
     } finally {
       setLoading(false);
     }
@@ -92,13 +92,16 @@ const AdminPedidosPropagandaPage = () => {
     setLoading(true);
     try {
       const res = await api.put('/api/parametros-propaganda', parametros);
-      if (res.data?.success) {
+      if (res.data?.success || res.success) {
         alert('Parâmetros salvos com sucesso!');
         fetchParametros(); // Recarregar para pegar valores atualizados
+      } else {
+        alert('Erro: ' + (res.data?.message || 'Resposta inesperada do servidor'));
       }
     } catch (err) {
       console.error('Erro ao salvar parâmetros:', err);
-      alert('Erro ao salvar parâmetros');
+      const msg = err.response?.data?.message || err.message || 'Erro ao salvar parâmetros';
+      alert('Erro ao salvar: ' + msg);
     } finally {
       setLoading(false);
     }
@@ -241,7 +244,7 @@ const AdminPedidosPropagandaPage = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="slideshow">Slideshow (alternar entre pedidos e propaganda)</SelectItem>
+                          <SelectItem value="pedidos-propaganda">Pedidos e Propaganda</SelectItem>
                           <SelectItem value="pedidos-only">Apenas Pedidos</SelectItem>
                           <SelectItem value="propaganda-only">Apenas Propaganda</SelectItem>
                         </SelectContent>
@@ -342,42 +345,55 @@ const AdminPedidosPropagandaPage = () => {
                       </div>
                     </div>
 
-                    {/* Upload de Imagem de Fundo */}
-                    <div>
-                      <Label htmlFor="upload_image">Imagem de Fundo (PNG/JPG/JPEG, máx 5MB)</Label>
-                      <div className="flex gap-2 items-center">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => document.getElementById('upload_image').click()}
-                        >
-                          <ImageIcon className="h-4 w-4 mr-2" />
-                          Escolher Imagem
-                        </Button>
-                        <input
-                          id="upload_image"
-                          type="file"
-                          accept="image/png,image/jpeg,image/jpg"
-                          className="hidden"
-                          onChange={(e) => handleFileUpload('image', e)}
-                        />
-                        {uploadPreview.image && (
-                          <div className="relative">
-                            <img src={uploadPreview.image} alt="Preview" className="h-20 w-20 object-cover rounded border" />
+                    {/* Seção de Propaganda - Apenas quando modo inclui propaganda */}
+                    {(parametros.modo_exibicao === 'propaganda-only' || parametros.modo_exibicao === 'pedidos-propaganda') && (
+                      <div className="border-t pt-6 mt-6">
+                        <h3 className="text-lg font-semibold mb-4">Configurações de Propaganda</h3>
+                        
+                        {/* Upload de Imagem de Fundo */}
+                        <div className="mb-4">
+                          <Label htmlFor="upload_image">Imagem de Fundo (PNG/JPG/JPEG, máx 5MB)</Label>
+                          <div className="flex gap-2 items-center">
                             <Button
+                              type="button"
+                              variant="outline"
                               size="sm"
-                              variant="ghost"
-                              className="absolute -top-2 -right-2 h-6 w-6 p-0 bg-red-500 text-white rounded-full"
-                              onClick={() => setUploadPreview({ ...uploadPreview, image: null })}
+                              onClick={() => document.getElementById('upload_image').click()}
                             >
-                              <X className="h-4 w-4" />
+                              <ImageIcon className="h-4 w-4 mr-2" />
+                              Escolher Imagem
                             </Button>
+                            <input
+                              id="upload_image"
+                              type="file"
+                              accept="image/png,image/jpeg,image/jpg"
+                              className="hidden"
+                              onChange={(e) => handleFileUpload('image', e)}
+                            />
+                            {uploadPreview.image && (
+                              <div className="relative">
+                                <img src={uploadPreview.image} alt="Preview" className="h-20 w-20 object-cover rounded border" />
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="absolute -top-2 -right-2 h-6 w-6 p-0 bg-red-500 text-white rounded-full"
+                                  onClick={() => setUploadPreview({ ...uploadPreview, image: null })}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
-                        )}
+                          <p className="text-xs text-gray-500 mt-1">Esta imagem será exibida como fundo nas telas de propaganda</p>
+                        </div>
+
+                        {/* TODO: Adicionar múltiplas imagens de propaganda aqui */}
+                        <div className="bg-gray-50 border border-dashed rounded p-4 text-center text-gray-500 text-sm">
+                          <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p>Gestão de múltiplas imagens de propaganda será implementada em breve</p>
+                        </div>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">Esta imagem será exibida como fundo nas telas de propaganda</p>
-                    </div>
+                    )}
 
                     {/* Upload de Áudio (Som de Notificação) */}
                     <div>
