@@ -30,6 +30,7 @@ import ConfirmSignupPage from './pages/ConfirmSignupPage';
 import SetPasswordPage from './pages/SetPasswordPage';
 import TermsUserPage from './pages/TermsUserPage';
 import TermsAdminPage from './pages/TermsAdminPage';
+import AdminPedidosPropagandaPage from './pages/AdminPedidosPropagandaPage';
 import './App.css';
 
 // Componente 404 separado para usar useNavigate
@@ -212,6 +213,16 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <TermsAdminPage />
+                </ProtectedRoute>
+              }
+            />
+            
+            {/* Controle de Pedidos/Propaganda - apenas admin */}
+            <Route
+              path="/admin/pedidos-propaganda"
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminPedidosPropagandaPage />
                 </ProtectedRoute>
               }
             />

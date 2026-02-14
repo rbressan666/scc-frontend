@@ -288,6 +288,15 @@ const DashboardPage = () => {
       disabled: true
     },
     {
+      id: 'pedidos-propaganda',
+      title: 'Controle de Pedidos/Propaganda',
+      description: 'Gerenciar pedidos e configuração do app de visualização TV',
+      icon: Smartphone,
+      path: '/admin/pedidos-propaganda',
+      adminOnly: true,
+      color: 'bg-purple-600'
+    },
+    {
       id: 'database',
       title: 'Uso do Banco',
       description: 'Monitorar uso do armazenamento Supabase',
