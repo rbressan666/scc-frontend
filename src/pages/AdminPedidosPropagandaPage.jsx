@@ -119,9 +119,10 @@ const AdminPedidosPropagandaPage = () => {
         observacao: modalNovoPedido.observacao || null
       });
       if (res.data?.success) {
-        alert('Pedido criado com sucesso!');
         setModalNovoPedido({ open: false, numero: '', observacao: '' });
-        fetchPedidos();
+        // Recarregar lista ANTES de mostrar alerta
+        await fetchPedidos();
+        alert('Pedido criado com sucesso!');
       }
     } catch (err) {
       console.error('Erro ao criar pedido:', err);
