@@ -103,12 +103,14 @@ const AdminPedidosPropagandaPage = () => {
 
   const fetchMidiasPropaganda = async () => {
     try {
-      const res = await api.get('/api/parametros-propaganda/midia?tipo=imagem');
+      const res = await api.get(`/api/parametros-propaganda/midia?tipo=imagem&_=${Date.now()}`);
       const data = res.data?.data || [];
       setMidiasPropaganda(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Erro ao carregar mídias de propaganda:', err);
       setMidiasPropaganda([]);
+      const msg = err.response?.data?.message || 'Erro ao carregar imagens de propaganda';
+      alert(msg);
     }
   };
 
@@ -217,6 +219,11 @@ const AdminPedidosPropagandaPage = () => {
         }
 
         if (uploadedMidias.length > 0) {
+          setMidiasPropaganda((prev) => {
+            const existingIds = new Set(prev.map((item) => item.id));
+            const onlyNew = uploadedMidias.filter((item) => !existingIds.has(item.id));
+            return [...prev, ...onlyNew];
+          });
           await fetchMidiasPropaganda();
           const firstUploaded = uploadedMidias[0];
           setParametros((prev) => ({ ...prev, imagem_fundo_id: prev.imagem_fundo_id || firstUploaded.id }));
