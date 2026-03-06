@@ -78,6 +78,7 @@ const AdminPedidosPropagandaPage = () => {
   const [midiasPropaganda, setMidiasPropaganda] = useState([]);
   const [reorderingMidia, setReorderingMidia] = useState(false);
   const [erroMidias, setErroMidias] = useState('');
+  const [thumbFalhou, setThumbFalhou] = useState({});
 
   // Estados da Tab 2: Histórico de Pedidos
   const [pedidos, setPedidos] = useState([]);
@@ -295,8 +296,6 @@ const AdminPedidosPropagandaPage = () => {
             return [...prev, ...onlyNew];
           });
           await fetchMidiasPropaganda();
-          const firstUploaded = uploadedMidias[0];
-          setParametros((prev) => ({ ...prev, imagem_fundo_id: prev.imagem_fundo_id || firstUploaded.id }));
           alert(`${uploadedMidias.length} imagem(ns) enviada(s) com sucesso!`);
         }
       } catch (uploadErr) {
@@ -365,10 +364,35 @@ const AdminPedidosPropagandaPage = () => {
       }
 
       setMidiasPropaganda((prev) => prev.filter((item) => item.id !== id));
-      setParametros((prev) => (prev.imagem_fundo_id === id ? { ...prev, imagem_fundo_id: null } : prev));
+      setThumbFalhou((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     } catch (err) {
       console.error('Erro ao excluir mídia:', err);
       const msg = err.response?.data?.message || 'Erro ao excluir imagem de propaganda';
+      alert(msg);
+    }
+  };
+
+  const handleToggleMidiaSequencia = async (midiaId, ativaAtual) => {
+    try {
+      const response = await api.patch(`/api/parametros-propaganda/midia/${midiaId}/ativa`, {
+        ativa: !ativaAtual
+      });
+      const body = getApiBody(response);
+      if (!body?.success) {
+        alert(body?.message || 'Erro ao atualizar imagem na sequência');
+        return;
+      }
+
+      setMidiasPropaganda((prev) => prev.map((item) => (
+        item.id === midiaId ? { ...item, ativa: !ativaAtual } : item
+      )));
+    } catch (err) {
+      console.error('Erro ao atualizar sequência da mídia:', err);
+      const msg = err.response?.data?.message || 'Erro ao atualizar imagem na sequência';
       alert(msg);
     }
   };
@@ -602,18 +626,27 @@ const AdminPedidosPropagandaPage = () => {
                                 {midiasPropaganda.map((midia) => (
                                   <div key={midia.id} className="flex items-center justify-between gap-2 border rounded p-2 bg-white">
                                     <div className="flex items-center gap-2 min-w-0">
-                                      <img
-                                        src={buildMidiaUrl(midia)}
-                                        alt={midia.nome}
-                                        className="h-12 w-12 rounded object-cover border"
-                                        loading="lazy"
-                                        onError={(e) => {
-                                          e.currentTarget.style.display = 'none';
-                                        }}
-                                      />
+                                      {!thumbFalhou[midia.id] ? (
+                                        <img
+                                          src={buildMidiaUrl(midia)}
+                                          alt={midia.nome}
+                                          className="h-16 w-16 rounded object-cover border"
+                                          loading="lazy"
+                                          onError={() => {
+                                            setThumbFalhou((prev) => ({ ...prev, [midia.id]: true }));
+                                          }}
+                                        />
+                                      ) : (
+                                        <div className="h-16 w-16 rounded border bg-gray-100 flex items-center justify-center text-gray-400">
+                                          <ImageIcon className="h-6 w-6" />
+                                        </div>
+                                      )}
                                       <div className="min-w-0">
                                         <div className="truncate font-medium">{midia.nome}</div>
                                         <div className="text-xs text-gray-500 truncate">{midia.url_arquivo}</div>
+                                        <div className="text-[11px] text-gray-500">
+                                          {midia.ativa ? 'Na sequência' : 'Fora da sequência'}
+                                        </div>
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-1">
@@ -640,10 +673,10 @@ const AdminPedidosPropagandaPage = () => {
                                       <Button
                                         type="button"
                                         size="sm"
-                                        variant={parametros.imagem_fundo_id === midia.id ? 'default' : 'outline'}
-                                        onClick={() => setParametros((prev) => ({ ...prev, imagem_fundo_id: midia.id }))}
+                                        variant={midia.ativa ? 'default' : 'outline'}
+                                        onClick={() => handleToggleMidiaSequencia(midia.id, !!midia.ativa)}
                                       >
-                                        {parametros.imagem_fundo_id === midia.id ? 'Fundo atual' : 'Definir fundo'}
+                                        {midia.ativa ? 'Remover da sequência' : 'Incluir na sequência'}
                                       </Button>
                                       <Button
                                         type="button"
