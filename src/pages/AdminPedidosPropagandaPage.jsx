@@ -140,21 +140,23 @@ const AdminPedidosPropagandaPage = () => {
   const fetchMidiasPropaganda = async () => {
     try {
       setErroMidias('');
-      const res = await api.get(`/api/parametros-propaganda/midia?tipo=imagem&_=${Date.now()}`);
-      const data = res.data?.data || [];
-      if (Array.isArray(data) && data.length > 0) {
-        setMidiasPropaganda(data);
+      const res = await api.get(`/api/parametros-propaganda/midia?_=${Date.now()}`);
+      const data = Array.isArray(res.data?.data) ? res.data.data : [];
+      const imagens = data.filter((item) => String(item?.tipo || '').trim().toLowerCase() === 'imagem');
+
+      if (imagens.length > 0) {
+        setMidiasPropaganda(imagens);
         return;
       }
 
       const diagRes = await api.get(`/api/parametros-propaganda/midia/diagnostico?_=${Date.now()}`);
       const diagData = diagRes.data?.data || [];
-      const imagens = Array.isArray(diagData)
-        ? diagData.filter((item) => item.tipo === 'imagem' && item.deletado_em == null)
+      const imagensDiag = Array.isArray(diagData)
+        ? diagData.filter((item) => String(item?.tipo || '').trim().toLowerCase() === 'imagem' && item.deletado_em == null)
         : [];
-      setMidiasPropaganda(imagens);
+      setMidiasPropaganda(imagensDiag);
 
-      if (imagens.length === 0) {
+      if (imagensDiag.length === 0) {
         setErroMidias('Nenhuma imagem encontrada no retorno das APIs de mídia.');
       }
     } catch (err) {
