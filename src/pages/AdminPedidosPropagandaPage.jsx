@@ -105,7 +105,17 @@ const AdminPedidosPropagandaPage = () => {
     try {
       const res = await api.get(`/api/parametros-propaganda/midia?tipo=imagem&_=${Date.now()}`);
       const data = res.data?.data || [];
-      setMidiasPropaganda(Array.isArray(data) ? data : []);
+      if (Array.isArray(data) && data.length > 0) {
+        setMidiasPropaganda(data);
+        return;
+      }
+
+      const diagRes = await api.get(`/api/parametros-propaganda/midia/diagnostico?_=${Date.now()}`);
+      const diagData = diagRes.data?.data || [];
+      const imagens = Array.isArray(diagData)
+        ? diagData.filter((item) => item.tipo === 'imagem' && item.deletado_em == null)
+        : [];
+      setMidiasPropaganda(imagens);
     } catch (err) {
       console.error('Erro ao carregar mídias de propaganda:', err);
       setMidiasPropaganda([]);
@@ -493,7 +503,7 @@ const AdminPedidosPropagandaPage = () => {
                         </div>
 
                           <div className="bg-gray-50 border rounded p-3 text-sm">
-                            <div className="font-medium mb-2">Imagens de propaganda enviadas</div>
+                            <div className="font-medium mb-2">Imagens de propaganda enviadas ({midiasPropaganda.length})</div>
                             {midiasPropaganda.length === 0 && (
                               <p className="text-gray-500">Nenhuma imagem enviada ainda.</p>
                             )}
