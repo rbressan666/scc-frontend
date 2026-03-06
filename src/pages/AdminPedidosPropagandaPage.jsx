@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Trash2, Plus, Upload, X, Image as ImageIcon, Volume2 } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Plus, X, Image as ImageIcon, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,8 @@ const AdminPedidosPropagandaPage = () => {
     ativa: true
   });
   const [uploadPreview, setUploadPreview] = useState({ image: null, video: null, audio: null });
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [midiasPropaganda, setMidiasPropaganda] = useState([]);
 
   // Estados da Tab 2: Histórico de Pedidos
   const [pedidos, setPedidos] = useState([]);
@@ -49,7 +51,7 @@ const AdminPedidosPropagandaPage = () => {
   useEffect(() => {
     if (activeTab === 'parametros') {
       fetchParametros();
-      // fetchMediaLists(); // TODO: implementar quando houver endpoints
+      fetchMidiasPropaganda();
     }
   }, [activeTab]);
 
@@ -88,6 +90,17 @@ const AdminPedidosPropagandaPage = () => {
     }
   };
 
+  const fetchMidiasPropaganda = async () => {
+    try {
+      const res = await api.get('/api/parametros-propaganda/midia?tipo=imagem');
+      const data = res.data?.data || [];
+      setMidiasPropaganda(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Erro ao carregar mídias de propaganda:', err);
+      setMidiasPropaganda([]);
+    }
+  };
+
   const handleSaveParametros = async () => {
     setLoading(true);
     try {
@@ -116,11 +129,15 @@ const AdminPedidosPropagandaPage = () => {
     try {
       const res = await api.post('/api/pedidos', {
         numero_pedido: modalNovoPedido.numero,
-        observacao: modalNovoPedido.observacao || null
+        observacao: modalNovoPedido.observacao || null,
+        usuario_email: 'SCC-Pedido'
       });
       if (res.data?.success) {
+        const novoPedido = res.data?.data;
         setModalNovoPedido({ open: false, numero: '', observacao: '' });
-        // Recarregar lista ANTES de mostrar alerta
+        if (novoPedido) {
+          setPedidos((prev) => [novoPedido, ...prev]);
+        }
         await fetchPedidos();
         alert('Pedido criado com sucesso!');
       }
@@ -165,8 +182,30 @@ const AdminPedidosPropagandaPage = () => {
         return;
       }
       const reader = new FileReader();
-      reader.onload = (ev) => {
-        setUploadPreview({ ...uploadPreview, image: ev.target.result });
+      reader.onload = async (ev) => {
+        const imageBase64 = ev.target.result;
+        setUploadPreview((prev) => ({ ...prev, image: imageBase64 }));
+
+        try {
+          setUploadingImage(true);
+          const uploadRes = await api.post('/api/parametros-propaganda/midia/upload-imagem', {
+            imageBase64,
+            nome: `Imagem propaganda ${new Date().toLocaleString()}`
+          });
+
+          if (uploadRes.data?.success) {
+            const midia = uploadRes.data.data;
+            setMidiasPropaganda((prev) => [midia, ...prev]);
+            setParametros((prev) => ({ ...prev, imagem_fundo_id: midia.id }));
+            alert('Imagem de propaganda enviada com sucesso!');
+          }
+        } catch (uploadErr) {
+          console.error('Erro ao enviar imagem de propaganda:', uploadErr);
+          const msg = uploadErr.response?.data?.message || 'Erro ao enviar imagem de propaganda';
+          alert(msg);
+        } finally {
+          setUploadingImage(false);
+        }
       };
       reader.readAsDataURL(file);
     } else if (type === 'audio') {
@@ -385,14 +424,38 @@ const AdminPedidosPropagandaPage = () => {
                               </div>
                             )}
                           </div>
+                          {uploadingImage && (
+                            <p className="text-xs text-blue-600 mt-1">Enviando imagem...</p>
+                          )}
+                          {!uploadingImage && parametros.imagem_fundo_id && (
+                            <p className="text-xs text-green-600 mt-1">Imagem vinculada à configuração atual.</p>
+                          )}
                           <p className="text-xs text-gray-500 mt-1">Esta imagem será exibida como fundo nas telas de propaganda</p>
                         </div>
 
-                        {/* TODO: Adicionar múltiplas imagens de propaganda aqui */}
-                        <div className="bg-gray-50 border border-dashed rounded p-4 text-center text-gray-500 text-sm">
-                          <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p>Gestão de múltiplas imagens de propaganda será implementada em breve</p>
-                        </div>
+                          <div className="bg-gray-50 border rounded p-3 text-sm">
+                            <div className="font-medium mb-2">Imagens de propaganda enviadas</div>
+                            {midiasPropaganda.length === 0 && (
+                              <p className="text-gray-500">Nenhuma imagem enviada ainda.</p>
+                            )}
+                            {midiasPropaganda.length > 0 && (
+                              <div className="space-y-1 max-h-32 overflow-auto">
+                                {midiasPropaganda.map((midia) => (
+                                  <div key={midia.id} className="flex items-center justify-between gap-2">
+                                    <span className="truncate">{midia.nome}</span>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant={parametros.imagem_fundo_id === midia.id ? 'default' : 'outline'}
+                                      onClick={() => setParametros((prev) => ({ ...prev, imagem_fundo_id: midia.id }))}
+                                    >
+                                      {parametros.imagem_fundo_id === midia.id ? 'Selecionada' : 'Selecionar'}
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                       </div>
                     )}
 
@@ -483,6 +546,7 @@ const AdminPedidosPropagandaPage = () => {
                       <thead>
                         <tr className="border-b">
                           <th className="text-left py-2 px-3">Número</th>
+                          <th className="text-left py-2 px-3">Status</th>
                           <th className="text-left py-2 px-3">Data/Hora</th>
                           <th className="text-left py-2 px-3">Observação</th>
                           <th className="text-left py-2 px-3">Usuário</th>
@@ -493,9 +557,10 @@ const AdminPedidosPropagandaPage = () => {
                         {pedidos.map((pedido) => (
                           <tr key={pedido.id} className="border-b hover:bg-gray-50">
                             <td className="py-2 px-3 font-semibold">{pedido.numero_pedido}</td>
+                            <td className="py-2 px-3 capitalize">{pedido.status || '-'}</td>
                             <td className="py-2 px-3">{new Date(pedido.data_hora).toLocaleString()}</td>
                             <td className="py-2 px-3">{pedido.observacao || '-'}</td>
-                            <td className="py-2 px-3">{pedido.usuario_id || '-'}</td>
+                            <td className="py-2 px-3">{pedido.usuario_email || 'SCC-Pedido'}</td>
                             <td className="py-2 px-3 text-center">
                               <Button
                                 size="sm"
