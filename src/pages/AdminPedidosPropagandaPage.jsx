@@ -13,9 +13,12 @@ import api from '../services/api';
 
 const normalizeModoExibicao = (value) => {
   if (!value) return 'pedidos-propaganda';
-  if (value === 'pedidos_propaganda') return 'pedidos-propaganda';
-  if (value === 'pedidos') return 'pedidos-only';
-  return value;
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized === 'pedidos_propaganda' || normalized === 'pedidos-propaganda') return 'pedidos-propaganda';
+  if (normalized === 'pedidos') return 'pedidos-only';
+  if (normalized === 'pedidos-only') return 'pedidos-only';
+  if (normalized === 'propaganda-only') return 'propaganda-only';
+  return 'pedidos-propaganda';
 };
 
 const hasModoComPropaganda = (value) => {
@@ -64,6 +67,7 @@ const AdminPedidosPropagandaPage = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [midiasPropaganda, setMidiasPropaganda] = useState([]);
   const [reorderingMidia, setReorderingMidia] = useState(false);
+  const [erroMidias, setErroMidias] = useState('');
 
   // Estados da Tab 2: Histórico de Pedidos
   const [pedidos, setPedidos] = useState([]);
@@ -135,6 +139,7 @@ const AdminPedidosPropagandaPage = () => {
 
   const fetchMidiasPropaganda = async () => {
     try {
+      setErroMidias('');
       const res = await api.get(`/api/parametros-propaganda/midia?tipo=imagem&_=${Date.now()}`);
       const data = res.data?.data || [];
       if (Array.isArray(data) && data.length > 0) {
@@ -148,11 +153,15 @@ const AdminPedidosPropagandaPage = () => {
         ? diagData.filter((item) => item.tipo === 'imagem' && item.deletado_em == null)
         : [];
       setMidiasPropaganda(imagens);
+
+      if (imagens.length === 0) {
+        setErroMidias('Nenhuma imagem encontrada no retorno das APIs de mídia.');
+      }
     } catch (err) {
       console.error('Erro ao carregar mídias de propaganda:', err);
       setMidiasPropaganda([]);
       const msg = err.response?.data?.message || 'Erro ao carregar imagens de propaganda';
-      alert(msg);
+      setErroMidias(msg);
     }
   };
 
@@ -489,6 +498,7 @@ const AdminPedidosPropagandaPage = () => {
                     {hasModoComPropaganda(parametros.modo_exibicao) && (
                       <div className="border-t pt-6 mt-6">
                         <h3 className="text-lg font-semibold mb-4">Configurações de Propaganda</h3>
+                        <p className="text-xs text-gray-500 mb-2">Modo atual: {normalizeModoExibicao(parametros.modo_exibicao)}</p>
                         
                         {/* Upload de Imagem de Fundo */}
                         <div className="mb-4">
@@ -535,7 +545,15 @@ const AdminPedidosPropagandaPage = () => {
                         </div>
 
                           <div className="bg-gray-50 border rounded p-3 text-sm">
-                            <div className="font-medium mb-2">Imagens de propaganda enviadas ({midiasPropaganda.length})</div>
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <div className="font-medium">Imagens de propaganda enviadas ({midiasPropaganda.length})</div>
+                              <Button type="button" size="sm" variant="outline" onClick={fetchMidiasPropaganda}>
+                                Recarregar imagens
+                              </Button>
+                            </div>
+                            {erroMidias && (
+                              <p className="text-red-600 text-xs mb-2">{erroMidias}</p>
+                            )}
                             {midiasPropaganda.length === 0 && (
                               <p className="text-gray-500">Nenhuma imagem enviada ainda.</p>
                             )}
