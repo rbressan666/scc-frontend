@@ -11,6 +11,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '../context/useAuth';
 import api from '../services/api';
 
+const normalizeModoExibicao = (value) => {
+  if (!value) return 'pedidos-propaganda';
+  if (value === 'pedidos_propaganda') return 'pedidos-propaganda';
+  if (value === 'pedidos') return 'pedidos-only';
+  return value;
+};
+
+const hasModoComPropaganda = (value) => {
+  const normalized = normalizeModoExibicao(value);
+  return normalized === 'propaganda-only' || normalized === 'pedidos-propaganda';
+};
+
 const AdminPedidosPropagandaPage = () => {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
@@ -78,7 +90,11 @@ const AdminPedidosPropagandaPage = () => {
     try {
       const res = await api.get('/api/parametros-propaganda');
       if (res.data?.success) {
-        setParametros(res.data.data);
+        const data = res.data.data || {};
+        setParametros({
+          ...data,
+          modo_exibicao: normalizeModoExibicao(data.modo_exibicao)
+        });
       }
     } catch (err) {
       console.error('Erro ao carregar parâmetros:', err);
@@ -454,7 +470,7 @@ const AdminPedidosPropagandaPage = () => {
                     </div>
 
                     {/* Seção de Propaganda - Apenas quando modo inclui propaganda */}
-                    {(parametros.modo_exibicao === 'propaganda-only' || parametros.modo_exibicao === 'pedidos-propaganda') && (
+                    {hasModoComPropaganda(parametros.modo_exibicao) && (
                       <div className="border-t pt-6 mt-6">
                         <h3 className="text-lg font-semibold mb-4">Configurações de Propaganda</h3>
                         
