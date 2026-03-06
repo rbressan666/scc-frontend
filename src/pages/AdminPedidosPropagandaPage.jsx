@@ -187,7 +187,6 @@ const AdminPedidosPropagandaPage = () => {
       const response = await api.put('/api/parametros-propaganda', parametros);
       const body = getApiBody(response);
       if (body?.success) {
-        alert('Parâmetros salvos com sucesso!');
         fetchParametros(); // Recarregar para pegar valores atualizados
       } else {
         alert('Erro: ' + (body?.message || 'Resposta inesperada do servidor'));
@@ -351,6 +350,26 @@ const AdminPedidosPropagandaPage = () => {
       alert('Erro ao reordenar imagens de propaganda');
     } finally {
       setReorderingMidia(false);
+    }
+  };
+
+  const handleDeleteMidia = async (id) => {
+    if (!confirm('Deseja realmente excluir esta imagem de propaganda?')) return;
+
+    try {
+      const response = await api.delete(`/api/parametros-propaganda/midia/${id}`);
+      const body = getApiBody(response);
+      if (!body?.success) {
+        alert(body?.message || 'Erro ao excluir imagem');
+        return;
+      }
+
+      setMidiasPropaganda((prev) => prev.filter((item) => item.id !== id));
+      setParametros((prev) => (prev.imagem_fundo_id === id ? { ...prev, imagem_fundo_id: null } : prev));
+    } catch (err) {
+      console.error('Erro ao excluir mídia:', err);
+      const msg = err.response?.data?.message || 'Erro ao excluir imagem de propaganda';
+      alert(msg);
     }
   };
 
@@ -624,7 +643,16 @@ const AdminPedidosPropagandaPage = () => {
                                         variant={parametros.imagem_fundo_id === midia.id ? 'default' : 'outline'}
                                         onClick={() => setParametros((prev) => ({ ...prev, imagem_fundo_id: midia.id }))}
                                       >
-                                        {parametros.imagem_fundo_id === midia.id ? 'Selecionada' : 'Selecionar'}
+                                        {parametros.imagem_fundo_id === midia.id ? 'Fundo atual' : 'Definir fundo'}
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleDeleteMidia(midia.id)}
+                                        title="Excluir imagem"
+                                      >
+                                        <Trash2 className="h-4 w-4 text-red-600" />
                                       </Button>
                                     </div>
                                   </div>
