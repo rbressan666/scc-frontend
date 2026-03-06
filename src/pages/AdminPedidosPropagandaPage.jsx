@@ -23,6 +23,22 @@ const hasModoComPropaganda = (value) => {
   return normalized === 'propaganda-only' || normalized === 'pedidos-propaganda';
 };
 
+const buildMidiaUrl = (midia) => {
+  if (!midia) return '';
+
+  const baseUrl = api?.defaults?.baseURL || '';
+  const fromRelative = midia.url_arquivo
+    ? `${baseUrl.replace(/\/$/, '')}${midia.url_arquivo.startsWith('/') ? '' : '/'}${midia.url_arquivo}`
+    : '';
+  const candidate = midia.url_publica || fromRelative;
+
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && candidate.startsWith('http://')) {
+    return candidate.replace('http://', 'https://');
+  }
+
+  return candidate;
+};
+
 const AdminPedidosPropagandaPage = () => {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
@@ -524,10 +540,24 @@ const AdminPedidosPropagandaPage = () => {
                               <p className="text-gray-500">Nenhuma imagem enviada ainda.</p>
                             )}
                             {midiasPropaganda.length > 0 && (
-                              <div className="space-y-1 max-h-48 overflow-auto">
+                              <div className="space-y-2 max-h-72 overflow-auto">
                                 {midiasPropaganda.map((midia) => (
-                                  <div key={midia.id} className="flex items-center justify-between gap-2">
-                                    <span className="truncate">{midia.nome}</span>
+                                  <div key={midia.id} className="flex items-center justify-between gap-2 border rounded p-2 bg-white">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <img
+                                        src={buildMidiaUrl(midia)}
+                                        alt={midia.nome}
+                                        className="h-12 w-12 rounded object-cover border"
+                                        loading="lazy"
+                                        onError={(e) => {
+                                          e.currentTarget.style.display = 'none';
+                                        }}
+                                      />
+                                      <div className="min-w-0">
+                                        <div className="truncate font-medium">{midia.nome}</div>
+                                        <div className="text-xs text-gray-500 truncate">{midia.url_arquivo}</div>
+                                      </div>
+                                    </div>
                                     <div className="flex items-center gap-1">
                                       <Button
                                         type="button"
