@@ -42,6 +42,16 @@ const buildMidiaUrl = (midia) => {
   return candidate;
 };
 
+const getApiBody = (response) => {
+  if (response && typeof response === 'object' && Object.prototype.hasOwnProperty.call(response, 'success')) {
+    return response;
+  }
+  if (response && typeof response === 'object' && Object.prototype.hasOwnProperty.call(response, 'data')) {
+    return response.data;
+  }
+  return response || {};
+};
+
 const AdminPedidosPropagandaPage = () => {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
@@ -108,9 +118,10 @@ const AdminPedidosPropagandaPage = () => {
   const fetchParametros = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/parametros-propaganda');
-      if (res.data?.success) {
-        const data = res.data.data || {};
+      const response = await api.get('/api/parametros-propaganda');
+      const body = getApiBody(response);
+      if (body?.success) {
+        const data = body.data || {};
         setParametros({
           ...data,
           modo_exibicao: normalizeModoExibicao(data.modo_exibicao)
@@ -126,8 +137,9 @@ const AdminPedidosPropagandaPage = () => {
   const fetchPedidos = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/api/pedidos?_=${Date.now()}`);
-      const data = res.data?.data || res.data || [];
+      const response = await api.get(`/api/pedidos?_=${Date.now()}`);
+      const body = getApiBody(response);
+      const data = Array.isArray(body?.data) ? body.data : [];
       setPedidos(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Erro ao carregar pedidos:', err);
@@ -140,8 +152,9 @@ const AdminPedidosPropagandaPage = () => {
   const fetchMidiasPropaganda = async () => {
     try {
       setErroMidias('');
-      const res = await api.get(`/api/parametros-propaganda/midia?_=${Date.now()}`);
-      const data = Array.isArray(res.data?.data) ? res.data.data : [];
+      const response = await api.get(`/api/parametros-propaganda/midia?_=${Date.now()}`);
+      const body = getApiBody(response);
+      const data = Array.isArray(body?.data) ? body.data : [];
       const imagens = data.filter((item) => String(item?.tipo || '').trim().toLowerCase() === 'imagem');
 
       if (imagens.length > 0) {
@@ -149,8 +162,9 @@ const AdminPedidosPropagandaPage = () => {
         return;
       }
 
-      const diagRes = await api.get(`/api/parametros-propaganda/midia/diagnostico?_=${Date.now()}`);
-      const diagData = diagRes.data?.data || [];
+      const diagResponse = await api.get(`/api/parametros-propaganda/midia/diagnostico?_=${Date.now()}`);
+      const diagBody = getApiBody(diagResponse);
+      const diagData = diagBody?.data || [];
       const imagensDiag = Array.isArray(diagData)
         ? diagData.filter((item) => String(item?.tipo || '').trim().toLowerCase() === 'imagem' && item.deletado_em == null)
         : [];
@@ -170,12 +184,13 @@ const AdminPedidosPropagandaPage = () => {
   const handleSaveParametros = async () => {
     setLoading(true);
     try {
-      const res = await api.put('/api/parametros-propaganda', parametros);
-      if (res.data?.success || res.success) {
+      const response = await api.put('/api/parametros-propaganda', parametros);
+      const body = getApiBody(response);
+      if (body?.success) {
         alert('Parâmetros salvos com sucesso!');
         fetchParametros(); // Recarregar para pegar valores atualizados
       } else {
-        alert('Erro: ' + (res.data?.message || 'Resposta inesperada do servidor'));
+        alert('Erro: ' + (body?.message || 'Resposta inesperada do servidor'));
       }
     } catch (err) {
       console.error('Erro ao salvar parâmetros:', err);
@@ -193,13 +208,14 @@ const AdminPedidosPropagandaPage = () => {
     }
     setLoading(true);
     try {
-      const res = await api.post('/api/pedidos', {
+      const response = await api.post('/api/pedidos', {
         numero_pedido: modalNovoPedido.numero,
         observacao: modalNovoPedido.observacao || null,
         usuario_email: 'SCC-Pedido'
       });
-      if (res.data?.success) {
-        const novoPedido = res.data?.data;
+      const body = getApiBody(response);
+      if (body?.success) {
+        const novoPedido = body?.data;
         setModalNovoPedido({ open: false, numero: '', observacao: '' });
         if (novoPedido) {
           setPedidos((prev) => [novoPedido, ...prev]);
@@ -220,8 +236,9 @@ const AdminPedidosPropagandaPage = () => {
     if (!confirm('Deseja realmente excluir este pedido?')) return;
     setLoading(true);
     try {
-      const res = await api.delete(`/api/pedidos/${id}`);
-      if (res.data?.success) {
+      const response = await api.delete(`/api/pedidos/${id}`);
+      const body = getApiBody(response);
+      if (body?.success) {
         alert('Pedido excluído com sucesso!');
         fetchPedidos();
       }
@@ -260,13 +277,14 @@ const AdminPedidosPropagandaPage = () => {
 
         for (const file of files) {
           const imageBase64 = await toBase64(file);
-          const uploadRes = await api.post('/api/parametros-propaganda/midia/upload-imagem', {
+          const uploadResponse = await api.post('/api/parametros-propaganda/midia/upload-imagem', {
             imageBase64,
             nome: file.name
           });
+          const uploadBody = getApiBody(uploadResponse);
 
-          if (uploadRes.data?.success) {
-            uploadedMidias.push(uploadRes.data.data);
+          if (uploadBody?.success) {
+            uploadedMidias.push(uploadBody.data);
             setUploadPreview((prev) => ({ ...prev, image: imageBase64 }));
           }
         }
@@ -322,9 +340,10 @@ const AdminPedidosPropagandaPage = () => {
     try {
       setReorderingMidia(true);
       const orderedIds = reordered.map((item) => item.id);
-      const res = await api.put('/api/parametros-propaganda/midia/reorder', { orderedIds });
-      if (res.data?.success && Array.isArray(res.data.data)) {
-        setMidiasPropaganda(res.data.data);
+      const response = await api.put('/api/parametros-propaganda/midia/reorder', { orderedIds });
+      const body = getApiBody(response);
+      if (body?.success && Array.isArray(body.data)) {
+        setMidiasPropaganda(body.data);
       }
     } catch (err) {
       console.error('Erro ao reordenar mídias:', err);
