@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Trash2, Plus, X, Image as ImageIcon, Volume2 } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ArrowDown, Save, Trash2, Plus, X, Image as ImageIcon, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,7 @@ const AdminPedidosPropagandaPage = () => {
   const [uploadPreview, setUploadPreview] = useState({ image: null, video: null, audio: null });
   const [uploadingImage, setUploadingImage] = useState(false);
   const [midiasPropaganda, setMidiasPropaganda] = useState([]);
+  const [reorderingMidia, setReorderingMidia] = useState(false);
 
   // Estados da Tab 2: Histórico de Pedidos
   const [pedidos, setPedidos] = useState([]);
@@ -177,48 +178,59 @@ const AdminPedidosPropagandaPage = () => {
     }
   };
 
-  const handleFileUpload = (type, e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFileUpload = async (type, e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
     // Validação básica
     if (type === 'image') {
-      if (!['image/png', 'image/jpeg', 'image/jpg'].includes(file.type)) {
-        alert('Apenas PNG, JPG ou JPEG são permitidos');
+      const invalid = files.find(
+        (file) => !['image/png', 'image/jpeg', 'image/jpg'].includes(file.type) || file.size > 5 * 1024 * 1024
+      );
+      if (invalid) {
+        alert('Há arquivos inválidos. Use apenas PNG/JPG/JPEG com até 5MB cada.');
         return;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Imagem muito grande (máximo 5MB)');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-        const imageBase64 = ev.target.result;
-        setUploadPreview((prev) => ({ ...prev, image: imageBase64 }));
 
-        try {
-          setUploadingImage(true);
+      const toBase64 = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => resolve(ev.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      try {
+        setUploadingImage(true);
+        const uploadedMidias = [];
+
+        for (const file of files) {
+          const imageBase64 = await toBase64(file);
           const uploadRes = await api.post('/api/parametros-propaganda/midia/upload-imagem', {
             imageBase64,
-            nome: `Imagem propaganda ${new Date().toLocaleString()}`
+            nome: file.name
           });
 
           if (uploadRes.data?.success) {
-            const midia = uploadRes.data.data;
-            setMidiasPropaganda((prev) => [midia, ...prev]);
-            setParametros((prev) => ({ ...prev, imagem_fundo_id: midia.id }));
-            alert('Imagem de propaganda enviada com sucesso!');
+            uploadedMidias.push(uploadRes.data.data);
+            setUploadPreview((prev) => ({ ...prev, image: imageBase64 }));
           }
-        } catch (uploadErr) {
-          console.error('Erro ao enviar imagem de propaganda:', uploadErr);
-          const msg = uploadErr.response?.data?.message || 'Erro ao enviar imagem de propaganda';
-          alert(msg);
-        } finally {
-          setUploadingImage(false);
         }
-      };
-      reader.readAsDataURL(file);
+
+        if (uploadedMidias.length > 0) {
+          await fetchMidiasPropaganda();
+          const firstUploaded = uploadedMidias[0];
+          setParametros((prev) => ({ ...prev, imagem_fundo_id: prev.imagem_fundo_id || firstUploaded.id }));
+          alert(`${uploadedMidias.length} imagem(ns) enviada(s) com sucesso!`);
+        }
+      } catch (uploadErr) {
+        console.error('Erro ao enviar imagem(ns) de propaganda:', uploadErr);
+        const msg = uploadErr.response?.data?.message || 'Erro ao enviar imagem de propaganda';
+        alert(msg);
+      } finally {
+        setUploadingImage(false);
+      }
     } else if (type === 'audio') {
+      const file = files[0];
       if (!['audio/mpeg', 'audio/wav', 'audio/ogg'].includes(file.type)) {
         alert('Apenas MP3, WAV ou OGG são permitidos');
         return;
@@ -231,7 +243,36 @@ const AdminPedidosPropagandaPage = () => {
     }
 
     // TODO: Implementar upload real para o backend/storage
-    console.log('Upload simulado:', type, file);
+    console.log('Upload simulado:', type, files.map((f) => f.name));
+  };
+
+  const handleMoveMidia = async (id, direction) => {
+    const currentIndex = midiasPropaganda.findIndex((item) => item.id === id);
+    if (currentIndex === -1) return;
+
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= midiasPropaganda.length) return;
+
+    const reordered = [...midiasPropaganda];
+    const [moved] = reordered.splice(currentIndex, 1);
+    reordered.splice(targetIndex, 0, moved);
+
+    setMidiasPropaganda(reordered);
+
+    try {
+      setReorderingMidia(true);
+      const orderedIds = reordered.map((item) => item.id);
+      const res = await api.put('/api/parametros-propaganda/midia/reorder', { orderedIds });
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        setMidiasPropaganda(res.data.data);
+      }
+    } catch (err) {
+      console.error('Erro ao reordenar mídias:', err);
+      await fetchMidiasPropaganda();
+      alert('Erro ao reordenar imagens de propaganda');
+    } finally {
+      setReorderingMidia(false);
+    }
   };
 
   return (
@@ -416,6 +457,7 @@ const AdminPedidosPropagandaPage = () => {
                             <input
                               id="upload_image"
                               type="file"
+                              multiple
                               accept="image/png,image/jpeg,image/jpg"
                               className="hidden"
                               onChange={(e) => handleFileUpload('image', e)}
@@ -449,18 +491,40 @@ const AdminPedidosPropagandaPage = () => {
                               <p className="text-gray-500">Nenhuma imagem enviada ainda.</p>
                             )}
                             {midiasPropaganda.length > 0 && (
-                              <div className="space-y-1 max-h-32 overflow-auto">
+                              <div className="space-y-1 max-h-48 overflow-auto">
                                 {midiasPropaganda.map((midia) => (
                                   <div key={midia.id} className="flex items-center justify-between gap-2">
                                     <span className="truncate">{midia.nome}</span>
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant={parametros.imagem_fundo_id === midia.id ? 'default' : 'outline'}
-                                      onClick={() => setParametros((prev) => ({ ...prev, imagem_fundo_id: midia.id }))}
-                                    >
-                                      {parametros.imagem_fundo_id === midia.id ? 'Selecionada' : 'Selecionar'}
-                                    </Button>
+                                    <div className="flex items-center gap-1">
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={reorderingMidia}
+                                        onClick={() => handleMoveMidia(midia.id, 'up')}
+                                        title="Mover para cima"
+                                      >
+                                        <ArrowUp className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={reorderingMidia}
+                                        onClick={() => handleMoveMidia(midia.id, 'down')}
+                                        title="Mover para baixo"
+                                      >
+                                        <ArrowDown className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant={parametros.imagem_fundo_id === midia.id ? 'default' : 'outline'}
+                                        onClick={() => setParametros((prev) => ({ ...prev, imagem_fundo_id: midia.id }))}
+                                      >
+                                        {parametros.imagem_fundo_id === midia.id ? 'Selecionada' : 'Selecionar'}
+                                      </Button>
+                                    </div>
                                   </div>
                                 ))}
                               </div>
