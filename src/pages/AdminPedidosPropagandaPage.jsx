@@ -62,6 +62,16 @@ const AdminPedidosPropagandaPage = () => {
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    if (activeTab !== 'historico') return undefined;
+
+    const intervalId = setInterval(() => {
+      fetchPedidos();
+    }, 4000);
+
+    return () => clearInterval(intervalId);
+  }, [activeTab]);
+
   const fetchParametros = async () => {
     setLoading(true);
     try {
@@ -79,7 +89,7 @@ const AdminPedidosPropagandaPage = () => {
   const fetchPedidos = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/pedidos');
+      const res = await api.get(`/api/pedidos?_=${Date.now()}`);
       const data = res.data?.data || res.data || [];
       setPedidos(Array.isArray(data) ? data : []);
     } catch (err) {
