@@ -221,7 +221,6 @@ const AdminPedidosPropagandaPage = () => {
           setPedidos((prev) => [novoPedido, ...prev]);
         }
         await fetchPedidos();
-        alert('Pedido criado com sucesso!');
       }
     } catch (err) {
       console.error('Erro ao criar pedido:', err);
@@ -296,7 +295,6 @@ const AdminPedidosPropagandaPage = () => {
             return [...prev, ...onlyNew];
           });
           await fetchMidiasPropaganda();
-          alert(`${uploadedMidias.length} imagem(ns) enviada(s) com sucesso!`);
         }
       } catch (uploadErr) {
         console.error('Erro ao enviar imagem(ns) de propaganda:', uploadErr);
