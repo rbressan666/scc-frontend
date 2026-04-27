@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { ArrowLeft, LogIn, LogOut } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { turnosService } from '../services/api';
 
 const TurnoDetailPage = () => {
@@ -16,14 +16,8 @@ const TurnoDetailPage = () => {
   const [comparacao, setComparacao] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [checkinLoading, setCheckinLoading] = useState(false);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
-  useEffect(() => {
-    fetchTurnoDetail();
-  }, [id]);
-
-  const fetchTurnoDetail = async () => {
+  const fetchTurnoDetail = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -45,45 +39,11 @@ const TurnoDetailPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  const handleCheckIn = async () => {
-    try {
-      setCheckinLoading(true);
-      const response = await turnosService.checkIn(id);
-      
-      if (response.success) {
-        alert('Check-in registrado com sucesso');
-        await fetchTurnoDetail();
-      } else {
-        alert(response.message || 'Erro ao registrar check-in');
-      }
-    } catch (err) {
-      console.error('Erro ao registrar check-in:', err);
-      alert('Erro ao registrar check-in. Tente novamente.');
-    } finally {
-      setCheckinLoading(false);
-    }
-  };
-
-  const handleCheckOut = async () => {
-    try {
-      setCheckoutLoading(true);
-      const response = await turnosService.checkOut(id);
-      
-      if (response.success) {
-        alert('Check-out registrado com sucesso');
-        await fetchTurnoDetail();
-      } else {
-        alert(response.message || 'Erro ao registrar check-out');
-      }
-    } catch (err) {
-      console.error('Erro ao registrar check-out:', err);
-      alert('Erro ao registrar check-out. Tente novamente.');
-    } finally {
-      setCheckoutLoading(false);
-    }
-  };
+  useEffect(() => {
+    fetchTurnoDetail();
+  }, [fetchTurnoDetail]);
 
   if (loading) {
     return (
@@ -131,16 +91,6 @@ const TurnoDetailPage = () => {
     );
   }
 
-  const dataAnterior = comparacao[0]?.data_anterior 
-    ? new Date(comparacao[0].data_anterior).toLocaleDateString('pt-BR') 
-    : 'N/A';
-  
-  const dataAtual = comparacao[0]?.data_atual 
-    ? new Date(comparacao[0].data_atual).toLocaleDateString('pt-BR') 
-    : new Date().toLocaleDateString('pt-BR');
-
-  const hasCheckin = comparacao.some(item => item.tem_anterior || item.contagem_atual > 0);
-
   return (
     <div className="space-y-6 p-4">
       {/* Header */}
@@ -181,33 +131,29 @@ const TurnoDetailPage = () => {
               </Badge>
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-gray-500">Aberto por</p>
+              <p className="font-semibold">
+                {turno.usuario_abertura_nome || 'Não informado'}
+              </p>
+            </div>
+            {turno.usuario_fechamento_nome && (
+              <div>
+                <p className="text-sm text-gray-500">Fechado por</p>
+                <p className="font-semibold">
+                  {turno.usuario_fechamento_nome}
+                </p>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
-
-      {/* Checks */}
-      <div className="grid grid-cols-2 gap-4">
-        <Button 
-          onClick={handleCheckIn}
-          disabled={checkinLoading}
-          className="bg-green-500 hover:bg-green-600 text-white"
-        >
-          <LogIn className="w-4 h-4 mr-2" />
-          {checkinLoading ? 'Processando...' : 'Check-in'}
-        </Button>
-        <Button 
-          onClick={handleCheckOut}
-          disabled={checkoutLoading}
-          className="bg-red-500 hover:bg-red-600 text-white"
-        >
-          <LogOut className="w-4 h-4 mr-2" />
-          {checkoutLoading ? 'Processando...' : 'Check-out'}
-        </Button>
-      </div>
 
       {/* Tabela de Contagens */}
       <Card>
         <CardHeader>
-          <CardTitle>Comparação de Contagens</CardTitle>
+          <CardTitle>Contagem</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -215,15 +161,13 @@ const TurnoDetailPage = () => {
               <thead>
                 <tr className="border-b-2 border-gray-300 bg-gray-50">
                   <th className="text-left py-3 px-2 font-semibold">Produto</th>
-                  <th className="text-center py-3 px-2 font-semibold text-xs">{dataAnterior}</th>
-                  <th className="text-center py-3 px-2 font-semibold text-xs">{dataAtual}</th>
-                  <th className="text-center py-3 px-2 font-semibold text-xs">Saldo</th>
+                  <th className="text-center py-3 px-2 font-semibold text-xs">Quantidade</th>
                 </tr>
               </thead>
               <tbody>
                 {comparacao.length === 0 ? (
                   <tr>
-                    <td colSpan="4" className="text-center py-4 text-gray-500">
+                    <td colSpan="2" className="text-center py-4 text-gray-500">
                       Nenhum produto contado ainda
                     </td>
                   </tr>
@@ -233,18 +177,10 @@ const TurnoDetailPage = () => {
                       <td className="py-3 px-2 font-medium text-gray-900">
                         {item.produto_nome || 'Produto sem nome'}
                       </td>
-                      <td className="text-center py-3 px-2 text-gray-600">
-                        {item.tem_anterior ? `${item.contagem_anterior || 0} un` : '—'}
-                      </td>
                       <td className="text-center py-3 px-2">
                         <Badge variant="default" className="justify-center">
                           {item.contagem_atual || 0} un
                         </Badge>
-                      </td>
-                      <td className="text-center py-3 px-2 font-bold">
-                        <span className={item.saldo < 0 ? 'text-red-600' : item.saldo > 0 ? 'text-green-600' : 'text-gray-600'}>
-                          {item.saldo > 0 ? '+' : ''}{item.saldo} un
-                        </span>
                       </td>
                     </tr>
                   ))
@@ -254,17 +190,6 @@ const TurnoDetailPage = () => {
           </div>
         </CardContent>
       </Card>
-
-      {/* Botão para ir à contagem */}
-      {hasCheckin && (
-        <Button 
-          onClick={() => navigate(`/contagem/${id}`)}
-          className="w-full"
-          size="lg"
-        >
-          Editar Contagem
-        </Button>
-      )}
     </div>
   );
 };
