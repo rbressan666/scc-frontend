@@ -648,6 +648,21 @@ export const turnosService = {
   async leave(turnoId) {
     return await api.post(`/api/turnos/${turnoId}/leave`);
   },
+  
+  // Obter detalhe do turno com comparação de contagens
+  async getDetail(id) {
+    return await api.get(`/api/turnos/${id}/detalhe`);
+  },
+  
+  // Check-in no turno
+  async checkIn(id) {
+    return await api.post(`/api/turnos/${id}/checkin`);
+  },
+  
+  // Check-out no turno
+  async checkOut(id) {
+    return await api.post(`/api/turnos/${id}/checkout`);
+  },
 };
 
 // Serviços de Contagens (MVP3)

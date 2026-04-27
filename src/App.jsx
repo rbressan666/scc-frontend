@@ -20,6 +20,7 @@ import DashboardContagemPage from './pages/DashboardContagemPage';
 import AnaliseVariacaoPage from './pages/AnaliseVariacaoPage';
 import ChecklistEntradaPage from './pages/ChecklistEntradaPage';
 import ChecklistSaidaPage from './pages/ChecklistSaidaPage';
+import TurnoDetailPage from './pages/TurnoDetailPage';
 import AdminDiagnosticsPage from './pages/AdminDiagnosticsPage';
 import PlanningPageV2 from './pages/PlanningPageV2';
 import NotificationsAdminPage from './pages/NotificationsAdminPage';
@@ -262,6 +263,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <DashboardContagemPage />
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route
+              path="/turnos/:id/detalhe"
+              element={
+                <ProtectedRoute>
+                  <TurnoDetailPage />
                 </ProtectedRoute>
               }
             />
