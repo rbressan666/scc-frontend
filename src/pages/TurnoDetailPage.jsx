@@ -10,6 +10,8 @@ const TurnoDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   
+  console.log('TurnoDetailPage renderizado com ID:', id);
+  
   const [turno, setTurno] = useState(null);
   const [comparacao, setComparacao] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,9 +27,13 @@ const TurnoDetailPage = () => {
     try {
       setLoading(true);
       setError(null);
+      console.log('Buscando detalhe do turno:', id);
       const response = await turnosService.getDetail(id);
+      console.log('Resposta da API:', response);
       
       if (response.success) {
+        console.log('Dados do turno:', response.data.turno);
+        console.log('Dados de comparação:', response.data.comparacao);
         setTurno(response.data.turno);
         setComparacao(response.data.comparacao || []);
       } else {
