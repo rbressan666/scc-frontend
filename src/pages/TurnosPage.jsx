@@ -263,7 +263,7 @@ const TurnosPage = () => {
                           </Button>
                         )}
                         <Button
-                          onClick={() => navigate(`/turnos/${turno.id}`)}
+                          onClick={() => navigate(`/turnos/${turno.id}/detalhe`)}
                           size="sm"
                           className="bg-blue-600 hover:bg-blue-700 text-white"
                         >
