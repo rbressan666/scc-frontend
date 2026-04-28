@@ -14,6 +14,7 @@ const TurnoDetailPage = () => {
   
   const [turno, setTurno] = useState(null);
   const [comparacao, setComparacao] = useState([]);
+  const [contagensInfo, setContagensInfo] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -28,8 +29,10 @@ const TurnoDetailPage = () => {
       if (response.success) {
         console.log('Dados do turno:', response.data.turno);
         console.log('Dados de comparação:', response.data.comparacao);
+        console.log('Contagens retornadas:', response.data.contagens);
         setTurno(response.data.turno);
         setComparacao(response.data.comparacao || []);
+        setContagensInfo(response.data.contagens || []);
       } else {
         setError(response.message || 'Erro ao carregar turno');
       }
@@ -155,7 +158,23 @@ const TurnoDetailPage = () => {
         <CardHeader>
           <CardTitle>Contagem</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {contagensInfo.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {contagensInfo.map((contagem, index) => (
+                <div key={contagem.id} className="rounded border border-gray-200 bg-gray-50 p-4">
+                  <p className="text-xs text-gray-500">{index === 0 ? 'Contagem mais recente' : 'Contagem anterior'}</p>
+                  <p className="text-sm font-semibold">{contagem.tipo_contagem || 'N/A'}</p>
+                  <p className="text-sm text-gray-600">
+                    {contagem.status?.replace('_', ' ') || 'Sem status'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {contagem.data_inicio ? new Date(contagem.data_inicio).toLocaleString('pt-BR') : 'Data não informada'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
