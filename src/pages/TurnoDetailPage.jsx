@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { ArrowLeft, Plus, Save, Check } from 'lucide-react';
 import { turnosService } from '../services/api';
-import { useToast } from '../components/ui/use-toast';
+import { useToast } from '../hooks/use-toast';
 
 const TurnoDetailPage = () => {
   const { id } = useParams();
