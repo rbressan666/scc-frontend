@@ -570,31 +570,31 @@ export const variacaoService = {
 // Serviços de Fatores de Conversão
 export const fatorConversaoService = {
   async getAll() {
-    return await api.get('/api/fatores-conversao');
+    return await api.get('/api/conversoes');
   },
 
   async getByVariacao(idVariacao) {
-    return await api.get(`/api/fatores-conversao/variacao/${idVariacao}`);
+    return await api.get(`/api/conversoes/por-variacao/${idVariacao}`);
   },
 
   async create(fatorData) {
-    return await api.post('/api/fatores-conversao', fatorData);
+    return await api.post('/api/conversoes', fatorData);
   },
 
   async createMultiple(fatoresData) {
-    return await api.post('/api/fatores-conversao/multiple', fatoresData);
+    return await api.post('/api/conversoes/multiplos', fatoresData);
   },
 
   async update(id, fatorData) {
-    return await api.put(`/api/fatores-conversao/${id}`, fatorData);
+    return await api.put(`/api/conversoes/${id}`, fatorData);
   },
 
   async delete(id) {
-    return await api.delete(`/api/fatores-conversao/${id}`);
+    return await api.delete(`/api/conversoes/${id}`);
   },
 
-  async convertQuantity(conversionData) {
-    return await api.post('/api/fatores-conversao/convert', conversionData);
+  async convertQuantity(idVariacao, conversionData) {
+    return await api.post(`/api/conversoes/por-variacao/${idVariacao}/convert`, conversionData);
   }
 };
 
