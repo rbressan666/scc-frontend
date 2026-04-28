@@ -356,7 +356,6 @@ const TurnoDetailPage = () => {
                   <SelectValue placeholder="Todos os setores" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os setores</SelectItem>
                   {setores.map(setor => (
                     <SelectItem key={setor.id} value={setor.id}>
                       {setor.nome}
@@ -372,7 +371,6 @@ const TurnoDetailPage = () => {
                   <SelectValue placeholder="Todas as categorias" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas as categorias</SelectItem>
                   {categorias.map(cat => (
                     <SelectItem key={cat.id} value={cat.id}>
                       {cat.nome}
