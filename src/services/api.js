@@ -663,6 +663,21 @@ export const turnosService = {
   async checkOut(id) {
     return await api.post(`/api/turnos/${id}/checkout`);
   },
+
+  // Salvar item de contagem (criar ou atualizar)
+  async saveContagemItem(data) {
+    return await api.post('/api/turnos/contagem/item', data);
+  },
+
+  // Finalizar contagem atual
+  async finalizarContagem(contagemId) {
+    return await api.post('/api/turnos/contagem/finalizar', { contagemId });
+  },
+
+  // Iniciar nova contagem
+  async iniciarNovaContagem() {
+    return await api.post('/api/turnos/contagem/nova', {});
+  },
 };
 
 // Serviços de Contagens (MVP3)
