@@ -161,29 +161,47 @@ const TurnoDetailPage = () => {
               <thead>
                 <tr className="border-b-2 border-gray-300 bg-gray-50">
                   <th className="text-left py-3 px-2 font-semibold">Produto</th>
-                  <th className="text-center py-3 px-2 font-semibold text-xs">Quantidade</th>
+                  <th className="text-center py-3 px-2 font-semibold text-xs">Anterior</th>
+                  <th className="text-center py-3 px-2 font-semibold text-xs">Atual</th>
+                  <th className="text-center py-3 px-2 font-semibold text-xs">Saldo</th>
                 </tr>
               </thead>
               <tbody>
                 {comparacao.length === 0 ? (
                   <tr>
-                    <td colSpan="2" className="text-center py-4 text-gray-500">
+                    <td colSpan="4" className="text-center py-4 text-gray-500">
                       Nenhum produto contado ainda
                     </td>
                   </tr>
                 ) : (
-                  comparacao.map((item, idx) => (
-                    <tr key={`${item.produto_id}-${idx}`} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-2 font-medium text-gray-900">
-                        {item.produto_nome || 'Produto sem nome'}
-                      </td>
-                      <td className="text-center py-3 px-2">
-                        <Badge variant="default" className="justify-center">
-                          {item.contagem_atual || 0} un
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))
+                  comparacao.map((item, idx) => {
+                    const anterior = Number(item.contagem_anterior || 0);
+                    const atual = Number(item.contagem_atual || 0);
+                    const saldo = atual - anterior;
+
+                    return (
+                      <tr key={`${item.produto_id}-${idx}`} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-3 px-2 font-medium text-gray-900">
+                          {item.produto_nome || 'Produto sem nome'}
+                        </td>
+                        <td className="text-center py-3 px-2">
+                          <Badge variant="secondary" className="justify-center">
+                            {anterior.toFixed(3).replace(/\.000$/, '')} un
+                          </Badge>
+                        </td>
+                        <td className="text-center py-3 px-2">
+                          <Badge variant="default" className="justify-center">
+                            {atual.toFixed(3).replace(/\.000$/, '')} un
+                          </Badge>
+                        </td>
+                        <td className="text-center py-3 px-2">
+                          <Badge variant={saldo >= 0 ? 'default' : 'destructive'} className="justify-center">
+                            {saldo.toFixed(3).replace(/\.000$/, '')} un
+                          </Badge>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
