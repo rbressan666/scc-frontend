@@ -675,15 +675,11 @@ const TurnoDetailPage = () => {
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
-                          {allUnits.length > 0 ? (
-                            allUnits.map(unit => (
-                              <SelectItem key={unit.id_unidade_medida} value={unit.id_unidade_medida}>
-                                {unit.unidade_nome} ({unit.unidade_sigla})
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="" disabled>Nenhuma unidade disponível</SelectItem>
-                          )}
+                          {allUnits.map(unit => (
+                            <SelectItem key={unit.id_unidade_medida} value={unit.id_unidade_medida}>
+                              {unit.unidade_nome} ({unit.unidade_sigla})
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
