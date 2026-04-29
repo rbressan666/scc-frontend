@@ -197,8 +197,11 @@ const TurnoDetailPage = () => {
       for (const variacao of variacoes) {
         try {
           const res = await fatorConversaoService.getByVariacao(variacao.variacao_id);
-          fatores[variacao.variacao_id] = res.data || [];
-        } catch {
+          const data = res.data || [];
+          fatores[variacao.variacao_id] = Array.isArray(data) ? data : (data.data ? (Array.isArray(data.data) ? data.data : []) : []);
+          console.log(`Fatores para variacao ${variacao.variacao_id}:`, fatores[variacao.variacao_id]);
+        } catch (err) {
+          console.error(`Erro ao carregar fatores para variacao ${variacao.variacao_id}:`, err);
           fatores[variacao.variacao_id] = [];
         }
       }
@@ -623,7 +626,7 @@ const TurnoDetailPage = () => {
       }>
         <DialogContent className="max-w-3xl max-h-96">
           <DialogHeader>
-            <DialogTitle>Detalhe da Contagem por Unidade de Medida</DialogTitle>
+            <DialogTitle>Detalhe da Contagem</DialogTitle>
           </DialogHeader>
           <div className="space-y-6">
             {(() => {
