@@ -625,21 +625,38 @@ const TurnoDetailPage = () => {
           <DialogHeader>
             <DialogTitle>Detalhe da Contagem por Unidade de Medida</DialogTitle>
           </DialogHeader>
-          <div className="space-y-6 overflow-y-auto max-h-96">
-            {detalhesModal.variacoes.map(variacao => {
-              const items = modalItems[`${variacao.variacao_id}`] || [];
-              let totalEmUnidasesControle = 0;
+          <div className="space-y-6">
+            {(() => {
+              const allUnitsMap = {};
+              const controlUnitSigla = detalhesModal.variacoes[0]?.unidade_sigla || 'un';
               
-              for (const item of items) {
+              detalhesModal.variacoes.forEach(variacao => {
+                (fatoresConversao[variacao.variacao_id] || []).forEach(fator => {
+                  if (!allUnitsMap[fator.id_unidade_medida]) {
+                    allUnitsMap[fator.id_unidade_medida] = fator;
+                  }
+                });
+              });
+              
+              const allUnits = Object.values(allUnitsMap);
+              
+              let allItems = [];
+              detalhesModal.variacoes.forEach(variacao => {
+                const items = modalItems[`${variacao.variacao_id}`] || [];
+                allItems = [...allItems, ...items.map(item => ({ ...item, variacaoId: variacao.variacao_id }))];
+              });
+              
+              let totalEmUnidasesControle = 0;
+              for (const item of allItems) {
                 totalEmUnidasesControle += item.quantidade * item.fator;
               }
               
               return (
-                <div key={variacao.variacao_id} className="border rounded-lg p-4 bg-gray-50 space-y-3">
-                  <h4 className="font-semibold text-lg">{variacao.variacao_nome}</h4>
+                <div className="border rounded-lg p-4 bg-gray-50 space-y-4">
+                  <h4 className="font-semibold text-lg">Adicionar Quantidade</h4>
                   
                   {/* Input para adicionar item */}
-                  <div className="grid grid-cols-4 gap-2 pb-3 border-b">
+                  <div className="grid grid-cols-3 gap-2 pb-4 border-b">
                     <div>
                       <Label className="text-xs">Quantidade</Label>
                       <Input 
@@ -658,17 +675,21 @@ const TurnoDetailPage = () => {
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
-                          {(fatoresConversao[variacao.variacao_id] || []).map(fator => (
-                            <SelectItem key={fator.id} value={fator.id_unidade_medida}>
-                              {fator.unidade_nome} ({fator.unidade_sigla})
-                            </SelectItem>
-                          ))}
+                          {allUnits.length > 0 ? (
+                            allUnits.map(unit => (
+                              <SelectItem key={unit.id_unidade_medida} value={unit.id_unidade_medida}>
+                                {unit.unidade_nome} ({unit.unidade_sigla})
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="" disabled>Nenhuma unidade disponível</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="flex items-end">
                       <Button 
-                        onClick={() => handleAdicionarItem(variacao.variacao_id)}
+                        onClick={() => handleAdicionarItem(detalhesModal.variacoes[0].variacao_id)}
                         className="w-full"
                       >
                         Adicionar
@@ -677,19 +698,19 @@ const TurnoDetailPage = () => {
                   </div>
                   
                   {/* Lista de itens adicionados */}
-                  {items.length > 0 && (
+                  {allItems.length > 0 && (
                     <div className="space-y-2">
                       <Label className="font-semibold text-sm">Itens adicionados:</Label>
                       <div className="space-y-2 max-h-40 overflow-y-auto">
-                        {items.map((item) => (
+                        {allItems.map((item) => (
                           <div key={item.id} className="flex items-center justify-between bg-white p-2 rounded border">
                             <span className="text-sm">
-                              {item.quantidade.toFixed(3)} {item.unidadeSigla} = {(item.quantidade * item.fator).toFixed(3)} {variacao.unidade_sigla}
+                              {item.quantidade.toFixed(3)} {item.unidadeSigla} = {(item.quantidade * item.fator).toFixed(3)} {controlUnitSigla}
                             </span>
                             <Button
                               size="sm"
                               variant="destructive"
-                              onClick={() => handleRemoverItem(variacao.variacao_id, item.id)}
+                              onClick={() => handleRemoverItem(item.variacaoId, item.id)}
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -702,13 +723,13 @@ const TurnoDetailPage = () => {
                   {/* Total */}
                   <div className="mt-4 pt-3 border-t border-gray-300 bg-white p-3 rounded">
                     <div className="flex justify-between items-center">
-                      <span className="font-semibold">Total em {variacao.unidade_sigla}:</span>
+                      <span className="font-semibold">Total em {controlUnitSigla}:</span>
                       <span className="text-lg font-bold text-blue-600">{totalEmUnidasesControle.toFixed(3)}</span>
                     </div>
                   </div>
                 </div>
               );
-            })}
+            })()}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
