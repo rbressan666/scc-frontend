@@ -82,13 +82,58 @@ const TurnoDetailPage = () => {
     fetchFilterData();
   }, [fetchTurnoDetail, fetchFilterData]);
 
-  // Filtrar produtos baseado em: busca, setor, categoria
-  const produtosFiltrados = comparacao.filter(item => {
-    const matchBusca = item.produto_nome.toLowerCase().includes(searchTermo.toLowerCase());
-    const matchSetor = !filtroSetor || item.setor_id === filtroSetor;
-    const matchCategoria = !filtroCategoria || item.categoria_id === filtroCategoria;
-    return matchBusca && matchSetor && matchCategoria;
-  });
+  // Filtrar e agrupar produtos baseado em: busca, setor, categoria
+  const produtosFiltrados = comparacao
+    .filter(item => {
+      const matchBusca = item.produto_nome.toLowerCase().includes(searchTermo.toLowerCase());
+      const matchSetor = !filtroSetor || item.setor_id === filtroSetor;
+      const matchCategoria = !filtroCategoria || item.categoria_id === filtroCategoria;
+      return matchBusca && matchSetor && matchCategoria;
+    })
+    .sort((a, b) => {
+      // Ordenar por Setor, depois Categoria, depois Produto
+      const setorCompare = (a.setor_nome || '').localeCompare(b.setor_nome || '');
+      if (setorCompare !== 0) return setorCompare;
+      
+      const categoriaCompare = (a.categoria_nome || '').localeCompare(b.categoria_nome || '');
+      if (categoriaCompare !== 0) return categoriaCompare;
+      
+      return (a.produto_nome || '').localeCompare(b.produto_nome || '');
+    });
+
+  // Agrupar produtos por Setor e Categoria
+  const produtosAgrupados = produtosFiltrados.reduce((acc, item) => {
+    const setorKey = item.setor_id || 'sem-setor';
+    const categoriaKey = item.categoria_id || 'sem-categoria';
+    
+    if (!acc[setorKey]) {
+      acc[setorKey] = {
+        setor_id: item.setor_id,
+        setor_nome: item.setor_nome,
+        categorias: {}
+      };
+    }
+    
+    if (!acc[setorKey].categorias[categoriaKey]) {
+      acc[setorKey].categorias[categoriaKey] = {
+        categoria_id: item.categoria_id,
+        categoria_nome: item.categoria_nome,
+        produtos: []
+      };
+    }
+    
+    acc[setorKey].categorias[categoriaKey].produtos.push(item);
+    return acc;
+  }, {});
+
+  // Filtro com suporte a "Todos"
+  const handleSetorChange = (value) => {
+    setFiltroSetor(value === '__todos' ? '' : value);
+  };
+
+  const handleCategoriaChange = (value) => {
+    setFiltroCategoria(value === '__todos' ? '' : value);
+  };
 
   const handleEditQuantidade = (produtoId, novaQuantidade) => {
     setEditingItems({
@@ -351,11 +396,12 @@ const TurnoDetailPage = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="setor">Setor</Label>
-              <Select value={filtroSetor} onValueChange={setFiltroSetor}>
+              <Select value={filtroSetor || '__todos'} onValueChange={handleSetorChange}>
                 <SelectTrigger id="setor" className="mt-1">
                   <SelectValue placeholder="Todos os setores" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__todos">Todos os setores</SelectItem>
                   {setores.map(setor => (
                     <SelectItem key={setor.id} value={setor.id}>
                       {setor.nome}
@@ -366,11 +412,12 @@ const TurnoDetailPage = () => {
             </div>
             <div>
               <Label htmlFor="categoria">Categoria</Label>
-              <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
+              <Select value={filtroCategoria || '__todos'} onValueChange={handleCategoriaChange}>
                 <SelectTrigger id="categoria" className="mt-1">
                   <SelectValue placeholder="Todas as categorias" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__todos">Todas as categorias</SelectItem>
                   {categorias.map(cat => (
                     <SelectItem key={cat.id} value={cat.id}>
                       {cat.nome}
@@ -409,89 +456,97 @@ const TurnoDetailPage = () => {
                   <th className="text-center py-3 px-2 font-semibold text-xs">Anterior</th>
                   <th className="text-center py-3 px-2 font-semibold text-xs">Atual</th>
                   <th className="text-center py-3 px-2 font-semibold text-xs">Saldo</th>
-                  <th className="text-center py-3 px-2 font-semibold text-xs">Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {produtosFiltrados.length === 0 ? (
+                {Object.keys(produtosAgrupados).length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="text-center py-4 text-gray-500">
+                    <td colSpan="5" className="text-center py-4 text-gray-500">
                       Nenhum produto encontrado
                     </td>
                   </tr>
                 ) : (
-                  produtosFiltrados.map((item) => {
-                    const anterior = Number(item.contagem_anterior || 0);
-                    const atual = editingItems[item.produto_id] !== undefined 
-                      ? Number(editingItems[item.produto_id])
-                      : Number(item.contagem_atual || 0);
-                    const saldo = atual - anterior;
-                    const estaEditando = editingItems[item.produto_id] !== undefined;
+                  Object.values(produtosAgrupados).flatMap(setor =>
+                    Object.values(setor.categorias).flatMap(categoria =>
+                      categoria.produtos.map(item => {
+                        const anterior = Number(item.contagem_anterior || 0);
+                        const atual = editingItems[item.produto_id] !== undefined 
+                          ? Number(editingItems[item.produto_id])
+                          : Number(item.contagem_atual || 0);
+                        const saldo = atual - anterior;
+                        const estaEditando = editingItems[item.produto_id] !== undefined;
+                        
+                        let saldoVariant = 'secondary';
+                        if (saldo === 0) saldoVariant = 'secondary';
+                        else if (saldo > 0) saldoVariant = 'default';
+                        else saldoVariant = 'destructive';
 
-                    return (
-                      <tr key={item.produto_id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-3 px-2 font-medium text-gray-900">
-                          {item.produto_nome || 'Produto sem nome'}
-                        </td>
-                        <td className="py-3 px-2 text-xs text-gray-600">
-                          <div>{item.setor_nome || '-'}</div>
-                          <div className="text-gray-500">{item.categoria_nome || '-'}</div>
-                        </td>
-                        <td className="text-center py-3 px-2">
-                          <Badge variant="secondary">{anterior.toFixed(1)} {item.unidade_principal_sigla || 'un'}</Badge>
-                        </td>
-                        <td className="text-center py-3 px-2">
-                          {estaEditando ? (
-                            <input
-                              type="number"
-                              step="0.001"
-                              value={editingItems[item.produto_id]}
-                              onChange={(e) => handleEditQuantidade(item.produto_id, e.target.value)}
-                              className="w-20 px-2 py-1 border rounded text-center"
-                              autoFocus
-                            />
-                          ) : (
-                            <Badge variant="default">{atual.toFixed(1)} {item.unidade_principal_sigla || 'un'}</Badge>
-                          )}
-                        </td>
-                        <td className="text-center py-3 px-2">
-                          <Badge variant={saldo >= 0 ? 'default' : 'destructive'}>
-                            {saldo.toFixed(1)}
-                          </Badge>
-                        </td>
-                        <td className="text-center py-3 px-2 space-x-2">
-                          {estaEditando ? (
-                            <Button
-                              size="sm"
-                              onClick={() => handleSalvarItem(item)}
-                              disabled={savingItems[item.produto_id]}
-                            >
-                              <Check className="w-4 h-4" />
-                            </Button>
-                          ) : (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleEditQuantidade(item.produto_id, atual)}
-                              >
-                                <Save className="w-4 h-4" />
-                              </Button>
-                              {item.variacoes && item.variacoes.length > 0 && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleAbrirDetalheModal(item)}
-                                >
-                                  <Zap className="w-4 h-4" />
-                                </Button>
-                              )}
-                            </>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
+                        return (
+                          <tr key={item.produto_id} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="py-3 px-2 font-medium text-gray-900">
+                              {item.produto_nome || 'Produto sem nome'}
+                            </td>
+                            <td className="py-3 px-2 text-xs text-gray-600">
+                              <div>{item.setor_nome || '-'}</div>
+                              <div className="text-gray-500">{item.categoria_nome || '-'}</div>
+                            </td>
+                            <td className="text-center py-3 px-2">
+                              <Badge variant="secondary">{anterior.toFixed(1)} {item.unidade_principal_sigla || 'un'}</Badge>
+                            </td>
+                            <td className="text-center py-3 px-2">
+                              <div className="flex items-center justify-center gap-2">
+                                {estaEditando ? (
+                                  <input
+                                    type="number"
+                                    step="0.001"
+                                    value={editingItems[item.produto_id]}
+                                    onChange={(e) => handleEditQuantidade(item.produto_id, e.target.value)}
+                                    className="w-20 px-2 py-1 border rounded text-center"
+                                    autoFocus
+                                  />
+                                ) : (
+                                  <Badge variant="default">{atual.toFixed(1)} {item.unidade_principal_sigla || 'un'}</Badge>
+                                )}
+                                {estaEditando ? (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleSalvarItem(item)}
+                                    disabled={savingItems[item.produto_id]}
+                                  >
+                                    <Check className="w-4 h-4" />
+                                  </Button>
+                                ) : (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleEditQuantidade(item.produto_id, atual)}
+                                    >
+                                      <Save className="w-4 h-4" />
+                                    </Button>
+                                    {item.variacoes && item.variacoes.length > 0 && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleAbrirDetalheModal(item)}
+                                      >
+                                        <Zap className="w-4 h-4" />
+                                      </Button>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                            <td className="text-center py-3 px-2">
+                              <Badge variant={saldoVariant}>
+                                {saldo.toFixed(1)}
+                              </Badge>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )
+                  )
                 )}
               </tbody>
             </table>
@@ -503,61 +558,82 @@ const TurnoDetailPage = () => {
       <Dialog open={detalhesModal.aberto} onOpenChange={(aberto) => 
         setDetalhesModal({ ...detalhesModal, aberto })
       }>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Detalhe da Contagem por Unidade de Medida</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 max-h-96 overflow-y-auto">
-            {detalhesModal.variacoes.map(variacao => (
-              <div key={variacao.variacao_id} className="border rounded-lg p-4">
-                <h4 className="font-semibold mb-3">{variacao.variacao_nome}</h4>
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <Label>Unidade Principal: {variacao.unidade_sigla}</Label>
-                      <Input 
-                        type="number" 
-                        step="0.001" 
-                        placeholder="0"
-                        defaultValue={Number(variacao.contagem_atual || 0).toFixed(3)}
-                        readOnly
-                        className="mt-1 bg-gray-100"
-                      />
-                    </div>
-                  </div>
-                  {(fatoresConversao[variacao.variacao_id] || []).map(fator => (
-                    <div key={fator.id}>
-                      <Label>{fator.unidade_nome} ({fator.unidade_sigla}) - Fator: {fator.fator}</Label>
-                      <Input 
-                        type="number" 
-                        step="0.001" 
-                        placeholder="0"
-                        onChange={(e) => {
-                          const detalhes = detalhesModal.contagensDetalhadas[variacao.variacao_id] || [];
-                          const idx = detalhes.findIndex(d => d.unidade_id === fator.id_unidade_medida);
-                          if (idx >= 0) {
-                            detalhes[idx].quantidade = parseFloat(e.target.value) || 0;
-                          } else {
-                            detalhes.push({
-                              unidade_id: fator.id_unidade_medida,
-                              quantidade: parseFloat(e.target.value) || 0
-                            });
-                          }
-                          setDetalhesModal({
-                            ...detalhesModal,
-                            contagensDetalhadas: {
-                              ...detalhesModal.contagensDetalhadas,
-                              [variacao.variacao_id]: detalhes
+          <div className="space-y-6 max-h-96 overflow-y-auto">
+            {detalhesModal.variacoes.map(variacao => {
+              const variacaoDetalhes = detalhesModal.contagensDetalhadas[variacao.variacao_id] || [];
+              let totalEmUnidasesControle = 0;
+              
+              for (const detalhe of variacaoDetalhes) {
+                if (detalhe.quantidade > 0) {
+                  const fator = fatoresConversao[variacao.variacao_id]?.find(
+                    f => f.id_unidade_medida === detalhe.unidade_id
+                  );
+                  totalEmUnidasesControle += detalhe.quantidade * (fator?.fator || 1);
+                }
+              }
+              
+              return (
+              <div key={variacao.variacao_id} className="border rounded-lg p-4 bg-gray-50">
+                <h4 className="font-semibold mb-4 text-lg">{variacao.variacao_nome}</h4>
+                <div className="space-y-3">
+                  {(fatoresConversao[variacao.variacao_id] || []).map(fator => {
+                    const detalheAtual = variacaoDetalhes.find(d => d.unidade_id === fator.id_unidade_medida) || {};
+                    const quantidade = detalheAtual.quantidade || 0;
+                    
+                    return (
+                    <div key={fator.id} className="grid grid-cols-3 gap-4 items-end">
+                      <div>
+                        <Label className="text-sm">{fator.unidade_nome} ({fator.unidade_sigla})</Label>
+                        <Input 
+                          type="number" 
+                          step="0.001" 
+                          placeholder="0"
+                          value={quantidade}
+                          onChange={(e) => {
+                            const detalhes = detalhesModal.contagensDetalhadas[variacao.variacao_id] || [];
+                            const idx = detalhes.findIndex(d => d.unidade_id === fator.id_unidade_medida);
+                            if (idx >= 0) {
+                              detalhes[idx].quantidade = parseFloat(e.target.value) || 0;
+                            } else {
+                              detalhes.push({
+                                unidade_id: fator.id_unidade_medida,
+                                quantidade: parseFloat(e.target.value) || 0
+                              });
                             }
-                          });
-                        }}
-                        className="mt-1"
-                      />
+                            setDetalhesModal({
+                              ...detalhesModal,
+                              contagensDetalhadas: {
+                                ...detalhesModal.contagensDetalhadas,
+                                [variacao.variacao_id]: detalhes
+                              }
+                            });
+                          }}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div className="text-sm text-gray-600 text-center">
+                        <span className="font-semibold">Fator: {fator.fator}</span>
+                      </div>
+                      <div className="text-sm text-gray-600 text-center">
+                        <span className="font-semibold">= {(quantidade * (fator?.fator || 1)).toFixed(3)} {variacao.unidade_sigla}</span>
+                      </div>
                     </div>
-                  ))}
+                    );
+                  })}
+                </div>
+                <div className="mt-4 pt-4 border-t border-gray-300 bg-white p-3 rounded">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold">Total em {variacao.unidade_sigla}:</span>
+                    <span className="text-lg font-bold text-blue-600">{totalEmUnidasesControle.toFixed(3)}</span>
+                  </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDetalhesModal({ aberto: false, produtoId: null, variacoes: [], contagensDetalhadas: {} })}>
