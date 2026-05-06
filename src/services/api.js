@@ -678,6 +678,11 @@ export const turnosService = {
   async iniciarNovaContagem() {
     return await api.post('/api/turnos/contagem/nova', {});
   },
+
+  // Fechar contagem inicial e iniciar contagem final
+  async closeContagemAndStartFinal() {
+    return await api.post('/api/turnos/contagem/fechar-inicial-iniciar-final', {});
+  },
 };
 
 // Serviços de Contagens (MVP3)

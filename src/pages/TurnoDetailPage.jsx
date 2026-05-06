@@ -25,6 +25,13 @@ const TurnoDetailPage = () => {
   const [savingItems, setSavingItems] = useState({});
   const [inicandoNovaContagem, setInicandoNovaContagem] = useState(false);
   
+  // Modal de confirmação para transição de contagens
+  const [confirmacaoModal, setConfirmacaoModal] = useState({
+    aberto: false,
+    tipo: null, // 'fechar-inicial' ou 'fechar-final'
+    mensagem: ''
+  });
+  
   // Filtros
   const [searchTermo, setSearchTermo] = useState('');
   const [filtroSetor, setFiltroSetor] = useState('');
@@ -350,6 +357,52 @@ const TurnoDetailPage = () => {
     }
   };
 
+  const handleFecharContagemInicialIniciarFinal = async () => {
+    try {
+      setInicandoNovaContagem(true);
+
+      const result = await turnosService.closeContagemAndStartFinal();
+
+      if (result.success) {
+        toast({
+          title: 'Sucesso',
+          description: 'Contagem inicial finalizada e contagem final iniciada',
+          variant: 'default'
+        });
+
+        setEditingItems({});
+        setConfirmacaoModal({ aberto: false, tipo: null, mensagem: '' });
+        fetchTurnoDetail();
+      }
+    } catch (err) {
+      console.error('Erro ao fechar contagem inicial e iniciar final:', err);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao fechar contagem inicial e iniciar final',
+        variant: 'destructive'
+      });
+    } finally {
+      setInicandoNovaContagem(false);
+    }
+  };
+
+  const handleAbrirConfirmacaoFecharInicial = () => {
+    setConfirmacaoModal({
+      aberto: true,
+      tipo: 'fechar-inicial',
+      mensagem: 'Deseja fechar a contagem inicial e iniciar a contagem final?'
+    });
+  };
+
+  // Determinar o tipo de contagem ativo (inicial ou final)
+  const contagemAtiva = contagensInfo.length > 0 ? contagensInfo[0] : null;
+  const tipoContagemAtiva = contagemAtiva?.tipo_contagem; // 'inicial' ou 'final'
+  const statusContagemAtiva = contagemAtiva?.status; // 'em_andamento', 'fechada', etc.
+
+  // Determinar se deve mostrar o botão
+  const mostrarBotaoTransicao = contagemAtiva && statusContagemAtiva === 'em_andamento' && 
+                                 (tipoContagemAtiva === 'inicial' || tipoContagemAtiva === 'final');
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -396,12 +449,22 @@ const TurnoDetailPage = () => {
           <h1 className="text-2xl font-bold">Detalhe do Turno</h1>
         </div>
         <Button 
-          onClick={handleIniciarNovaContagem}
+          onClick={tipoContagemAtiva === 'inicial' ? handleAbrirConfirmacaoFecharInicial : handleIniciarNovaContagem}
           disabled={inicandoNovaContagem}
           className="gap-2"
+          style={{ display: mostrarBotaoTransicao ? 'flex' : 'none' }}
         >
-          <Plus className="w-4 h-4" />
-          Iniciar Nova Contagem
+          {tipoContagemAtiva === 'inicial' ? (
+            <>
+              <Plus className="w-4 h-4" />
+              Fechar Contagem e Iniciar Final
+            </>
+          ) : (
+            <>
+              <Check className="w-4 h-4" />
+              Fechar Contagem
+            </>
+          )}
         </Button>
       </div>
 
@@ -742,6 +805,34 @@ const TurnoDetailPage = () => {
             </Button>
             <Button onClick={handleSalvarDetalheContagem}>
               Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Confirmação para Transição de Contagens */}
+      <Dialog open={confirmacaoModal.aberto} onOpenChange={(aberto) => 
+        setConfirmacaoModal({ ...confirmacaoModal, aberto })
+      }>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Ação</DialogTitle>
+          </DialogHeader>
+          <div className="text-gray-700">
+            {confirmacaoModal.mensagem}
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setConfirmacaoModal({ aberto: false, tipo: null, mensagem: '' })}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleFecharContagemInicialIniciarFinal}
+              disabled={inicandoNovaContagem}
+            >
+              Confirmar
             </Button>
           </DialogFooter>
         </DialogContent>
