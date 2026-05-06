@@ -37,9 +37,10 @@ const TurnoDetailPage = () => {
     aberto: false,
     produtoId: null,
     variacoes: [],
-    contagensDetalhadas: {}
+    contagensDetalhadas: {},
+    fatores: {}
   });
-  const [fatoresConversao, setFatoresConversao] = useState({});
+  const [fatoresConversao, _setFatoresConversao] = useState({});
   const [modalInput, setModalInput] = useState({ quantidade: '', unidadeId: '' });
   const [modalItems, setModalItems] = useState({});
 
@@ -206,12 +207,12 @@ const TurnoDetailPage = () => {
         }
       }
       
-      setFatoresConversao(fatores);
       setDetalhesModal({
         aberto: true,
         produtoId: item.produto_id,
         variacoes,
-        contagensDetalhadas: {}
+        contagensDetalhadas: {},
+        fatores: fatores
       });
       setModalInput({ quantidade: '', unidadeId: '' });
       setModalItems({});
@@ -302,7 +303,7 @@ const TurnoDetailPage = () => {
         variant: 'default'
       });
       
-      setDetalhesModal({ aberto: false, produtoId: null, variacoes: [], contagensDetalhadas: {} });
+      setDetalhesModal({ aberto: false, produtoId: null, variacoes: [], contagensDetalhadas: {}, fatores: {} });
       setModalInput({ quantidade: '', unidadeId: '' });
       setModalItems({});
       fetchTurnoDetail();
@@ -632,9 +633,10 @@ const TurnoDetailPage = () => {
             {(() => {
               const allUnitsMap = {};
               const controlUnitSigla = detalhesModal.variacoes[0]?.unidade_sigla || 'un';
+              const fatores = detalhesModal.fatores || {};
               
               detalhesModal.variacoes.forEach(variacao => {
-                (fatoresConversao[variacao.variacao_id] || []).forEach(fator => {
+                (fatores[variacao.variacao_id] || []).forEach(fator => {
                   if (!allUnitsMap[fator.id_unidade_medida]) {
                     allUnitsMap[fator.id_unidade_medida] = fator;
                   }
@@ -732,7 +734,7 @@ const TurnoDetailPage = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
-              setDetalhesModal({ aberto: false, produtoId: null, variacoes: [], contagensDetalhadas: {} });
+              setDetalhesModal({ aberto: false, produtoId: null, variacoes: [], contagensDetalhadas: {}, fatores: {} });
               setModalInput({ quantidade: '', unidadeId: '' });
               setModalItems({});
             }}>
